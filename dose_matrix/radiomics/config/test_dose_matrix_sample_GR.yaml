@@ -1,0 +1,6 @@
+DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/GR/
+NII_DIR: /home/moud/Documents/RadioPrediTool/code/dose_matrix/test/nii/GR/
+RADIOMICS_DIR: results/radiomics_GR/
+LABELS_VOI_CSV_FILE: /home/moud/Documents/RadioPrediTool/code/database/labels_organs_20160118.csv
+VOI_TYPE: T
+

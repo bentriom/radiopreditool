@@ -1,0 +1,97 @@
+
+from functools import reduce
+import pandas as pd
+import os
+import sys
+sys.path.append("./workflow/scripts/")
+
+import csv2nii
+import feature_extractor
+
+configfile: "config/test_dose_matrix_sample.yaml"
+DATASET_DIR = config["DATASET_DIR"]
+DATASET_SUBDIRS = config["DATASET_SUBDIRS"] if "DATASET_SUBDIRS" in config else [""]
+NII_DIR = config["NII_DIR"]
+RADIOMICS_DIR = config["RADIOMICS_DIR"]
+VOI_TYPE = config["VOI_TYPE"]
+
+# Directory creations
+os.makedirs(NII_DIR, exist_ok=True)
+os.makedirs(RADIOMICS_DIR, exist_ok=True)
+
+# Create useful variables for rules based on configuration
+def addslash(subdir):
+    return (subdir if subdir == "" else subdir + "/")
+list_newdosi_files = [addslash(subdir) + f.split(".")[0]  for subdir in DATASET_SUBDIRS for f in os.listdir(DATASET_DIR + subdir) if ".csv.gz" in f]
+str_cmd_dataset_subdirs = reduce(lambda a,b:a+b, [sdir + "," for sdir in DATASET_SUBDIRS])[0:-1]
+df_labels_organs = pd.read_csv(config["LABELS_VOI_CSV_FILE"])
+labels_voi = df_labels_organs["NN"][df_labels_organs["Groupe"] == VOI_TYPE]
+labels_voi = labels_voi[0:3]
+cmd_concatenate_radiomics = "cat '" + RADIOMICS_DIR + "header.csv' "
+if DATASET_SUBDIRS == [""]:
+    cmd_concatenate_radiomics += "'" + RADIOMICS_DIR + "'newdosi*"
+else:
+    cmd_concatenate_radiomics +=  "'" + RADIOMICS_DIR + "'{{" + str_cmd_dataset_subdirs + "}}/*"
+cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+
+#"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+#test_csv_file = "/home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/Curie/newdosi_3_197704641B_19770715.csv.gz"
+#test_nii_file = "/home/moud/Documents/RadioPrediTool/code/dose_matrix/test/nii/Curie/newdosi_3_197704641B_19770715_T.nii.gz"
+#print(list_newdosi_files)
+#print(RADIOMICS_DIR + "{subdir}/{dosi_file}_radiomics_" + VOI_TYPE + ".csv")
+#print("cat '"+ RADIOMICS_DIR + "header.csv'" + " '" + RADIOMICS_DIR + "'{" + str_cmd_dataset_subdirs + "}/* > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv")
+
+rule all:
+    input: 
+        DATASET_DIR + "list_dose_matrix.csv",
+        RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+
+rule list_dose_matrix:
+    input:
+        expand(DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files) 
+    output:
+        DATASET_DIR + "list_dose_matrix.csv"
+    shell:
+        "./workflow/scripts/awk_list_dose_matrix.sh '" + DATASET_DIR + "'"
+
+rule images_nii:
+    input:
+        DATASET_DIR + "list_dose_matrix.csv",
+        DATASET_DIR + "{newdosi_file}.csv.gz"
+    output:
+        NII_DIR + "{newdosi_file}_ID2013A.nii.gz",
+        NII_DIR + "{newdosi_file}_" + VOI_TYPE + ".nii.gz"
+    run:
+        subdir = os.path.dirname(wildcards.newdosi_file)
+        newdosi_filename = os.path.basename(wildcards.newdosi_file)
+        path_csv = DATASET_DIR + subdir + "/"
+        path_nii = NII_DIR + subdir + "/"
+        csv2nii.to_nii(path_csv, path_nii, newdosi_filename + ".csv.gz", VOI_TYPE)
+
+rule write_header:
+    output:
+        RADIOMICS_DIR + "header.csv"
+    run:
+        feature_extractor.write_header(VOI_TYPE, labels_voi, RADIOMICS_DIR)
+
+rule compute_radiomics:
+    input:
+        RADIOMICS_DIR + "header.csv",
+        NII_DIR + "{newdosi_file}_ID2013A.nii.gz",
+        NII_DIR + "{newdosi_file}_" + VOI_TYPE + ".nii.gz"
+    output:    
+        RADIOMICS_DIR + "{newdosi_file}_radiomics_" + VOI_TYPE + ".csv"
+    run:
+        subdir = os.path.dirname(wildcards.newdosi_file)
+        newdosi_filename = os.path.basename(wildcards.newdosi_file)
+        image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
+        mask_path = NII_DIR + subdir + "/" + newdosi_filename + "_" + VOI_TYPE + ".nii.gz"
+        feature_extractor.compute_radiomics(image_path, mask_path, VOI_TYPE, labels_voi, newdosi_filename, RADIOMICS_DIR, subdir)
+
+rule gather_radiomics:
+    input:
+        expand(RADIOMICS_DIR + "{newdosi_file}_radiomics_" + VOI_TYPE + ".csv", newdosi_file = list_newdosi_files)
+    output:
+        RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+    shell:
+        cmd_concatenate_radiomics
