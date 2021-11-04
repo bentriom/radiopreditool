@@ -17,9 +17,15 @@ df_events = pd.read_csv(DATASET_DIR + "events_fccss_igr_curie_011021.csv")
 df_labels = pd.read_csv(DATASET_DIR + "dictionnary_variables_fccss_igr_curie_01102021.csv")
 df_iccc = pd.read_csv(DATASET_DIR + "iccc.csv")
 
+# About column events
+benign_events = [f"K2_loc{nbr_loc}" for nbr_loc in range(45,58)]
+non_cancer_events = ["Pathologie_auditive", "Pathologie_cardiaque", "Pathologie_cardiaque_3", "Pathologie_renale_chronique", "pathologie_cataracte", "pathologie_cerebrovasculaire", "pathologie_chir_cataracte", "pathologie_diabete"]
+non_benign_events = [f"K2_loc{nbr_loc}" for nbr_loc in range(1,45)]
+sorted_columns = non_benign_events + benign_events + non_cancer_events
+
 # Op. dataframes
 df_merge = pd.merge(df_events, df_iccc, how = "inner", on = ["ctr", "numcent"])
-df_events = df_events.drop(columns=["ctr", "numcent"])
+df_events = df_events[non_cancer_events + non_benign_events]
 df_labels = df_labels.set_index("Variable Name")
 
 nbr_patients = df_events.shape[0]
@@ -28,10 +34,6 @@ proportion_events = 100 * df_events.sum() / nbr_patients
 max_prop = max(proportion_events)
 list_iccc_lab = df_merge["iccc_lab"].unique()
 discrete_colors_pie = px.colors.qualitative.Set1 + px.colors.qualitative.Dark2 + px.colors.qualitative.Bold
-sorted_columns = sorted(df_events.columns)
-benign_events = [f"K2_loc{nbr_loc}" for nbr_loc in range(45,58)]
-non_cancer_events = ["Pathologie_auditive", "Pathologie_cardiaque", "Pathologie_cardiaque_3", "Pathologie_renale_chronique", "pathologie_cataracte", "pathologie_cerebrovasculaire", "pathologie_chir_cataracte", "pathologie_diabete"]
-non_benign_events = [event for event in sorted_columns if event not in (non_cancer_events + benign_events)]
 list_primary_cancer = df_merge["iccc_lab"].unique()
 
 app.layout = html.Div(children=[
