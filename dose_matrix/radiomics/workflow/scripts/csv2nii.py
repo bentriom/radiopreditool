@@ -19,15 +19,17 @@ def get_ctr_numcent(dosi_filename):
     numcent_patient = int(str_numcent_patient)
     return ctr_patient, numcent_patient
 
-def to_nii(path_csv, path_nii, csv_file, voi_type):
+def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     assert voi_type in ['T', 'NUAGE', 'MATH']
-    df_dosi = pd.read_csv(path_csv + csv_file)
+    first_newdosi_file = list_csv_files[0]
+    df_dosi = pd.read_csv(path_csv + first_newdosi_file)
     df_dosi.columns = df_dosi.columns.str.upper()
-    filename_ext = os.path.splitext(csv_file)
-    if filename_ext[1] == ".gz":
-        filename_ext = os.path.splitext(filename_ext[0])
-    filename = filename_ext[0]
-    ctr_patient, numcent_patient = get_ctr_numcent(filename)
+    for i in range(1,len(list_csv_files)):
+        df_other_dosi = pdf.read_csv(path_csv + list_csv_files[i])
+        df_other_dosi.columns = df_other_dosi.columns.str.upper()
+        df_dosi += df_other_dosi
+    ctr_patient, numcent_patient = get_ctr_numcent(first_newdosi_file)
+    patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
 
     # Coordinates, labels and doses as 3D arrays
     x = np.array(df_dosi['X'] - min(df_dosi['X']), dtype='int') // 2
@@ -41,12 +43,12 @@ def to_nii(path_csv, path_nii, csv_file, voi_type):
 
     # Save as images
     os.makedirs(path_nii, exist_ok=True)
-    file_dosi_nii = path_nii + filename + '_ID2013A.nii.gz'
+    file_dosi_nii = path_nii + patient_filename + '_ID2013A.nii.gz'
     image_dosi = sitk.GetImageFromArray(dosi_3d)
     image_dosi.SetSpacing((2.0,2.0,2.0))
     image_dosi.SetOrigin((0.0,0.0,0.0))
     sitk.WriteImage(image_dosi, file_dosi_nii)
-    file_mask_nii = path_nii + filename + f"_{voi_type}.nii.gz"
+    file_mask_nii = path_nii + patient_filename + f"_{voi_type}.nii.gz"
     image_mask = sitk.GetImageFromArray(labels_3d)
     image_mask.SetSpacing((2.0,2.0,2.0))
     image_mask.SetOrigin((0.0,0.0,0.0))

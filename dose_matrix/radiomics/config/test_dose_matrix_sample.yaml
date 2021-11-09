@@ -1,9 +1,11 @@
-DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/
-DATASET_SUBDIRS:
+DOSES_DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/
+DOSES_DATASET_SUBDIRS:
     - Curie
     - GR
-NII_DIR: /home/moud/Documents/RadioPrediTool/code/dose_matrix/test/nii/
-RADIOMICS_DIR: results/radiomics/
+NII_DIR: results/nii/
+RADIOMICS_DIR: results/extraction/
+RADIOMICS_PARAMS_FILE: config/radiomics_pathol_cardiaque.yaml
 LABELS_VOI_CSV_FILE: /home/moud/Documents/RadioPrediTool/code/database/labels_organs_20160118.csv
 VOI_TYPE: T
+LABELS_VOI: [309, 310, 320, 321, 322, 323, 324]
 
