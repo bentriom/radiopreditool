@@ -29,11 +29,9 @@ def write_header(voi_type, labels_voi, radiomics_dir, params_file):
     ex_image, ex_mask = create_image_mask_example()
     dict_features_values = extractor.execute(ex_image, ex_mask, label = 1)
     features_name_per_label = [x for x in dict_features_values if not x.startswith("diagnostics_")]
-    print(features_name_per_label)
     for label in labels_voi:
         all_features_name += [str(label) + "_" + x for x in features_name_per_label]
-    print(all_features_name)
-    header = ["ctr", "numcent", "newdosi_filename"] +  all_features_name
+    header = ["ctr", "numcent"] +  all_features_name
     with open(radiomics_dir + "header.csv", "w") as header_file:
         header_writer = csv.writer(header_file, delimiter = ',')
         header_writer.writerow(header)
@@ -50,10 +48,10 @@ def compute_radiomics(image_path, mask_path, voi_type, labels_voi, newdosi_filen
             print(f"Raised ValueError \n({err=})\nIgnoring the label mask")
             all_features_values = np.append(all_features_values, [np.nan] * nbr_features_per_label)
             continue
-        label_features_values = [dict_features_values[x] for x in features_name_per_label]
+        label_features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]
         all_features_values = np.append(all_features_values, label_features_values)
     os.makedirs(radiomics_dir + subdir, exist_ok = True)
     with open(radiomics_dir + subdir + "/" + newdosi_filename + "_radiomics_" + voi_type + ".csv", "w") as radiomics_file:
         radiomics_writer = csv.writer(radiomics_file, delimiter = ',')
-        radiomics_writer.writerow([ctr, numcent, newdosi_filename] + list(all_features_values))
+        radiomics_writer.writerow([ctr, numcent] + list(all_features_values))
 

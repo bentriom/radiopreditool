@@ -8,7 +8,6 @@ sys.path.append("./workflow/scripts/")
 import csv2nii
 import feature_extractor
 
-configfile: "config/test_dose_matrix_sample.yaml"
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
 NII_DIR = config["NII_DIR"]
@@ -69,6 +68,7 @@ rule list_newdosi_files:
 ## Extract radiomics
 def get_newdosi_files(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
+
 rule images_nii:
     input:
         "results/metadata/list_newdosi_files.csv",

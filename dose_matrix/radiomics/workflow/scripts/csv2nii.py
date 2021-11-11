@@ -1,15 +1,11 @@
 
 import numpy as np
 import pandas as pd
-#import matplotlib.pylab as plt
 import SimpleITK as sitk
 import os
 import math as m
 import sys
-# nii.gz or nrrd format ?
-
-#DATASET_DIR = sys.argv[1]
-#NII_DIR = sys.argv[2]
+from datetime import datetime
 
 def get_ctr_numcent(dosi_filename):    
     split_filename = dosi_filename.split("_")
@@ -19,16 +15,33 @@ def get_ctr_numcent(dosi_filename):
     numcent_patient = int(str_numcent_patient)
     return ctr_patient, numcent_patient
 
+def get_date(dosi_filename):    
+    split_filename = dosi_filename.split("_")
+    str_date_treatment = split_filename[3].split(".")[0]
+    date_treatment = datetime.strptime(str_date_treatment, "%Y%m%d")
+    return date_treatment
+
 def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     assert voi_type in ['T', 'NUAGE', 'MATH']
-    first_newdosi_file = list_csv_files[0]
+    # Reads the newdosi files and sums the matrices if interval time <= 3 months
+    idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in list_csv_files])
+    first_newdosi_file = list_csv_files[idx_sort_by_date_csv_files[0]]
     df_dosi = pd.read_csv(path_csv + first_newdosi_file)
     df_dosi.columns = df_dosi.columns.str.upper()
-    for i in range(1,len(list_csv_files)):
-        df_other_dosi = pdf.read_csv(path_csv + list_csv_files[i])
-        df_other_dosi.columns = df_other_dosi.columns.str.upper()
-        df_dosi += df_other_dosi
     ctr_patient, numcent_patient = get_ctr_numcent(first_newdosi_file)
+    date_last_treatment = get_date(first_newdosi_file)
+    for i in idx_sort_by_date_csv_files[1:]:
+        date_treatment = get_date(list_csv_files[i])
+        delta_time = (date_treatment - date_last_treatment)
+        # The two RT treatments were made within 3 months
+        if delta_time.total_seconds() <= 3*30*24*3600:
+            df_other_dosi = pd.read_csv(path_csv + list_csv_files[i])
+            df_other_dosi.columns = df_other_dosi.columns.str.upper()
+            assert df_dosi['X'].equals(df_other_dosi['X']) and \
+                   df_dosi['Y'].equals(df_other_dosi['Y']) and \
+                   df_dosi['Z'].equals(df_other_dosi['Z'])
+            df_dosi['ID2013A'] += df_other_dosi['ID2013A']
+        date_last_treatment = date_treatment
     patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
 
     # Coordinates, labels and doses as 3D arrays
@@ -53,12 +66,4 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     image_mask.SetSpacing((2.0,2.0,2.0))
     image_mask.SetOrigin((0.0,0.0,0.0))
     sitk.WriteImage(image_mask, file_mask_nii)
-
-#list_subdirs = ["Curie", "GR"]
-#for subdir in list_subdirs:
-#    path_csv = DATASET_DIR + subdir + "/"
-#    path_nii = NII_DIR + subdir + "/"
-#    for file_csv in os.listdir(path_csv):
-#        print(file_csv)
-#        to_nii(path_csv, path_nii, file_csv)
 
