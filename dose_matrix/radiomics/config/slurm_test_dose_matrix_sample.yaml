@@ -2,8 +2,7 @@ DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_
 DOSES_DATASET_SUBDIRS:
     - Curie
     - GR
-NII_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/nii
-RADIOMICS_DIR: /workdir/bentrioum/results/extraction/
+RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
 RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque.yaml
 LABELS_VOI_CSV_FILE: /workdir/bentrioum/database/radiopreditool/fccss/labels_organs_20160118.csv
 VOI_TYPE: T

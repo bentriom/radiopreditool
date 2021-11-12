@@ -10,8 +10,9 @@ import feature_extractor
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
-NII_DIR = config["NII_DIR"]
-RADIOMICS_DIR = config["RADIOMICS_DIR"]
+RESULTS_DIR = config["RESULTS_DIR"]
+NII_DIR = RESULTS_DIR + "nii/"
+RADIOMICS_DIR = RESULTS_DIR + "extraction/"
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
 VOI_TYPE = config["VOI_TYPE"]
 LABELS_VOI_CSV_FILE = config["LABELS_VOI_CSV_FILE"]
@@ -53,7 +54,7 @@ cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" 
 
 rule all:
     input: 
-        "results/metadata/list_newdosi_files.csv",
+        RESULTS_DIR + "metadata/list_newdosi_files.csv",
         RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
 
 ## Additional files
@@ -61,7 +62,7 @@ rule list_newdosi_files:
     input:
         expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files) 
     output:
-        "results/metadata/list_newdosi_files.csv"
+        RESULTS_DIR + "metadata/list_newdosi_files.csv"
     shell:
         "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + "' > results/metadata/list_newdosi_files.csv"
 
@@ -71,7 +72,7 @@ def get_newdosi_files(wildcards):
 
 rule images_nii:
     input:
-        "results/metadata/list_newdosi_files.csv",
+        RESULTS_DIR + "metadata/list_newdosi_files.csv",
         get_newdosi_files
     output:
         NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
@@ -118,7 +119,7 @@ rule coxph:
         RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv",
         FCCSS_CLINICAL_DATASET + "events_fccss_igr_curie_011021.csv"
     output:
-        "results/analyses/coxph.html"
+        RESULTS_DIR + "analyses/coxph.html"
     shell:
         "touch results/analyses/coxph.html"
 
