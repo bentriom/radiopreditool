@@ -64,7 +64,7 @@ rule list_newdosi_files:
     output:
         RESULTS_DIR + "metadata/list_newdosi_files.csv"
     shell:
-        "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + "' > results/metadata/list_newdosi_files.csv"
+        "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + "' > " + RESULTS_DIR + "metadata/list_newdosi_files.csv"
 
 ## Extract radiomics
 def get_newdosi_files(wildcards):
@@ -121,5 +121,5 @@ rule coxph:
     output:
         RESULTS_DIR + "analyses/coxph.html"
     shell:
-        "touch results/analyses/coxph.html"
+        "touch " + RESULTS_DIR + "analyses/coxph.html"
 
