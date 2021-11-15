@@ -87,13 +87,15 @@ rule images_nii:
 
 rule write_header_radiomics:
     output:
-        RADIOMICS_DIR + "header.csv"
+        RADIOMICS_DIR + "header.csv",
+        RADIOMICS_DIR + "nbr_features_per_label"
     run:
         feature_extractor.write_header(VOI_TYPE, labels_voi, RADIOMICS_DIR, RADIOMICS_PARAMS_FILE)
 
 rule compute_radiomics:
     input:
         RADIOMICS_DIR + "header.csv",
+        RADIOMICS_DIR + "nbr_features_per_label",
         NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
         NII_DIR + "{newdosi_patient}_" + VOI_TYPE + ".nii.gz"
     output:    
@@ -103,7 +105,9 @@ rule compute_radiomics:
         newdosi_filename = os.path.basename(wildcards.newdosi_patient)
         image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
         mask_path = NII_DIR + subdir + "/" + newdosi_filename + "_" + VOI_TYPE + ".nii.gz"
-        feature_extractor.compute_radiomics(image_path, mask_path, VOI_TYPE, labels_voi, newdosi_filename, RADIOMICS_DIR, subdir, RADIOMICS_PARAMS_FILE)
+        with open(RADIOMICS_DIR + "nbr_features_per_label", 'r') as file_nbr:
+            nbr_features_per_label = int(file_nbr.read())
+        feature_extractor.compute_radiomics(image_path, mask_path, VOI_TYPE, labels_voi, newdosi_filename, RADIOMICS_DIR, subdir, RADIOMICS_PARAMS_FILE, nbr_features_per_label)
 
 rule gather_radiomics:
     input:
