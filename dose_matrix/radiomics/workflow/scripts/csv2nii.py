@@ -25,6 +25,9 @@ def get_date(dosi_filename):
         date_treatment = datetime.strptime(str_date_treatment, "%Y%m%d")
     return date_treatment
 
+def check_nan_values(df):
+    return (df['X'].isnull().values.any() or df['Y'].isnull().values.any() or df['Z'].isnull().values.any() or df['ID2013A'].isnull().values.any())
+
 def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     voi_type = voi_type.upper()
     assert voi_type in ['T', 'NUAGE', 'MATH']
@@ -33,6 +36,12 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     first_newdosi_file = list_csv_files[idx_sort_by_date_csv_files[0]]
     df_dosi = pd.read_csv(path_csv + first_newdosi_file)
     df_dosi.columns = df_dosi.columns.str.upper()
+    test_xyz_nan = check_nan_values(df_dosi)
+    if test_xyz_nan:
+        nbr_rows_before = df_dosi.shape[0]
+        df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
+        nbr_rows_after = df_dosi.shape[0]
+        print(f"{first_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
     relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
     int_cols = ['X', 'Y', 'Z', voi_type]
     df_dosi = df_dosi[relevant_cols]
@@ -49,6 +58,12 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
             df_other_dosi = pd.read_csv(path_csv + current_newdosi_file)
             df_other_dosi.columns = df_other_dosi.columns.str.upper()
             df_other_dosi = df_other_dosi[relevant_cols]
+            test_xyz_nan = check_nan_values(df_other_dosi)
+            if test_xyz_nan:
+                nbr_rows_before = df_other_dosi.shape[0]
+                df_other_dosi = df_other_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
+                nbr_rows_after = df_other_dosi.shape[0]
+                print(f"{current_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
             if df_dosi.shape[0] != df_other_dosi.shape[0]:
                 print(f"{first_newdosi_file} and {current_newdosi_file}: rows numbers are different. Stopping the sum.")
                 break
