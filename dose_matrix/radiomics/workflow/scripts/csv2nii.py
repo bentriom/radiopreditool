@@ -26,27 +26,48 @@ def get_date(dosi_filename):
     return date_treatment
 
 def to_nii(path_csv, path_nii, list_csv_files, voi_type):
+    voi_type = voi_type.upper()
     assert voi_type in ['T', 'NUAGE', 'MATH']
     # Reads the newdosi files and sums the matrices if interval time <= 3 months
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in list_csv_files])
     first_newdosi_file = list_csv_files[idx_sort_by_date_csv_files[0]]
     df_dosi = pd.read_csv(path_csv + first_newdosi_file)
     df_dosi.columns = df_dosi.columns.str.upper()
+    relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
+    int_cols = ['X', 'Y', 'Z', voi_type]
+    df_dosi = df_dosi[relevant_cols]
     ctr_patient, numcent_patient = get_ctr_numcent(first_newdosi_file)
     date_last_treatment = get_date(first_newdosi_file)
     for i in idx_sort_by_date_csv_files[1:]:
-        date_treatment = get_date(list_csv_files[i])
+        current_newdosi_file = list_csv_files[i]
+        date_treatment = get_date(current_newdosi_file)
         delta_time = (date_treatment - date_last_treatment)
-        # The two RT treatments were made within 3 months
+        # The two RT treatments were made beyond 3 months
         if delta_time.total_seconds() > 3*30*24*3600:
             break
         else:
-            df_other_dosi = pd.read_csv(path_csv + list_csv_files[i])
+            df_other_dosi = pd.read_csv(path_csv + current_newdosi_file)
             df_other_dosi.columns = df_other_dosi.columns.str.upper()
-            assert df_dosi['X'].equals(df_other_dosi['X']) and \
-                   df_dosi['Y'].equals(df_other_dosi['Y']) and \
-                   df_dosi['Z'].equals(df_other_dosi['Z'])
-            df_dosi['ID2013A'] += df_other_dosi['ID2013A']
+            df_other_dosi = df_other_dosi[relevant_cols]
+            well_ordered_rows = df_dosi['X'].equals(df_other_dosi['X']) and \
+                                df_dosi['Y'].equals(df_other_dosi['Y']) and \
+                                df_dosi['Z'].equals(df_other_dosi['Z']) and \
+                                df_dosi[voi_type].equals(df_other_dosi[voi_type])
+            if well_ordered_rows:
+                df_dosi['ID2013A'] += df_other_dosi['ID2013A']
+            else:
+                print(f"{first_newdosi_file} and {current_newdosi_file} are not well ordered.")
+                for col in int_cols:
+                    df_dosi[col] = df_dosi[col].astype(int)
+                    df_other_dosi[col] = df_other_dosi[col].astype(int)
+                df_dosi = df_dosi.sort_values(by = int_cols)
+                df_other_dosi = df_other_dosi.sort_values(by = int_cols)
+                df_other_dosi.index = df_dosi.index
+                assert df_dosi['X'].equals(df_other_dosi['X']) and \
+                       df_dosi['Y'].equals(df_other_dosi['Y']) and \
+                       df_dosi['Z'].equals(df_other_dosi['Z']) and \
+                       df_dosi[voi_type].equals(df_other_dosi[voi_type])
+                df_dosi['ID2013A'] += df_other_dosi['ID2013A']
         #date_last_treatment = date_treatment
     patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
 
