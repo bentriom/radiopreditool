@@ -38,14 +38,16 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
         date_treatment = get_date(list_csv_files[i])
         delta_time = (date_treatment - date_last_treatment)
         # The two RT treatments were made within 3 months
-        if delta_time.total_seconds() <= 3*30*24*3600:
+        if delta_time.total_seconds() > 3*30*24*3600:
+            break
+        else:
             df_other_dosi = pd.read_csv(path_csv + list_csv_files[i])
             df_other_dosi.columns = df_other_dosi.columns.str.upper()
             assert df_dosi['X'].equals(df_other_dosi['X']) and \
                    df_dosi['Y'].equals(df_other_dosi['Y']) and \
                    df_dosi['Z'].equals(df_other_dosi['Z'])
             df_dosi['ID2013A'] += df_other_dosi['ID2013A']
-        date_last_treatment = date_treatment
+        #date_last_treatment = date_treatment
     patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
 
     # Coordinates, labels and doses as 3D arrays
