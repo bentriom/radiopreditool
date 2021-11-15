@@ -49,6 +49,9 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
             df_other_dosi = pd.read_csv(path_csv + current_newdosi_file)
             df_other_dosi.columns = df_other_dosi.columns.str.upper()
             df_other_dosi = df_other_dosi[relevant_cols]
+            if df_dosi.shape[0] != df_other_dosi.shape[0]:
+                print(f"{first_newdosi_file} and {current_newdosi_file}: rows numbers are different. Stopping the sum.")
+                break
             well_ordered_rows = df_dosi['X'].equals(df_other_dosi['X']) and \
                                 df_dosi['Y'].equals(df_other_dosi['Y']) and \
                                 df_dosi['Z'].equals(df_other_dosi['Z']) and \
@@ -56,17 +59,19 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
             if well_ordered_rows:
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
             else:
-                print(f"{first_newdosi_file} and {current_newdosi_file} are not well ordered.")
+                print(f"{first_newdosi_file} and {current_newdosi_file}: rows are not well ordered.")
                 for col in int_cols:
                     df_dosi[col] = df_dosi[col].astype(int)
                     df_other_dosi[col] = df_other_dosi[col].astype(int)
                 df_dosi = df_dosi.sort_values(by = int_cols)
                 df_other_dosi = df_other_dosi.sort_values(by = int_cols)
                 df_other_dosi.index = df_dosi.index
-                assert df_dosi['X'].equals(df_other_dosi['X']) and \
-                       df_dosi['Y'].equals(df_other_dosi['Y']) and \
-                       df_dosi['Z'].equals(df_other_dosi['Z']) and \
-                       df_dosi[voi_type].equals(df_other_dosi[voi_type])
+                if not (df_dosi['X'].equals(df_other_dosi['X']) and \
+                        df_dosi['Y'].equals(df_other_dosi['Y']) and \
+                        df_dosi['Z'].equals(df_other_dosi['Z']) and \
+                        df_dosi[voi_type].equals(df_other_dosi[voi_type])):
+                    print(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. Stopping the sum.")
+                    break
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
         #date_last_treatment = date_treatment
     patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
