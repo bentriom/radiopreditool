@@ -18,7 +18,11 @@ def get_ctr_numcent(dosi_filename):
 def get_date(dosi_filename):    
     split_filename = dosi_filename.split("_")
     str_date_treatment = split_filename[3].split(".")[0]
-    date_treatment = datetime.strptime(str_date_treatment, "%Y%m%d")
+    # Date is missing for some files
+    if str_date_treatment == "00000000":
+        date_treatment = datetime.strptime("19700101", "%Y%m%d")
+    else:    
+        date_treatment = datetime.strptime(str_date_treatment, "%Y%m%d")
     return date_treatment
 
 def to_nii(path_csv, path_nii, list_csv_files, voi_type):
