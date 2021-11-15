@@ -45,7 +45,7 @@ def compute_radiomics(image_path, mask_path, voi_type, labels_voi, newdosi_filen
         try:
             dict_features_values = extractor.execute(image_path, mask_path, label = label)
         except ValueError as err:
-            print(f"Raised ValueError \n({err=})\nIgnoring the label mask")
+            print(f"Raised ValueError. Ignoring the label mask {label}.")
             all_features_values = np.append(all_features_values, [np.nan] * nbr_features_per_label)
             continue
         label_features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]
