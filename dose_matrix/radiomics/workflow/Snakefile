@@ -7,6 +7,7 @@ sys.path.append("./workflow/scripts/")
 
 import csv2nii
 import feature_extractor
+import check_dataset
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
@@ -52,6 +53,10 @@ cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" 
 #print(RADIOMICS_DIR + "{subdir}/{dosi_file}_radiomics_" + VOI_TYPE + ".csv")
 #print("cat '"+ RADIOMICS_DIR + "header.csv'" + " '" + RADIOMICS_DIR + "'{" + str_cmd_dataset_subdirs + "}/* > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv")
 
+## Utils
+def get_newdosi_files(wildcards):
+    return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
+
 rule all:
     input: 
         RESULTS_DIR + "metadata/list_newdosi_files.csv",
@@ -66,10 +71,15 @@ rule list_newdosi_files:
     shell:
         "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + "' > " + RESULTS_DIR + "metadata/list_newdosi_files.csv"
 
-## Extract radiomics
-def get_newdosi_files(wildcards):
-    return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
+rule list_newdosi_characteristics:
+    input:
+        RESULTS_DIR + "metadata/list_newdosi_files.csv"
+    output:
+        RESULTS_DIR + "metadata/list_newdosi_checks.csv"
+    run:
+        check_dataset.analyze_dataset(DOSES_DATASET_DIR, RESULTS_DIR + "metadata/", VOI_TYPE)
 
+## Extract radiomics
 rule images_nii:
     input:
         RESULTS_DIR + "metadata/list_newdosi_files.csv",

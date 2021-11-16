@@ -7,7 +7,7 @@ import csv
 import os
 from radiomics import featureextractor
 from functools import reduce
-from csv2nii import get_ctr_numcent
+from radiopreditool_utils import get_ctr_numcent
 
 def create_image_mask_example():
     array_image = np.zeros((32,32,32)) 

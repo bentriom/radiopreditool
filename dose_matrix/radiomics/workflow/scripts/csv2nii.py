@@ -3,30 +3,9 @@ import numpy as np
 import pandas as pd
 import SimpleITK as sitk
 import os
-import math as m
 import sys
 from datetime import datetime
-
-def get_ctr_numcent(dosi_filename):    
-    split_filename = dosi_filename.split("_")
-    ctr_patient = int(split_filename[1])
-    str_numcent_patient = split_filename[2].split(".")[0]
-    str_numcent_patient = str_numcent_patient[0:-1] if str_numcent_patient[-1].isalpha() else str_numcent_patient
-    numcent_patient = int(str_numcent_patient)
-    return ctr_patient, numcent_patient
-
-def get_date(dosi_filename):    
-    split_filename = dosi_filename.split("_")
-    str_date_treatment = split_filename[3].split(".")[0]
-    # Date is missing for some files
-    if str_date_treatment == "00000000":
-        date_treatment = datetime.strptime("19700101", "%Y%m%d")
-    else:    
-        date_treatment = datetime.strptime(str_date_treatment, "%Y%m%d")
-    return date_treatment
-
-def check_nan_values(df):
-    return (df['X'].isnull().values.any() or df['Y'].isnull().values.any() or df['Z'].isnull().values.any() or df['ID2013A'].isnull().values.any())
+from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df
 
 def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     voi_type = voi_type.upper()
@@ -51,8 +30,8 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
         current_newdosi_file = list_csv_files[i]
         date_treatment = get_date(current_newdosi_file)
         delta_time = (date_treatment - date_last_treatment)
-        # The two RT treatments were made beyond 3 months
-        if delta_time.total_seconds() > 3*30*24*3600:
+        # The two RT treatments were made beyond 6 months
+        if delta_time.total_seconds() > 6*30*24*3600:
             break
         else:
             df_other_dosi = pd.read_csv(path_csv + current_newdosi_file)
@@ -70,10 +49,7 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
             if df_other_dosi.shape[0] <= 1:
                 print(f"{current_newdosi_file}: has <= 1 rows. Stopping the sum.")
                 break
-            well_ordered_rows = df_dosi['X'].equals(df_other_dosi['X']) and \
-                                df_dosi['Y'].equals(df_other_dosi['Y']) and \
-                                df_dosi['Z'].equals(df_other_dosi['Z']) and \
-                                df_dosi[voi_type].equals(df_other_dosi[voi_type])
+            well_ordered_rows = check_summable_df(df_dosi, df_other_dosi, voi_type)
             if well_ordered_rows:
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
             else:
@@ -84,10 +60,7 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
                 df_dosi = df_dosi.sort_values(by = int_cols)
                 df_other_dosi = df_other_dosi.sort_values(by = int_cols)
                 df_other_dosi.index = df_dosi.index
-                if not (df_dosi['X'].equals(df_other_dosi['X']) and \
-                        df_dosi['Y'].equals(df_other_dosi['Y']) and \
-                        df_dosi['Z'].equals(df_other_dosi['Z']) and \
-                        df_dosi[voi_type].equals(df_other_dosi[voi_type])):
+                if not check_summable_df(df_dosi, df_other_dosi, voi_type):
                     print(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. Stopping the sum.")
                     break
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
