@@ -82,7 +82,6 @@ rule list_newdosi_characteristics:
 ## Extract radiomics
 rule images_nii:
     input:
-        RESULTS_DIR + "metadata/list_newdosi_files.csv",
         get_newdosi_files
     output:
         NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
