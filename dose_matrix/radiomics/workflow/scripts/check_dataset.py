@@ -60,6 +60,9 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
         # Check the dimensions between the two df
         if df_dosi.shape[0] != df_other_dosi.shape[0]:
             df_result.at[i, "different_shapes"] = 1
+            df_result.at[i, "well_ordered_rows"] = 0
+            df_result.at[i, "summable"] = 0
+            continue
         # Check if rows are well ordered
         well_ordered_rows = check_summable_df(df_dosi, df_other_dosi, voi_type)
         if well_ordered_rows:
