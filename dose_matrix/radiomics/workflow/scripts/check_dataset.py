@@ -1,9 +1,17 @@
 
 import pandas as pd
 import numpy as np
+from multiprocessing import Pool, cpu_count
 from radiopreditool_utils import *
 
-def check_files_patient(doses_dataset_dir, df_files_patient, voi_type):
+class Checker(object):
+    def __init__(self, doses_dataset_dir, voi_type):
+        self.doses_dataset_dir = doses_dataset_dir
+        self.voi_type = voi_type
+    def __call__(self, df):
+        return check_files_patient(self.doses_dataset_dir, self.voi_type, df)
+
+def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
     voi_type = voi_type.upper()
     assert voi_type in ['T', 'NUAGE', 'MATH']
     relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
@@ -67,10 +75,18 @@ def check_files_patient(doses_dataset_dir, df_files_patient, voi_type):
             df_result.at[i, "summable"] = int(check_summable_df(df_dosi, df_other_dosi, voi_type))
     return df_result
 
+check_files_patient_set = None
+
 def analyze_dataset(doses_dataset_dir, metadata_dir, voi_type):
+    global check_files_patient_set
+    check_files_patient_set = lambda grp: check_files_patient(doses_ataset_dir, grp, voi_type)
     df_files = pd.read_csv(metadata_dir + "list_newdosi_files.csv")
     grouped_files = df_files.groupby(by = ["ctr", "numcent"])
-    df_files_checks = grouped_files.apply(lambda df: check_files_patient(doses_dataset_dir, df, voi_type))
+    print(cpu_count())
+    with Pool(cpu_count()) as p:
+        res_checks = p.map(Checker(doses_dataset_dir, voi_type), [group for name, group in grouped_files])
+    df_files_checks = pd.concat(res_checks)
+    #df_files_checks = grouped_files.apply(lambda df: check_files_patient(doses_dataset_dir, df, voi_type))
     del df_files_checks["index"]
     df_files_checks.to_csv(metadata_dir + "list_newdosi_checks.csv", index = False)
 
