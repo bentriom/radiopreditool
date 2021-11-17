@@ -17,7 +17,7 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
     relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
     int_cols = ['X', 'Y', 'Z', voi_type]
     df_result = df_files_patient.copy().reset_index()
-    df_result[["nbr_nan_rows", "remaining_nan_rows", "outdated_treatment", "different_shapes"]] = 0
+    df_result[["nbr_nan_rows", "remaining_nan_rows", "missing_date", "outdated_treatment", "different_shapes"]] = 0
     df_result[["well_ordered_rows", "summable"]] = 1
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in df_result["filename_dose_matrix"]])
     df_result = df_result.iloc[list(idx_sort_by_date_csv_files)]
@@ -47,6 +47,8 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
         date_treatment = get_date(current_newdosi_file)
         delta_time = (date_treatment - date_last_treatment)
         # Check the date from the first treatment
+        if date_treatment == datetime.strptime("19000101", "%Y%m%d"):
+            df_result.at[0, "missing_date"] = 1
         if delta_time.total_seconds() > 6*30*24*3600:
             df_result.at[i, "outdated_treatment"] = 1
         # Check NaN values
