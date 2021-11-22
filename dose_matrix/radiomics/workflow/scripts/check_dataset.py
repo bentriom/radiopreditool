@@ -17,7 +17,7 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
     relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
     int_cols = ['X', 'Y', 'Z', voi_type]
     df_result = df_files_patient.copy().reset_index()
-    df_result[["nbr_nan_rows", "remaining_nan_rows", "missing_date", "outdated_treatment", "different_shapes"]] = 0
+    df_result[["nbr_nan_rows", "remaining_rows", "missing_date", "outdated_treatment", "different_shapes"]] = 0
     df_result[["well_ordered_rows", "summable"]] = 1
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in df_result["filename_dose_matrix"]])
     df_result = df_result.iloc[list(idx_sort_by_date_csv_files)]
@@ -28,12 +28,13 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
     df_dosi = df_dosi[relevant_cols]
     # Check NaN values
     test_xyz_nan = check_nan_values(df_dosi)
+    df_result.at[0, "remaining_rows"] = df_dosi.shape[0]
     if test_xyz_nan:
         nbr_rows_before = df_dosi.shape[0]
         df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
         nbr_rows_after = df_dosi.shape[0]
         nbr_nan_rows = nbr_rows_before - nbr_rows_after
-        df_result.loc[0][["nbr_nan_rows", "remaining_nan_rows"]] = [nbr_nan_rows, nbr_rows_after]
+        df_result.loc[0][["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
     # Check if missing date
     date_last_treatment = get_date(first_newdosi_file)
     if date_last_treatment == datetime.strptime("19000101", "%Y%m%d"):
@@ -52,13 +53,14 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
         if delta_time.total_seconds() > 6*30*24*3600:
             df_result.at[i, "outdated_treatment"] = 1
         # Check NaN values
-        test_xyz_nan = check_nan_values(df_dosi)
+        test_xyz_nan = check_nan_values(df_other_dosi)
+        df_result.at[i, "remaining_rows"] = df_other_dosi.shape[0]
         if test_xyz_nan:
-            nbr_rows_before = df_dosi.shape[0]
-            df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
-            nbr_rows_after = df_dosi.shape[0]
+            nbr_rows_before = df_other_dosi.shape[0]
+            df_other_dosi = df_other_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
+            nbr_rows_after = df_other_dosi.shape[0]
             nbr_nan_rows = nbr_rows_before - nbr_rows_after
-            df_result.loc[i][["nbr_nan_rows", "remaining_nan_rows"]] = [nbr_nan_rows, nbr_rows_after]
+            df_result.loc[i][["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
         # Check the dimensions between the two df
         if df_dosi.shape[0] != df_other_dosi.shape[0]:
             df_result.at[i, "different_shapes"] = 1

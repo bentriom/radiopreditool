@@ -8,6 +8,7 @@ sys.path.append("./workflow/scripts/")
 import csv2nii
 import feature_extractor
 import check_dataset
+import report_checks
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
@@ -71,13 +72,21 @@ rule list_newdosi_files:
     shell:
         "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + "' > " + RESULTS_DIR + "metadata/list_newdosi_files.csv"
 
-rule list_newdosi_characteristics:
+rule list_newdosi_checks:
     input:
         RESULTS_DIR + "metadata/list_newdosi_files.csv"
     output:
         RESULTS_DIR + "metadata/list_newdosi_checks.csv"
     run:
         check_dataset.analyze_dataset(DOSES_DATASET_DIR, RESULTS_DIR + "metadata/", VOI_TYPE)
+
+rule report_checks:
+    input:
+        RESULTS_DIR + "metadata/list_newdosi_checks.csv"
+    output:
+        RESULTS_DIR + "metadata/report_checks.txt"
+    run:
+        report_checks.print_report(RESULTS_DIR + "metadata/")
 
 ## Extract radiomics
 rule images_nii:
