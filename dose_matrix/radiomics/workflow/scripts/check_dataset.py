@@ -34,7 +34,8 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
         df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
         nbr_rows_after = df_dosi.shape[0]
         nbr_nan_rows = nbr_rows_before - nbr_rows_after
-        df_result.loc[0][["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
+        print(f"{nbr_nan_rows} {nbr_rows_after}")
+        df_result.loc[0, ["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
     # Check if missing date
     date_last_treatment = get_date(first_newdosi_file)
     if date_last_treatment == datetime.strptime("19000101", "%Y%m%d"):
@@ -60,7 +61,7 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
             df_other_dosi = df_other_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
             nbr_rows_after = df_other_dosi.shape[0]
             nbr_nan_rows = nbr_rows_before - nbr_rows_after
-            df_result.loc[i][["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
+            df_result.loc[i, ["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
         # Check the dimensions between the two df
         if df_dosi.shape[0] != df_other_dosi.shape[0]:
             df_result.at[i, "different_shapes"] = 1
