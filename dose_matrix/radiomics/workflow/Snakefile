@@ -4,11 +4,7 @@ import pandas as pd
 import os
 import sys
 sys.path.append("./workflow/scripts/")
-
-import csv2nii
-import feature_extractor
-import check_dataset
-import report_checks
+import csv2nii, feature_extractor, check_dataset, report_checks, trainset
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
@@ -18,11 +14,12 @@ RADIOMICS_DIR = RESULTS_DIR + "extraction/"
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
 VOI_TYPE = config["VOI_TYPE"]
 LABELS_VOI_CSV_FILE = config["LABELS_VOI_CSV_FILE"]
-FCCSS_CLINICAL_DATASET = ""
+FCCSS_CLINICAL_DATASET = config["FCCSS_CLINICAL_DATASET"]
 
 # Directory creations
 os.makedirs(NII_DIR, exist_ok=True)
 os.makedirs(RADIOMICS_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR + "analyzes", exist_ok=True)
 
 # Create useful variables for rules based on configuration
 def addslash(subdir):
@@ -136,12 +133,15 @@ rule gather_radiomics:
         cmd_concatenate_radiomics
 
 ## Analysis
-rule coxph:
+rule create_train_dataset:
     input:
         RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv",
-        FCCSS_CLINICAL_DATASET + "events_fccss_igr_curie_011021.csv"
+        FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
     output:
-        RESULTS_DIR + "analyses/coxph.html"
-    shell:
-        "touch " + RESULTS_DIR + "analyses/coxph.html"
+        RESULTS_DIR + "analyzes/trainset.csv"
+    run:
+        file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+        file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
+        analyzes_dir = RESULTS_DIR + "analyses/"
+        trainset.create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir)
 
