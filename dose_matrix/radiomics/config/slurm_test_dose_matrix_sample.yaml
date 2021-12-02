@@ -7,4 +7,5 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 LABELS_VOI_CSV_FILE: /workdir/bentrioum/database/radiopreditool/fccss/labels_organs_20160118.csv
 VOI_TYPE: T
 LABELS_VOI: [309, 310, 320, 321, 322, 323, 324]
+FCCSS_CLINICAL_VARIABLES: []
 

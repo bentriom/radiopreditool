@@ -16,4 +16,5 @@ VOI_TYPE: T
 # 702 - 704: thyroid
 LABELS_VOI: [309, 310, 320, 321, 322, 323, 324, 413, 414, 415, 416, 417, 418, 419, 420, 702, 703, 704]
 FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/
+FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "radiotherapie"]
 

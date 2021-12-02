@@ -2,4 +2,5 @@ DOSES_DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix
 RESULTS_DIR: results/
 LABELS_VOI_CSV_FILE: /home/moud/Documents/RadioPrediTool/code/database/labels_organs_20160118.csv
 VOI_TYPE: T
+FCCSS_CLINICAL_VARIABLES: []
 

@@ -17,6 +17,7 @@ ANALYZES_DIR = RESULTS_DIR + "analyzes/"
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
 LABELS_VOI_CSV_FILE = config["LABELS_VOI_CSV_FILE"]
 VOI_TYPE = config["VOI_TYPE"]
+FCCSS_CLINICAL_VARIABLES = config["FCCSS_CLINICAL_VARIABLES"]
 
 # Directory creations
 for newdir in [RESULTS_DIR, NII_DIR, RADIOMICS_DIR, METADATA_DIR, ANALYZES_DIR]:
@@ -136,7 +137,7 @@ rule create_train_dataset:
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
         file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
-        trainset.create_trainset(file_radiomics, file_fccss_clinical, ANALYZES_DIR)
+        trainset.create_trainset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES)
 
 
 #"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv"
