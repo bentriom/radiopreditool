@@ -1,7 +1,10 @@
 
+import logging
+import numpy as np
 import pandas as pd
 from datetime import datetime
 
+# Data fccss specific 
 def get_ctr_numcent(dosi_filename):    
     split_filename = dosi_filename.split("_")
     ctr_patient = int(split_filename[1])
@@ -27,4 +30,25 @@ def check_nan_values(df_dosi):
 def check_summable_df(df_dosi_A, df_dosi_B, voi_type):
     return (df_dosi_A['X'].equals(df_dosi_B['X']) and df_dosi_A['Y'].equals(df_dosi_B['Y']) and \
             df_dosi_A['Z'].equals(df_dosi_B['Z']) and df_dosi_A[voi_type].equals(df_dosi_B[voi_type]))
+
+# Sksurv utils
+def get_events(structured_y):
+    return [event[0] for event in structured_y]
+
+def get_times(structured_y):
+    return [event[1] for event in structured_y]
+
+def event_balance(structured_y):
+    y = get_events(structured_y)
+    counts = np.bincount(y)
+    return counts[1]/sum(counts)
+
+# Log
+def setup_logger(name, log_file, level = logging.INFO):
+    handler = logging.FileHandler(log_file, mode = "w") 
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    logger.info(f"Logger {name} created at {datetime.now()}")
+    return logger
 
