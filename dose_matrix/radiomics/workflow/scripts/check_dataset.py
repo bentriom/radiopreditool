@@ -5,11 +5,10 @@ from multiprocessing import Pool, cpu_count
 from radiopreditool_utils import *
 
 class Checker(object):
-    def __init__(self, doses_dataset_dir, model_name):
+    def __init__(self, doses_dataset_dir):
         self.doses_dataset_dir = doses_dataset_dir
-        self.model_name = model_name
     def __call__(self, df):
-        return check_files_patient(self.doses_dataset_dir, self.model_name, df)
+        return check_files_patient(self.doses_dataset_dir, df)
 
 def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
     relevant_cols = ['X', 'Y', 'Z', 'T', 'ID2013A']
@@ -83,14 +82,14 @@ def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
 
 check_files_patient_set = None
 
-def analyze_dataset(doses_dataset_dir, metadata_dir, model_name):
-    global check_files_patient_set
-    check_files_patient_set = lambda grp: check_files_patient(doses_ataset_dir, grp, model_name)
+def analyze_dataset(doses_dataset_dir, metadata_dir):
+    #global check_files_patient_set
+    #check_files_patient_set = lambda grp: check_files_patient(doses_ataset_dir, grp)
     df_files = pd.read_csv(metadata_dir + "list_newdosi_files.csv")
     grouped_files = df_files.groupby(by = ["ctr", "numcent"])
     print(cpu_count())
     with Pool(cpu_count()) as p:
-        res_checks = p.map(Checker(doses_dataset_dir, model_name), [group for name, group in grouped_files])
+        res_checks = p.map(Checker(doses_dataset_dir), [group for name, group in grouped_files])
     df_files_checks = pd.concat(res_checks)
     #df_files_checks = grouped_files.apply(lambda df: check_files_patient(doses_dataset_dir, df, model_name))
     del df_files_checks["index"]

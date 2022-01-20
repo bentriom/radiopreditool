@@ -5,16 +5,17 @@ import SimpleITK as sitk
 import os
 import sys
 from datetime import datetime
-from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df
+from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df, col_super_t
 
 def to_nii(path_csv, path_nii, list_csv_files):
-    relevant_cols = ['X', 'Y', 'Z', 'T', 'ID2013A']
-    int_cols = ['X', 'Y', 'Z', 'T']
+    relevant_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T', 'ID2013A']
+    int_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T']
     # Reads the newdosi files and sums the matrices if interval time <= 3 months
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in list_csv_files])
     first_newdosi_file = list_csv_files[idx_sort_by_date_csv_files[0]]
     df_dosi = pd.read_csv(path_csv + first_newdosi_file)
     df_dosi.columns = df_dosi.columns.str.upper()
+    col_super_t(df_dosi)
     df_dosi = df_dosi[relevant_cols]
     test_xyz_nan = check_nan_values(df_dosi)
     if test_xyz_nan:
@@ -34,6 +35,7 @@ def to_nii(path_csv, path_nii, list_csv_files):
         else:
             df_other_dosi = pd.read_csv(path_csv + current_newdosi_file)
             df_other_dosi.columns = df_other_dosi.columns.str.upper()
+            col_super_t(df_other_dosi)
             df_other_dosi = df_other_dosi[relevant_cols]
             test_xyz_nan = check_nan_values(df_other_dosi)
             if test_xyz_nan:
@@ -68,21 +70,25 @@ def to_nii(path_csv, path_nii, list_csv_files):
     # Images settings
     os.makedirs(path_nii, exist_ok=True)
     file_dosi_nii = path_nii + patient_filename + '_ID2013A.nii.gz'
-    file_mask_nii = path_nii + patient_filename + '_mask.nii.gz'
+    file_mask_t_nii = path_nii + patient_filename + '_mask_t.nii.gz'
+    file_mask_super_t_nii = path_nii + patient_filename + '_mask_super_t.nii.gz'
     
     # If the first newdosi file was empty
     if df_dosi.shape[0] <= 1:
         print(f"{first_newdosi_file}: has <= 1 rows. Creating empty nii files.")
         open(file_dosi_nii, 'w').close()
-        open(file_mask_nii, 'w').close()
+        open(file_mask_t_nii, 'w').close()
+        open(file_mask_super_t_nii, 'w').close()
     else:
         # Coordinates, labels and doses as 3D arrays
         x = np.array(df_dosi['X'] - min(df_dosi['X']), dtype='int') // 2
         y = np.array(df_dosi['Y'] - min(df_dosi['Y']), dtype='int') // 2
         z = np.array(df_dosi['Z'] - min(df_dosi['Z']), dtype='int') // 2
         image_size = (max(x)+1,max(y)+1,max(z)+1)
-        labels_3d = np.zeros(image_size)
-        labels_3d[x,y,z] = df_dosi['T']
+        labels_t_3d = np.zeros(image_size)
+        labels_t_3d[x,y,z] = df_dosi['T']
+        labels_super_t_3d = np.zeros(image_size)
+        labels_super_t_3d[x,y,z] = df_dosi['SUPER_T']
         dosi_3d = np.zeros(image_size)
         dosi_3d[x,y,z] = df_dosi['ID2013A']
         # Save as images
@@ -90,8 +96,12 @@ def to_nii(path_csv, path_nii, list_csv_files):
         image_dosi.SetSpacing((2.0,2.0,2.0))
         image_dosi.SetOrigin((0.0,0.0,0.0))
         sitk.WriteImage(image_dosi, file_dosi_nii)
-        image_mask = sitk.GetImageFromArray(labels_3d)
-        image_mask.SetSpacing((2.0,2.0,2.0))
-        image_mask.SetOrigin((0.0,0.0,0.0))
-        sitk.WriteImage(image_mask, file_mask_nii)
+        image_mask_t = sitk.GetImageFromArray(labels_t_3d)
+        image_mask_t.SetSpacing((2.0,2.0,2.0))
+        image_mask_t.SetOrigin((0.0,0.0,0.0))
+        sitk.WriteImage(image_mask_t, file_mask_t_nii)
+        image_mask_super_t = sitk.GetImageFromArray(labels_super_t_3d)
+        image_mask_super_t.SetSpacing((2.0,2.0,2.0))
+        image_mask_super_t.SetOrigin((0.0,0.0,0.0))
+        sitk.WriteImage(image_mask_super_t, file_mask_super_t_nii)
 

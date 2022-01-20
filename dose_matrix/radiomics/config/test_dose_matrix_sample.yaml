@@ -5,8 +5,8 @@ DOSES_DATASET_SUBDIRS:
     - GR
 RESULTS_DIR: results/
 RADIOMICS_PARAMS_FILE: config/radiomics_pathol_cardiaque.yaml
-LABELS_VOI_CSV_FILE: /home/moud/Documents/RadioPrediTool/code/database/labels_organs_20160118.csv
-LABELS_VOI: [309, 310, 320, 321, 322, 323, 324]
+LABELS_SUPER_T_VOI: [1320]
+LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /home/moud/Documents/RadioPrediTool/code/database/fccss_01102021/
 FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "radiotherapie"]
 

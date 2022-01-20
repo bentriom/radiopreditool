@@ -1,6 +1,5 @@
 MODEL_NAME: pathol_cardiaque
 DOSES_DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/GR/
 RESULTS_DIR: results/
-LABELS_VOI_CSV_FILE: /home/moud/Documents/RadioPrediTool/code/database/labels_organs_20160118.csv
 FCCSS_CLINICAL_VARIABLES: []
 

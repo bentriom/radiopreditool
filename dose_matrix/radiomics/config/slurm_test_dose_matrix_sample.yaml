@@ -6,6 +6,6 @@ DOSES_DATASET_SUBDIRS:
 RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
 RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque.yaml
 LABELS_VOI_CSV_FILE: /workdir/bentrioum/database/radiopreditool/fccss/labels_organs_20160118.csv
-LABELS_VOI: [309, 310, 320, 321, 322, 323, 324]
+LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_VARIABLES: []
 

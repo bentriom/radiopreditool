@@ -31,6 +31,25 @@ def check_summable_df(df_dosi_A, df_dosi_B, voi_type = 'T'):
     return (df_dosi_A['X'].equals(df_dosi_B['X']) and df_dosi_A['Y'].equals(df_dosi_B['Y']) and \
             df_dosi_A['Z'].equals(df_dosi_B['Z']) and df_dosi_A[voi_type].equals(df_dosi_B[voi_type]))
 
+# Labels T
+def get_super_t(label_t):
+    labels_heart = range(320, 325)
+    labels_brain = range(370, 381)
+    labels_thyroid = range(702, 705)
+    if pd.isnull(label_t):
+        return np.nan
+    elif label_t in labels_heart:
+        return 1320
+    elif label_t in labels_brain:
+        return 1370
+    elif label_t in labels_thyroid:
+        return 1702
+    else:
+        return 1000
+
+def col_super_t(df_dosi):
+    df_dosi['SUPER_T'] = df_dosi['T'].apply(get_super_t)
+
 # Sksurv utils
 def get_events(structured_y):
     return [event[0] for event in structured_y]

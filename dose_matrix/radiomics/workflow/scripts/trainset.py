@@ -137,8 +137,8 @@ def filter_corr_hclust(df_trainset, df_covariates_hclust, corr_threshold, event_
     for c in id_clusters:
         list_features = [f for (idx, f) in enumerate(all_features_radiomics)  if y_clusters[idx] == c]
         list_pvalues = []
+        df_survival.dropna(subset = list_features, inplace = True)
         for feature in list_features:
-            df_survival = df_survival[~pd.isnull(df_survival[feature])]
             cph_feature = CoxPHFitter(penalizer = 0.0001)
             df_survival.loc[:,feature] = StandardScaler().fit_transform(df_survival[[feature]])
             cph_feature.fit(df_survival, step_size = 0.5, duration_col = surv_duration_col,
@@ -153,13 +153,13 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
     labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("[0-9]+_.*", label)])
-    dict_features_per_label = {label: [col for col in df_trainset.columns if label in col] for label in labels_radiomics}
+    dict_features_per_label = {label: [col for col in df_trainset.columns if re.match(f"{label}_", col)] for label in labels_radiomics}
     df_covariates_with_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1, features_radiomics]
     logger = setup_logger("preprocessing", analyzes_dir + "preprocessing.log")
     logger.info(f"Trainset dataframe: {df_trainset.shape}")
     logger.info(f"Initial number of radiomics covariates: {df_covariates_with_radiomics.shape[1]}")
     # First filter: eliminate features with enough missing values
-    nan_values_threshold = 0.6
+    nan_values_threshold = 0.4
     filter_1_cols_radiomics = filter_nan_values_radiomics(df_covariates_with_radiomics, features_radiomics, nan_values_threshold)
     logger.info(f"After the first filter (non nan values > {nan_values_threshold}): {len(filter_1_cols_radiomics)}")
     # Correlation heatmaps

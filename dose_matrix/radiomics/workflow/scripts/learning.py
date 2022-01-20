@@ -14,6 +14,8 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
     logger = logging.getLogger("baseline_models")
     df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()
     df_model_test = df_testset[covariates + [event_col, duration_col]].dropna()
+    logger.info(f"Trainset number of samples: {df_model_train.shape[0]}")
+    logger.info(f"Testset number of samples: {df_model_test.shape[0]}")
     # Prepare train and test datasets
     X_train, y_train = df_model_train.loc[:,covariates], df_model_train.loc[:,[duration_col, event_col]] 
     X_test, y_test = df_model_test.loc[:,covariates], df_model_test.loc[:,[duration_col, event_col]] 
@@ -50,7 +52,7 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
     ibs_timeline = np.arange(5, 51, step = 5)
     ibs_preds = [[surv_func(t) for t in ibs_timeline] for surv_func in coxph_surv_func_test]
     ibs_score = integrated_brier_score(surv_y_train, surv_y_test, ibs_preds, ibs_timeline)
-    print(f"IBS: {ibs_score}")
+    logger.info(f"IBS: {ibs_score}")
 
 def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_testset, event_col, analyzes_dir):
     duration_col = "survival_time_years"
@@ -59,7 +61,7 @@ def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_tes
     df_testset = pd.read_csv(file_testset)
 
     # Mean dose 320 (heart)
-    covariates = ["320_original_firstorder_Mean"]
-    logger.info("Model 320 mean dose")
+    covariates = ["1320_original_firstorder_Mean"]
+    logger.info("Model heart mean dose (1320)")
     coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col)
 
