@@ -7,11 +7,9 @@ import sys
 from datetime import datetime
 from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df
 
-def to_nii(path_csv, path_nii, list_csv_files, voi_type):
-    voi_type = voi_type.upper()
-    assert voi_type in ['T', 'NUAGE', 'MATH']
-    relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
-    int_cols = ['X', 'Y', 'Z', voi_type]
+def to_nii(path_csv, path_nii, list_csv_files):
+    relevant_cols = ['X', 'Y', 'Z', 'T', 'ID2013A']
+    int_cols = ['X', 'Y', 'Z', 'T']
     # Reads the newdosi files and sums the matrices if interval time <= 3 months
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in list_csv_files])
     first_newdosi_file = list_csv_files[idx_sort_by_date_csv_files[0]]
@@ -49,7 +47,7 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
             if df_other_dosi.shape[0] <= 1:
                 print(f"{current_newdosi_file}: has <= 1 rows. Stopping the sum.")
                 break
-            well_ordered_rows = check_summable_df(df_dosi, df_other_dosi, voi_type)
+            well_ordered_rows = check_summable_df(df_dosi, df_other_dosi)
             if well_ordered_rows:
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
             else:
@@ -60,7 +58,7 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
                 df_dosi = df_dosi.sort_values(by = int_cols)
                 df_other_dosi = df_other_dosi.sort_values(by = int_cols)
                 df_other_dosi.index = df_dosi.index
-                if not check_summable_df(df_dosi, df_other_dosi, voi_type):
+                if not check_summable_df(df_dosi, df_other_dosi):
                     print(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. Stopping the sum.")
                     break
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
@@ -70,7 +68,7 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
     # Images settings
     os.makedirs(path_nii, exist_ok=True)
     file_dosi_nii = path_nii + patient_filename + '_ID2013A.nii.gz'
-    file_mask_nii = path_nii + patient_filename + f"_{voi_type}.nii.gz"
+    file_mask_nii = path_nii + patient_filename + '_mask.nii.gz'
     
     # If the first newdosi file was empty
     if df_dosi.shape[0] <= 1:
@@ -84,7 +82,7 @@ def to_nii(path_csv, path_nii, list_csv_files, voi_type):
         z = np.array(df_dosi['Z'] - min(df_dosi['Z']), dtype='int') // 2
         image_size = (max(x)+1,max(y)+1,max(z)+1)
         labels_3d = np.zeros(image_size)
-        labels_3d[x,y,z] = df_dosi[voi_type]
+        labels_3d[x,y,z] = df_dosi['T']
         dosi_3d = np.zeros(image_size)
         dosi_3d[x,y,z] = df_dosi['ID2013A']
         # Save as images

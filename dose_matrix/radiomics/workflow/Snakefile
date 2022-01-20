@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import sys
 sys.path.append("./workflow/scripts/")
-import csv2nii, feature_extractor, check_dataset, report_checks, trainset
+import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
@@ -16,8 +16,11 @@ METADATA_DIR = RESULTS_DIR + "metadata/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/"
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
 LABELS_VOI_CSV_FILE = config["LABELS_VOI_CSV_FILE"]
-VOI_TYPE = config["VOI_TYPE"]
+MODEL_NAME = config["MODEL_NAME"]
 FCCSS_CLINICAL_VARIABLES = config["FCCSS_CLINICAL_VARIABLES"]
+
+EVENT_COL = "Pathologie_cardiaque"
+DATE_EVENT_COL = "date_pathol_cardiaque"
 
 # Directory creations
 for newdir in [RESULTS_DIR, NII_DIR, RADIOMICS_DIR, METADATA_DIR, ANALYZES_DIR]:
@@ -35,7 +38,7 @@ str_cmd_dataset_subdirs = reduce(lambda a,b:a+b, [sdir + "," for sdir in DOSES_D
 # Set the VOI labels
 if "LABELS_VOI" not in config.keys(): 
     df_labels_organs = pd.read_csv(LABELS_VOI_CSV_FILE)
-    labels_voi = df_labels_organs["NN"][df_labels_organs["Groupe"] == VOI_TYPE]
+    labels_voi = df_labels_organs["NN"][df_labels_organs["Groupe"] == "T"]
 else:
     labels_voi = config["LABELS_VOI"]
 # Command to gather the computed radiomics
@@ -44,8 +47,8 @@ if DOSES_DATASET_SUBDIRS == [""]:
     cmd_concatenate_radiomics += "'" + RADIOMICS_DIR + "'newdosi*"
 else:
     cmd_concatenate_radiomics +=  "'" + RADIOMICS_DIR + "'{{" + str_cmd_dataset_subdirs + "}}/*"
-cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv"
-
+cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + MODEL_NAME + ".csv"
+cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + MODEL_NAME + ".csv"
 ## Utils
 def get_newdosi_files(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
@@ -53,7 +56,7 @@ def get_newdosi_files(wildcards):
 rule all:
     input: 
         METADATA_DIR + "list_newdosi_files.csv",
-        RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+        RADIOMICS_DIR + "dose_matrix_radiomics_" + MODEL_NAME + ".csv.gz"
 
 ## Additional files
 rule list_newdosi_files:
@@ -70,7 +73,7 @@ rule list_newdosi_checks:
     output:
         METADATA_DIR + "list_newdosi_checks.csv"
     run:
-        check_dataset.analyze_dataset(DOSES_DATASET_DIR, METADATA_DIR + "", VOI_TYPE)
+        check_dataset.analyze_dataset(DOSES_DATASET_DIR, METADATA_DIR, MODEL_NAME)
 
 rule report_checks:
     input:
@@ -86,80 +89,82 @@ rule images_nii:
         get_newdosi_files
     output:
         NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
-        NII_DIR + "{newdosi_patient}_" + VOI_TYPE + ".nii.gz"
+        NII_DIR + "{newdosi_patient}_mask.nii.gz"
     run:
         subdir = os.path.dirname(wildcards.newdosi_patient)
         list_newdosi_files_patient = get_newdosi_files(wildcards)
         list_filenames = [os.path.basename(newdosi_file) for newdosi_file in list_newdosi_files_patient]
         path_csv = DOSES_DATASET_DIR + subdir + "/"
         path_nii = NII_DIR + subdir + "/"
-        csv2nii.to_nii(path_csv, path_nii, list_filenames, VOI_TYPE)
+        csv2nii.to_nii(path_csv, path_nii, list_filenames)
 
 rule write_header_radiomics:
     output:
         RADIOMICS_DIR + "header.csv",
         RADIOMICS_DIR + "nbr_features_per_label"
     run:
-        feature_extractor.write_header(VOI_TYPE, labels_voi, RADIOMICS_DIR, RADIOMICS_PARAMS_FILE)
+        feature_extractor.write_header(labels_voi, RADIOMICS_DIR, RADIOMICS_PARAMS_FILE)
 
 rule compute_radiomics:
     input:
         RADIOMICS_DIR + "header.csv",
         RADIOMICS_DIR + "nbr_features_per_label",
         NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
-        NII_DIR + "{newdosi_patient}_" + VOI_TYPE + ".nii.gz"
+        NII_DIR + "{newdosi_patient}_mask.nii.gz"
     output:    
-        RADIOMICS_DIR + "{newdosi_patient}_radiomics_" + VOI_TYPE + ".csv"
+        RADIOMICS_DIR + "{newdosi_patient}_radiomics_" + MODEL_NAME + ".csv"
     run:
         subdir = os.path.dirname(wildcards.newdosi_patient)
         newdosi_filename = os.path.basename(wildcards.newdosi_patient)
         image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
-        mask_path = NII_DIR + subdir + "/" + newdosi_filename + "_" + VOI_TYPE + ".nii.gz"
+        mask_path = NII_DIR + subdir + "/" + newdosi_filename + "_mask.nii.gz"
         with open(RADIOMICS_DIR + "nbr_features_per_label", 'r') as file_nbr:
             nbr_features_per_label = int(file_nbr.read())
-        feature_extractor.compute_radiomics(image_path, mask_path, VOI_TYPE, labels_voi, newdosi_filename, RADIOMICS_DIR, subdir, RADIOMICS_PARAMS_FILE, nbr_features_per_label)
+        feature_extractor.compute_radiomics(image_path, mask_path, MODEL_NAME, labels_voi, newdosi_filename, RADIOMICS_DIR, subdir, RADIOMICS_PARAMS_FILE, nbr_features_per_label)
 
 rule gather_radiomics:
     input:
-        expand(RADIOMICS_DIR + "{newdosi_patient}_radiomics_" + VOI_TYPE + ".csv", newdosi_patient = list_newdosi_patients)
+        expand(RADIOMICS_DIR + "{newdosi_patient}_radiomics_" + MODEL_NAME + ".csv", newdosi_patient = list_newdosi_patients)
     output:
-        RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+        RADIOMICS_DIR + "dose_matrix_radiomics_" + MODEL_NAME + ".csv.gz"
     shell:
         cmd_concatenate_radiomics
 
 ## Analysis
 rule create_train_dataset:
     input:
-        RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv",
+        RADIOMICS_DIR + "dose_matrix_radiomics_" + MODEL_NAME + ".csv.gz",
         FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
     output:
-        ANALYZES_DIR + "trainset.csv"
+        ANALYZES_DIR + "trainset.csv.gz",
+        ANALYZES_DIR + "testset.csv.gz"
     run:
-        file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+        file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics_" + MODEL_NAME + ".csv.gz"
         file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
-        trainset.create_trainset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES)
+        trainset.create_trainset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
 
 rule preprocessing_train_dataset:
     input:
-        ANALYZES_DIR + "trainset.csv"
+        ANALYZES_DIR + "trainset.csv.gz"
     output: 
-        ANALYZES_DIR + "preprocessed_trainset.csv"
+        ANALYZES_DIR + "preprocessed_trainset.csv.gz"
     run:
-        trainset.preprocessing(ANALYSES_DIR + "trainset.csv", analyzes_dir)
+        trainset.preprocessing(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
 rule baseline_analysis:
     input:
-        ANALYZES_DIR + "trainset.csv"
-        ANALYZES_DIR + "preprocessed_trainset.csv"
+        ANALYZES_DIR + "trainset.csv.gz",
+        ANALYZES_DIR + "preprocessed_trainset.csv.gz",
+        ANALYZES_DIR + "testset.csv.gz"
     output:
-        ANALYZES_DIR + "report_baseline_models.txt"
+        ANALYZES_DIR + "baseline_models.log"
     run:
-        learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv")
+        learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv.gz", ANALYZES_DIR + "preprocessed_trainset.csv.gz", ANALYZES_DIR + "testset.csv.gz", EVENT_COL, ANALYZES_DIR)
  
-#"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv"
+#"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + MODEL_NAME + ".csv"
 #test_csv_file = "/home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/Curie/newdosi_3_197704641B_19770715.csv.gz"
 #test_nii_file = "/home/moud/Documents/RadioPrediTool/code/dose_matrix/test/nii/Curie/newdosi_3_197704641B_19770715_T.nii.gz"
 #print(list_newdosi_files)
-#print(RADIOMICS_DIR + "{subdir}/{dosi_file}_radiomics_" + VOI_TYPE + ".csv")
-#print("cat '"+ RADIOMICS_DIR + "header.csv'" + " '" + RADIOMICS_DIR + "'{" + str_cmd_dataset_subdirs + "}/* > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + VOI_TYPE + ".csv")
+#print(RADIOMICS_DIR + "{subdir}/{dosi_file}_radiomics_" + MODEL_NAME + ".csv")
+#print("cat '"+ RADIOMICS_DIR + "header.csv'" + " '" + RADIOMICS_DIR + "'{" + str_cmd_dataset_subdirs + "}/* > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + MODEL_NAME + ".csv")
 

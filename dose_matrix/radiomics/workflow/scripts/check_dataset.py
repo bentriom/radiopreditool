@@ -5,17 +5,15 @@ from multiprocessing import Pool, cpu_count
 from radiopreditool_utils import *
 
 class Checker(object):
-    def __init__(self, doses_dataset_dir, voi_type):
+    def __init__(self, doses_dataset_dir, model_name):
         self.doses_dataset_dir = doses_dataset_dir
-        self.voi_type = voi_type
+        self.model_name = model_name
     def __call__(self, df):
-        return check_files_patient(self.doses_dataset_dir, self.voi_type, df)
+        return check_files_patient(self.doses_dataset_dir, self.model_name, df)
 
-def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
-    voi_type = voi_type.upper()
-    assert voi_type in ['T', 'NUAGE', 'MATH']
-    relevant_cols = ['X', 'Y', 'Z', voi_type, 'ID2013A']
-    int_cols = ['X', 'Y', 'Z', voi_type]
+def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
+    relevant_cols = ['X', 'Y', 'Z', 'T', 'ID2013A']
+    int_cols = ['X', 'Y', 'Z', 'T']
     df_result = df_files_patient.copy().reset_index()
     df_result[["nbr_nan_rows", "remaining_rows", "missing_date", "outdated_treatment", "different_shapes"]] = 0
     df_result[["well_ordered_rows", "summable"]] = 1
@@ -69,7 +67,7 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
             df_result.at[i, "summable"] = 0
             continue
         # Check if rows are well ordered
-        well_ordered_rows = check_summable_df(df_dosi, df_other_dosi, voi_type)
+        well_ordered_rows = check_summable_df(df_dosi, df_other_dosi)
         if well_ordered_rows:
             df_result.at[i, "well_ordered_rows"] = 1
         # Check if the two dataframes are summmable after sorting the rows
@@ -80,21 +78,21 @@ def check_files_patient(doses_dataset_dir, voi_type, df_files_patient):
             df_dosi = df_dosi.sort_values(by = int_cols)
             df_other_dosi = df_other_dosi.sort_values(by = int_cols)
             df_other_dosi.index = df_dosi.index
-            df_result.at[i, "summable"] = int(check_summable_df(df_dosi, df_other_dosi, voi_type))
+            df_result.at[i, "summable"] = int(check_summable_df(df_dosi, df_other_dosi))
     return df_result
 
 check_files_patient_set = None
 
-def analyze_dataset(doses_dataset_dir, metadata_dir, voi_type):
+def analyze_dataset(doses_dataset_dir, metadata_dir, model_name):
     global check_files_patient_set
-    check_files_patient_set = lambda grp: check_files_patient(doses_ataset_dir, grp, voi_type)
+    check_files_patient_set = lambda grp: check_files_patient(doses_ataset_dir, grp, model_name)
     df_files = pd.read_csv(metadata_dir + "list_newdosi_files.csv")
     grouped_files = df_files.groupby(by = ["ctr", "numcent"])
     print(cpu_count())
     with Pool(cpu_count()) as p:
-        res_checks = p.map(Checker(doses_dataset_dir, voi_type), [group for name, group in grouped_files])
+        res_checks = p.map(Checker(doses_dataset_dir, model_name), [group for name, group in grouped_files])
     df_files_checks = pd.concat(res_checks)
-    #df_files_checks = grouped_files.apply(lambda df: check_files_patient(doses_dataset_dir, df, voi_type))
+    #df_files_checks = grouped_files.apply(lambda df: check_files_patient(doses_dataset_dir, df, model_name))
     del df_files_checks["index"]
     df_files_checks.to_csv(metadata_dir + "list_newdosi_checks.csv", index = False)
 

@@ -20,7 +20,7 @@ def create_image_mask_example():
     mask = sitk.GetImageFromArray(array_mask)
     return image, mask
 
-def write_header(voi_type, labels_voi, radiomics_dir, params_file):
+def write_header(labels_voi, radiomics_dir, params_file):
     extractor = featureextractor.RadiomicsFeatureExtractor(params_file)
     ex_image, ex_mask = create_image_mask_example()
     dict_features_values = extractor.execute(ex_image, ex_mask, label = 1)
@@ -35,7 +35,7 @@ def write_header(voi_type, labels_voi, radiomics_dir, params_file):
     with open(radiomics_dir + "nbr_features_per_label", 'w') as f:
         f.write(str(len(features_name_per_label)))
 
-def compute_radiomics(image_path, mask_path, voi_type, labels_voi, newdosi_filename, radiomics_dir, subdir, params_file, nbr_features_per_label):
+def compute_radiomics(image_path, mask_path, model_name, labels_voi, newdosi_filename, radiomics_dir, subdir, params_file, nbr_features_per_label):
     ctr, numcent = get_ctr_numcent(newdosi_filename)
     all_features_values = np.zeros(0)
     # If the images are empty
@@ -55,7 +55,7 @@ def compute_radiomics(image_path, mask_path, voi_type, labels_voi, newdosi_filen
             label_features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]
             all_features_values = np.append(all_features_values, label_features_values)
     os.makedirs(radiomics_dir + subdir, exist_ok = True)
-    with open(radiomics_dir + subdir + "/" + newdosi_filename + "_radiomics_" + voi_type + ".csv", "w") as radiomics_file:
+    with open(radiomics_dir + subdir + "/" + newdosi_filename + "_radiomics_" + model_name + ".csv", "w") as radiomics_file:
         radiomics_writer = csv.writer(radiomics_file, delimiter = ',')
         radiomics_writer.writerow([ctr, numcent] + list(all_features_values))
 

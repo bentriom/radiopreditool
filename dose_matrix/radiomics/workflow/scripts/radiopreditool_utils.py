@@ -27,7 +27,7 @@ def check_nan_values(df_dosi):
     return (df_dosi['X'].isnull().values.any() or df_dosi['Y'].isnull().values.any() or \
             df_dosi['Z'].isnull().values.any() or df_dosi['ID2013A'].isnull().values.any())
 
-def check_summable_df(df_dosi_A, df_dosi_B, voi_type):
+def check_summable_df(df_dosi_A, df_dosi_B, voi_type = 'T'):
     return (df_dosi_A['X'].equals(df_dosi_B['X']) and df_dosi_A['Y'].equals(df_dosi_B['Y']) and \
             df_dosi_A['Z'].equals(df_dosi_B['Z']) and df_dosi_A[voi_type].equals(df_dosi_B[voi_type]))
 
