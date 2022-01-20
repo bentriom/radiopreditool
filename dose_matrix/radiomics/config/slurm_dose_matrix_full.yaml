@@ -1,14 +1,14 @@
+MODEL_NAME: pathol_cardiaque
 DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
 DOSES_DATASET_SUBDIRS:
-    - Curie
+    - CURIE
     - GR
-    - Toulouse
-    - Reims
-    - Nice
+    - TOULOUSE
+    - REIMS
+    - NICE
 RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics_T/
 RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque.yaml
 LABELS_VOI_CSV_FILE: /workdir/bentrioum/database/radiopreditool/fccss/labels_organs_20160118.csv
-VOI_TYPE: T
 # 309 - 310: lung
 # 320 - 324: heart
 # 370 - 380: cerveau
