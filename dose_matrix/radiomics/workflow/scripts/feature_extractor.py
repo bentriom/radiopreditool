@@ -3,8 +3,7 @@ import SimpleITK as sitk
 import numpy as np
 import pandas as pd
 import radiomics
-import csv
-import os
+import os, csv, logging
 from radiomics import featureextractor
 from functools import reduce
 from radiopreditool_utils import get_ctr_numcent
@@ -36,11 +35,12 @@ def write_header(labels_super_t_voi, labels_t_voi, radiomics_dir, params_file):
         f.write(str(len(features_name_per_label)))
 
 def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t_voi, labels_t_voi, newdosi_filename, radiomics_dir, subdir, params_file, nbr_features_per_label):
+    logger = logging.getLogger("feature_extractor")
     ctr, numcent = get_ctr_numcent(newdosi_filename)
     all_features_values = np.zeros(0)
     # If the images are empty
     if os.path.getsize(image_path) == 0 and os.path.getsize(mask_t_path) == 0 and os.path.getsize(mask_super_t_path) == 0:
-        print(f"{newdosi_filename}: empty nii images. Creating NaN values for the radiomics.")
+        logger.info(f"{newdosi_filename}: empty nii images. Creating NaN values for the radiomics.")
         all_features_values = [np.nan] * nbr_features_per_label * (len(labels_super_t_voi) + len(labels_t_voi))
     # Else we compute the radiomics
     else:
@@ -49,7 +49,7 @@ def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t
             try:
                 dict_features_values = extractor.execute(image_path, mask_super_t_path, label = label)
             except ValueError as err:
-                print(f"Raised ValueError. Ignoring the label mask {label}.")
+                logger.info(f"Raised ValueError. Ignoring the label mask {label}.")
                 all_features_values = np.append(all_features_values, [np.nan] * nbr_features_per_label)
                 continue
             label_features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]
@@ -58,7 +58,7 @@ def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t
             try:
                 dict_features_values = extractor.execute(image_path, mask_t_path, label = label)
             except ValueError as err:
-                print(f"Raised ValueError. Ignoring the label mask {label}.")
+                logger.info(f"Raised ValueError. Ignoring the label mask {label}.")
                 all_features_values = np.append(all_features_values, [np.nan] * nbr_features_per_label)
                 continue
             label_features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]

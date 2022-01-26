@@ -2,12 +2,12 @@
 import numpy as np
 import pandas as pd
 import SimpleITK as sitk
-import os
-import sys
+import os, sys, logging
 from datetime import datetime
-from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df, col_super_t
+from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df, col_super_t, setup_logger
 
 def to_nii(path_csv, path_nii, list_csv_files):
+    logger = logging.getLogger("csv2nii")
     relevant_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T', 'ID2013A']
     int_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T']
     # Reads the newdosi files and sums the matrices if interval time <= 3 months
@@ -22,7 +22,7 @@ def to_nii(path_csv, path_nii, list_csv_files):
         nbr_rows_before = df_dosi.shape[0]
         df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
         nbr_rows_after = df_dosi.shape[0]
-        print(f"{first_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
+        logger.info(f"{first_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
     ctr_patient, numcent_patient = get_ctr_numcent(first_newdosi_file)
     date_last_treatment = get_date(first_newdosi_file)
     for i in idx_sort_by_date_csv_files[1:]:
@@ -42,18 +42,18 @@ def to_nii(path_csv, path_nii, list_csv_files):
                 nbr_rows_before = df_other_dosi.shape[0]
                 df_other_dosi = df_other_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
                 nbr_rows_after = df_other_dosi.shape[0]
-                print(f"{current_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
+                logger.info(f"{current_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
             if df_dosi.shape[0] != df_other_dosi.shape[0]:
-                print(f"{first_newdosi_file} and {current_newdosi_file}: rows numbers are different. Stopping the sum.")
+                logger.info(f"{first_newdosi_file} and {current_newdosi_file}: rows numbers are different. Stopping the sum.")
                 break
             if df_other_dosi.shape[0] <= 1:
-                print(f"{current_newdosi_file}: has <= 1 rows. Stopping the sum.")
+                logger.info(f"{current_newdosi_file}: has <= 1 rows. Stopping the sum.")
                 break
             well_ordered_rows = check_summable_df(df_dosi, df_other_dosi)
             if well_ordered_rows:
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
             else:
-                print(f"{first_newdosi_file} and {current_newdosi_file}: rows are not well ordered.")
+                logger.info(f"{first_newdosi_file} and {current_newdosi_file}: rows are not well ordered.")
                 for col in int_cols:
                     df_dosi[col] = df_dosi[col].astype(int)
                     df_other_dosi[col] = df_other_dosi[col].astype(int)
@@ -61,7 +61,7 @@ def to_nii(path_csv, path_nii, list_csv_files):
                 df_other_dosi = df_other_dosi.sort_values(by = int_cols)
                 df_other_dosi.index = df_dosi.index
                 if not check_summable_df(df_dosi, df_other_dosi):
-                    print(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. Stopping the sum.")
+                    logger.info(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. Stopping the sum.")
                     break
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
         #date_last_treatment = date_treatment
@@ -75,7 +75,7 @@ def to_nii(path_csv, path_nii, list_csv_files):
     
     # If the first newdosi file was empty
     if df_dosi.shape[0] <= 1:
-        print(f"{first_newdosi_file}: has <= 1 rows. Creating empty nii files.")
+        logger.info(f"{first_newdosi_file}: has <= 1 rows. Creating empty nii files.")
         open(file_dosi_nii, 'w').close()
         open(file_mask_t_nii, 'w').close()
         open(file_mask_super_t_nii, 'w').close()

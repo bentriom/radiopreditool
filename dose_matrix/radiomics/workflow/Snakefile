@@ -1,10 +1,10 @@
 
 from functools import reduce
 import pandas as pd
-import os
-import sys
+import os, sys, logging
 sys.path.append("./workflow/scripts/")
 import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning
+from radiopreditool_utils import setup_logger
 
 MODEL_NAME = config["MODEL_NAME"]
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
@@ -22,10 +22,6 @@ NII_DIR = RESULTS_DIR + "nii/"
 METADATA_DIR = RESULTS_DIR + "metadata/"
 RADIOMICS_DIR = RESULTS_DIR + "extraction/" + MODEL_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
-
-# Directory creations
-for newdir in [RESULTS_DIR, NII_DIR, RADIOMICS_DIR, METADATA_DIR, ANALYZES_DIR]:
-    os.makedirs(newdir, exist_ok=True)
 
 # Create useful variables for rules based on configuration
 def addslash(subdir):
@@ -49,6 +45,14 @@ cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiom
 def get_newdosi_files(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
 
+onstart:
+    # Directory creations
+    for newdir in [RESULTS_DIR, NII_DIR, RADIOMICS_DIR, METADATA_DIR, ANALYZES_DIR]:
+        os.makedirs(newdir, exist_ok=True)
+    if os.path.isfile(NII_DIR + "csv2nii.log"):
+        os.remove(NII_DIR + "csv2nii.log")
+    if os.path.isfile(RADIOMICS_DIR + "feature_extractor.log"):
+        os.remove(RADIOMICS_DIR + "feature_extractor.log")
 # Rules
 
 rule all:
@@ -90,6 +94,7 @@ rule images_nii:
         NII_DIR + "{newdosi_patient}_mask_t.nii.gz",
         NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz"
     run:
+        setup_logger("csv2nii", NII_DIR + "csv2nii.log", mode_file = "a", creation_msg = False)
         subdir = os.path.dirname(wildcards.newdosi_patient)
         list_newdosi_files_patient = get_newdosi_files(wildcards)
         list_filenames = [os.path.basename(newdosi_file) for newdosi_file in list_newdosi_files_patient]
@@ -114,6 +119,7 @@ rule compute_radiomics:
     output:    
         RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv"
     run:
+        setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False)
         subdir = os.path.dirname(wildcards.newdosi_patient)
         newdosi_filename = os.path.basename(wildcards.newdosi_patient)
         image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
@@ -146,6 +152,14 @@ rule create_train_dataset:
         file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
         trainset.create_trainset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
 
+rule pca_visualisation:
+    input:
+        ANALYZES_DIR + "trainset.csv.gz"
+    output:
+        ANALYZES_DIR + "viz/pca_radiomics.png"
+    run:
+        trainset.pca_viz(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
+
 rule preprocessing_train_dataset:
     input:
         ANALYZES_DIR + "trainset.csv.gz"
@@ -154,6 +168,7 @@ rule preprocessing_train_dataset:
     run:
         trainset.preprocessing(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
+# Models
 rule baseline_analysis:
     input:
         ANALYZES_DIR + "trainset.csv.gz",
@@ -163,6 +178,24 @@ rule baseline_analysis:
         ANALYZES_DIR + "baseline_models.log"
     run:
         learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv.gz", ANALYZES_DIR + "preprocessed_trainset.csv.gz", ANALYZES_DIR + "testset.csv.gz", EVENT_COL, ANALYZES_DIR)
+
+rule rsf_preprocessed_trainset_analysis:
+    input:
+        ANALYZES_DIR + "preprocessed_trainset.csv.gz",
+        ANALYZES_DIR + "testset.csv.gz"
+    output:
+        ANALYZES_DIR + "rsf_preprocessed_trainset.log"
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR}"
+
+rule rsf_trainset_analysis:
+    input:
+        ANALYZES_DIR + "preprocessed_trainset.csv.gz",
+        ANALYZES_DIR + "testset.csv.gz"
+    output:
+        ANALYZES_DIR + "trainset.log"
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR}"
  
 #"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv.gz"
 #test_csv_file = "/home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/Curie/newdosi_3_197704641B_19770715.csv.gz"

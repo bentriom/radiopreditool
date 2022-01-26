@@ -20,6 +20,7 @@ from lifelines import CoxPHFitter
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
 
 # Create trainset
 def survival_date(event_col, date_event_col, row):
@@ -54,7 +55,7 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     cols_radiomics.remove("ctr"), cols_radiomics.remove("numcent")
     # Create dataset
     cols_y = [event_col, surv_duration_col]
-    col_treated_by_rt = "radiotherapie"
+    col_treated_by_rt = "radiotherapie_1K"
     df_dataset = df_fccss[["ctr", "numcent"] + clinical_variables + cols_y]
     if col_treated_by_rt not in clinical_variables:
         df_dataset[col_treated_by_rt] = df_fccss[col_treated_by_rt]
@@ -149,6 +150,7 @@ def filter_corr_hclust(df_trainset, df_covariates_hclust, corr_threshold, event_
         filter_2_cols_radiomics.append(selected_feature)
     return filter_2_cols_radiomics
 
+# Eliminate sparse and redundant columns
 def preprocessing(file_trainset, event_col, analyzes_dir):
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
@@ -159,7 +161,7 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     logger.info(f"Trainset dataframe: {df_trainset.shape}")
     logger.info(f"Initial number of radiomics covariates: {df_covariates_with_radiomics.shape[1]}")
     # First filter: eliminate features with enough missing values
-    nan_values_threshold = 0.4
+    nan_values_threshold = 0.9
     filter_1_cols_radiomics = filter_nan_values_radiomics(df_covariates_with_radiomics, features_radiomics, nan_values_threshold)
     logger.info(f"After the first filter (non nan values > {nan_values_threshold}): {len(filter_1_cols_radiomics)}")
     # Correlation heatmaps
@@ -184,4 +186,43 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     logger.info(f"After the second filter (hclust): {len(filter_2_cols_radiomics)}")
     preprocessed_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]+_.*", feature) or feature in filter_2_cols_radiomics]
     df_trainset[preprocessed_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
+
+def col_class_event(event_col, delay, row):
+    if row[event_col] == 0:
+        return 0
+    if row[event_col] == 1 and row["survival_time_years"] <= delay:
+        return 1
+    else:
+        return 0
+
+def pca_viz(file_trainset, event_col, analyzes_dir):
+    df_trainset = pd.read_csv(file_trainset)
+    features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
+    df_trainset["class_" + event_col] = 0
+    year_max = 20
+    for delay_event in range(5, year_max + 1, 5):
+        col_class = f"{event_col}_at_{delay_event}"
+        df_trainset[col_class] = df_trainset.apply(lambda row: col_class_event(event_col, delay_event, row), axis = 1)
+        df_trainset.loc[:, "class_" + event_col] += df_trainset[col_class]
+    df_trainset.dropna(subset = features_radiomics + [event_col, "survival_time_years"], inplace = True)
+    X = StandardScaler().fit_transform(df_trainset[features_radiomics])
+    pca = PCA(n_components = 2)
+    X_pca = pca.fit_transform(X)
+    y = df_trainset["class_" + event_col] 
+    nbr_classes = len(df_trainset["class_" + event_col].unique())
+    list_labels = ["No event" if i == 0 else f"Event {year_max - (5*i)} - {year_max - 5*(i-1)} years" for i in range(nbr_classes)]
+    list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
+    list_markers = ['o' if i == 0 else 'x' for i in range(nbr_classes)]
+    list_alphas = [0.5 if i == 0 else 1 for i in range(nbr_classes)]
+    for i in range(nbr_classes):
+        idx_cluster = (y == i)
+        plt.scatter(X_pca[idx_cluster, 0], X_pca[idx_cluster, 1], label = list_labels[i],
+                    alpha = list_alphas[i], marker = list_markers[i], color = list_colors[i])
+    plt.xlabel('PCA component 1')
+    plt.ylabel('PCA component 2')
+    plt.title(f"PCA ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
+    plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
+    os.makedirs(analyzes_dir + "viz", exist_ok=True)
+    plt.savefig(analyzes_dir + "viz/pca_radiomics.png", dpi = 480, bbox_inches='tight', 
+                    facecolor = "white", transparent = False)
 

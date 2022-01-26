@@ -36,6 +36,9 @@ def get_super_t(label_t):
     labels_heart = range(320, 325)
     labels_brain = range(370, 381)
     labels_thyroid = range(702, 705)
+    labels_breast_right = [413, 415, 417, 419]
+    labels_breast_left = [414, 416, 418, 420]
+    labels_breasts = labels_breast_right + labels_breast_left
     if pd.isnull(label_t):
         return np.nan
     elif label_t in labels_heart:
@@ -44,6 +47,12 @@ def get_super_t(label_t):
         return 1370
     elif label_t in labels_thyroid:
         return 1702
+    elif label_t in labels_breasts:
+        return 1410
+    elif label_t in labels_breast_right:
+        return 1411
+    elif label_t in labels_breast_left:
+        return 1412
     else:
         return 1000
 
@@ -63,11 +72,12 @@ def event_balance(structured_y):
     return counts[1]/sum(counts)
 
 # Log
-def setup_logger(name, log_file, level = logging.INFO):
-    handler = logging.FileHandler(log_file, mode = "w") 
+def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation_msg = True):
+    handler = logging.FileHandler(log_file, mode = mode_file) 
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(handler)
-    logger.info(f"Logger {name} created at {datetime.now()}")
+    if creation_msg:
+        logger.info(f"Logger {name} created at {datetime.now()}")
     return logger
 

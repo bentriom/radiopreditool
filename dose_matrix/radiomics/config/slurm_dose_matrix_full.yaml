@@ -13,8 +13,8 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 # 370 - 380: cerveau
 # 413 - 420: breast 
 # 702 - 704: thyroid
-LABELS_SUPER_T_VOI: [1320]
-LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324, 413, 414, 415, 416, 417, 418, 419, 420, 702, 703, 704]
+LABELS_SUPER_T_VOI: [1320, 1702]
+LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/
-FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "radiotherapie"]
+FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "radiotherapie", "radiotherapie_1K"]
 
