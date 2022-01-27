@@ -107,7 +107,8 @@ rule images_nii:
         expand(NII_DIR + "{newdosi_patient}_mask_t.nii.gz", newdosi_patient = list_newdosi_patients),
         expand(NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz", newdosi_patient = list_newdosi_patients)
     run:
-        setup_logger("csv2nii", NII_DIR + "csv2nii.log", mode_file = "a", creation_msg = False, level = logging.WARN)
+        logger_img = setup_logger("csv2nii", NII_DIR + "csv2nii.log", mode_file = "a", creation_msg = False, level = logging.WARN)
+        logger_img.info(f"Number of processes: {cpu_count()}")
         with Pool(cpu_count()) as p:
             p.map(ImageConverter(list_newdosi_files), list_newdosi_patients)
 
@@ -133,6 +134,7 @@ rule compute_radiomics:
         expand(RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv", newdosi_patient = list_newdosi_patients)
     run:
         logger_extractor = setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False, level = logging.WARN)
+        logger_extractor.info(f"Number of processes: {cpu_count()}")
         nbr_features_per_label = feature_extractor.write_header(LABELS_SUPER_T_VOI, LABELS_T_VOI, RADIOMICS_DIR, RADIOMICS_PARAMS_FILE)
         with Pool(cpu_count()) as p:
             p.map(RadiomicsExtractor(nbr_features_per_label), list_newdosi_patients)
