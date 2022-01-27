@@ -73,7 +73,9 @@ def event_balance(structured_y):
 
 # Log
 def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation_msg = True):
+    formatter = logging.Formatter('[%(asctime)s] %(message)s', datefmt = '%m/%d/%Y %H:%M:%S')
     handler = logging.FileHandler(log_file, mode = mode_file) 
+    handler.setFormatter(formatter)
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(handler)

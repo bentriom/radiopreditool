@@ -51,8 +51,8 @@ onstart:
         os.makedirs(newdir, exist_ok=True)
     if os.path.isfile(NII_DIR + "csv2nii.log"):
         os.remove(NII_DIR + "csv2nii.log")
-    if os.path.isfile(RADIOMICS_DIR + "feature_extractor.log"):
-        os.remove(RADIOMICS_DIR + "feature_extractor.log")
+    if os.path.isfile(RADIOMICS_DIR + "feature_extraction.log"):
+        os.remove(RADIOMICS_DIR + "feature_extraction.log")
 # Rules
 
 rule all:
@@ -119,9 +119,10 @@ rule compute_radiomics:
     output:    
         RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv"
     run:
-        setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False)
-        subdir = os.path.dirname(wildcards.newdosi_patient)
+        logger_extractor = setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False)
         newdosi_filename = os.path.basename(wildcards.newdosi_patient)
+        logger_extractor.info(f"{newdosi_filename}: begin rule")
+        subdir = os.path.dirname(wildcards.newdosi_patient)
         image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
         mask_t_path = NII_DIR + subdir + "/" + newdosi_filename + "_mask_t.nii.gz"
         mask_super_t_path = NII_DIR + subdir + "/" + newdosi_filename + "_mask_super_t.nii.gz"
