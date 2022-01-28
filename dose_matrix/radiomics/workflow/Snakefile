@@ -2,10 +2,9 @@
 from functools import reduce
 import pandas as pd
 import os, sys, logging
-from multiprocessing import Pool, cpu_count
 sys.path.append("./workflow/scripts/")
 import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning
-from radiopreditool_utils import setup_logger, get_ncpus
+from radiopreditool_utils import setup_logger
 
 MODEL_NAME = config["MODEL_NAME"]
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
@@ -43,10 +42,8 @@ else:
 cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
 cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
 ## Utils
-def get_newdosi_files_from_wildcards(wildcards):
+def get_newdosi_files(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
-def get_newdosi_files(newdosi_patient, list_newosi_files):
-    return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if newdosi_patient in newdosi_file])
 
 onstart:
     # Directory creations
@@ -62,7 +59,7 @@ rule all:
     input: 
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
 
-## Metadata
+## Additional files
 rule list_newdosi_files:
     input:
         expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files) 
@@ -88,57 +85,52 @@ rule report_checks:
         report_checks.print_report(METADATA_DIR)
 
 ## Extract radiomics
-class ImageConverter(object):
-    def __init__(self, list_newdosi_files):
-        self.list_newdosi_files = list_newdosi_files
-    def __call__(self, newdosi_patient):
-        logger = logging.getLogger("csv2nii")
-        logger.info(f"{newdosi_patient}: creation of nii images")
-        subdir = os.path.dirname(newdosi_patient)
-        list_newdosi_files_patient = get_newdosi_files(newdosi_patient, list_newdosi_files)
+rule images_nii:
+    input:
+        get_newdosi_files
+    output:
+        NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
+        NII_DIR + "{newdosi_patient}_mask_t.nii.gz",
+        NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz"
+    run:
+        logger = setup_logger("csv2nii", NII_DIR + "csv2nii.log", mode_file = "a", creation_msg = False)
+        logger.info(f"{wildcards.newdosi_patient}: creation of nii images")
+        subdir = os.path.dirname(wildcards.newdosi_patient)
+        list_newdosi_files_patient = get_newdosi_files(wildcards)
         list_filenames = [os.path.basename(newdosi_file) for newdosi_file in list_newdosi_files_patient]
         path_csv = DOSES_DATASET_DIR + subdir + "/"
         path_nii = NII_DIR + subdir + "/"
         csv2nii.to_nii(path_csv, path_nii, list_filenames)
-rule images_nii:
-    input:
-        expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files)
-    output:
-        expand(NII_DIR + "{newdosi_patient}_ID2013A.nii.gz", newdosi_patient = list_newdosi_patients),
-        expand(NII_DIR + "{newdosi_patient}_mask_t.nii.gz", newdosi_patient = list_newdosi_patients),
-        expand(NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz", newdosi_patient = list_newdosi_patients)
-    run:
-        logger_img = setup_logger("csv2nii", NII_DIR + "csv2nii.log", mode_file = "a", creation_msg = False, level = logging.INFO)
-        logger_img.info(f"Number of processes: {get_ncpus()}")
-        with Pool(get_ncpus()) as p:
-            p.map(ImageConverter(list_newdosi_files), list_newdosi_patients)
 
-class RadiomicsExtractor(object):
-    def __init__(self, nbr_features_per_label):
-        self.nbr_features_per_label = nbr_features_per_label
-    def __call__(self, newdosi_patient):
-        subdir = os.path.dirname(newdosi_patient)
-        newdosi_filename = os.path.basename(newdosi_patient)
+rule write_header_radiomics:
+    output:
+        RADIOMICS_DIR + "header.csv",
+        RADIOMICS_DIR + "nbr_features_per_label"
+    run:
+        feature_extractor.write_header(LABELS_SUPER_T_VOI, LABELS_T_VOI, RADIOMICS_DIR, RADIOMICS_PARAMS_FILE)
+
+rule compute_radiomics:
+    input:
+        RADIOMICS_DIR + "header.csv",
+        RADIOMICS_DIR + "nbr_features_per_label",
+        NII_DIR + "{newdosi_patient}_ID2013A.nii.gz",
+        NII_DIR + "{newdosi_patient}_mask_t.nii.gz",
+        NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz"
+    output:    
+        RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv"
+    run:
+        logger = setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False)
+        logger.info(f"{wildcards.newdosi_patient}: extraction of radiomics")
+        newdosi_filename = os.path.basename(wildcards.newdosi_patient)
+        subdir = os.path.dirname(wildcards.newdosi_patient)
         image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
         mask_t_path = NII_DIR + subdir + "/" + newdosi_filename + "_mask_t.nii.gz"
         mask_super_t_path = NII_DIR + subdir + "/" + newdosi_filename + "_mask_super_t.nii.gz"
+        with open(RADIOMICS_DIR + "nbr_features_per_label", 'r') as file_nbr:
+            nbr_features_per_label = int(file_nbr.read())
         feature_extractor.compute_radiomics(image_path, mask_super_t_path, mask_t_path, 
                                             LABELS_SUPER_T_VOI, LABELS_T_VOI, newdosi_filename, RADIOMICS_DIR, subdir, 
-                                            RADIOMICS_PARAMS_FILE, self.nbr_features_per_label)
-rule compute_radiomics:
-    input:
-        expand(NII_DIR + "{newdosi_patient}_ID2013A.nii.gz", newdosi_patient = list_newdosi_patients),
-        expand(NII_DIR + "{newdosi_patient}_mask_t.nii.gz", newdosi_patient = list_newdosi_patients),
-        expand(NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz", newdosi_patient = list_newdosi_patients)
-    output:    
-        RADIOMICS_DIR + "header.csv",
-        expand(RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv", newdosi_patient = list_newdosi_patients)
-    run:
-        logger_extractor = setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False, level = logging.INFO)
-        logger_extractor.info(f"Number of processes: {get_ncpus()}")
-        nbr_features_per_label = feature_extractor.write_header(LABELS_SUPER_T_VOI, LABELS_T_VOI, RADIOMICS_DIR, RADIOMICS_PARAMS_FILE)
-        with Pool(get_ncpus()) as p:
-            p.map(RadiomicsExtractor(nbr_features_per_label), list_newdosi_patients)
+                                            RADIOMICS_PARAMS_FILE, nbr_features_per_label)
 
 rule gather_radiomics:
     input:
