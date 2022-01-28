@@ -60,7 +60,6 @@ onstart:
 
 rule all:
     input: 
-        METADATA_DIR + "list_newdosi_files.csv",
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
 
 ## Metadata
