@@ -2,6 +2,8 @@
 import logging
 import numpy as np
 import pandas as pd
+import os
+from multiprocessing import cpu_count
 from datetime import datetime
 
 # Data fccss specific 
@@ -82,4 +84,10 @@ def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation
     if creation_msg:
         logger.info(f"Logger {name} created at {datetime.now()}")
     return logger
+
+def get_ncpus():
+    if "SLURM_CPUS_PER_TASK" in os.environ:
+        return os.environ["SLURM_CPUS_PER_TASK"]
+    else:
+        return cpu_count()
 
