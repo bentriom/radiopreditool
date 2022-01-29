@@ -104,4 +104,5 @@ def to_nii(path_csv, path_nii, list_csv_files):
         image_mask_super_t.SetSpacing((2.0,2.0,2.0))
         image_mask_super_t.SetOrigin((0.0,0.0,0.0))
         sitk.WriteImage(image_mask_super_t, file_mask_super_t_nii)
+    logger.info(f"newdosi_{ctr_patient}_{numcent_patient}: end of nii images")
 

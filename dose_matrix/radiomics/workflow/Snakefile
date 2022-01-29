@@ -120,7 +120,7 @@ rule compute_radiomics:
         RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv"
     run:
         logger = setup_logger("feature_extractor", RADIOMICS_DIR + "feature_extraction.log", mode_file = "a", creation_msg = False)
-        logger.info(f"{wildcards.newdosi_patient}: extraction of radiomics")
+        logger.info(f"{wildcards.newdosi_patient}: Extraction of radiomics")
         newdosi_filename = os.path.basename(wildcards.newdosi_patient)
         subdir = os.path.dirname(wildcards.newdosi_patient)
         image_path = NII_DIR + subdir + "/" + newdosi_filename + "_ID2013A.nii.gz"
