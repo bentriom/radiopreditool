@@ -16,5 +16,5 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 LABELS_SUPER_T_VOI: [1320, 1702]
 LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/
-FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "radiotherapie", "radiotherapie_1K"]
+FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "radiotherapie_1K"]
 
