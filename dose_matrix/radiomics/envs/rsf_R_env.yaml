@@ -1,0 +1,14 @@
+name: rsf_R
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-essentials
+  - r-base
+  - r-caret
+  - r-randomforestsrc
+  - r-pec
+  - r-logger
+

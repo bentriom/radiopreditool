@@ -157,7 +157,8 @@ rule pca_visualisation:
     input:
         ANALYZES_DIR + "trainset.csv.gz"
     output:
-        ANALYZES_DIR + "viz/pca_radiomics.png"
+        ANALYZES_DIR + "pca_viz.log"
+        #expand(ANALYZES_DIR + "viz/pca_radiomics_{label}.png", label = ["all"] + LABELS_SUPER_T_VOI + LABELS_T_VOI)
     run:
         trainset.pca_viz(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
@@ -194,9 +195,11 @@ rule rsf_trainset_analysis:
         ANALYZES_DIR + "preprocessed_trainset.csv.gz",
         ANALYZES_DIR + "testset.csv.gz"
     output:
-        ANALYZES_DIR + "trainset.log"
+        ANALYZES_DIR + "rsf.log"
+    conda:
+        "envs/rsf_R_env.yaml"
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR}"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR}"
  
 #"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv.gz"
 #test_csv_file = "/home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/Curie/newdosi_3_197704641B_19770715.csv.gz"

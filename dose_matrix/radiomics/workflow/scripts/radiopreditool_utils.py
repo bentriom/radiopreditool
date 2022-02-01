@@ -2,7 +2,7 @@
 import logging
 import numpy as np
 import pandas as pd
-import os
+import os, re
 from multiprocessing import cpu_count
 from datetime import datetime
 
@@ -60,6 +60,30 @@ def get_super_t(label_t):
 
 def col_super_t(df_dosi):
     df_dosi['SUPER_T'] = df_dosi['T'].apply(get_super_t)
+
+def get_clinical_features(df_dataset, event_col, duration_col):
+    regex = "^((X[0-9]{3,4}_)|" + f"({event_col})|({duration_col})|(ctr)|(numcent)|(has_radiomics))"
+    return [col for col in df_dataset.columns if re.match(regex, col)]
+
+def get_all_radiomics_features(df_dataset):
+    return [col for col in df_dataset.columns if re.match("^[0-9]{3,4}_", col)]
+
+def get_t_radiomics_features(df_dataset):
+    return [col for col in df_dataset.columns if re.match("^[0-9]{3}_", col)]
+
+def get_super_t_radiomics_features(df_dataset):
+    return [col for col in df_dataset.columns if re.match("^1[0-9]{3}_", col)]
+
+def get_labels_t(df_dataset):
+    features = get_t_radiomics_features(df_dataset)
+    return np.unique([f.split("_")[0] for f in features]).tolist()
+
+def get_labels_super_t(df_dataset):
+    features = get_super_t_radiomics_features(df_dataset)
+    return np.unique([f.split("_")[0] for f in features]).tolist()
+
+def get_all_labels(df_dataset):
+    return get_labels_super_t(df_dataset) + get_labels_t(df_dataset)
 
 # Sksurv utils
 def get_events(structured_y):

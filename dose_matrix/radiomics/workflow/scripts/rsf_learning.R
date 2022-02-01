@@ -1,4 +1,6 @@
 
+options(show.error.locations = TRUE, error=traceback)
+
 library("caret", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
@@ -7,47 +9,69 @@ library("logger", quietly = TRUE)
 
 source("workflow/scripts/utils_rsf.R")
 
-rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col) {
-    log_appender(appender_file(paste(analyzes_dir, "rsf.log", sep = ""), append = FALSE))
-    log_info("Random Survival Forest learning")
-    log_info(paste("Trainset file:", file_trainset))
-    # Dataset
-    df_trainset <- read.csv(file_trainset, header = TRUE)
-    #cols_1320 < grep("X1320_", colnames(df_trainset), value = TRUE)
-    cols_32X <- grep("X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
-
-    # Model 32X radiomics covariates
-    df_heart_32X <- na.omit(df_trainset[,c(event_col, duration_col, cols_32X)])
-    formula_32X <- get.surv.formula(event_col, cols_32X, duration_col = duration_col)
+model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, rsf_logfile) {
+    log_appender(appender_file(rsf_logfile, append = TRUE))
+    df_model_train <- na.omit(df_trainset[,c(event_col, duration_col, covariates)])
+    df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
+    df_model_test[is.na(df_model_test)] <- -1
+    log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
+    log_info(paste("Trained on", nrow(df_model_train), "samples (NA are dropped)"))
+    log_info("Testset NAs are filled with -1")
+    formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
+    bs.times <- seq(5, 50, by = 5)
     test.params.df <- data.frame(ntree = c(1000), nodesize = c(10), nsplit = c(10))
     ntrees <- c(10, 100, 200, 500, 1000, 1500, 3000)
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    cv.params <- cv.rsf(formula_32X, df_heart_32X, test.params.df, event_col, error.metric = "ibs")
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, pred.times = bs.times, error.metric = "ibs")
     # Best RSF
     params.best <- cv.params[1,]
-    print(params.best)
-    rsf.obj <- rfsrc(formula_32X, data = df_heart_32X, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
+    log_info("CV params:")
+    log_info(toString(cv.params))
+    rsf.obj <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
     # C-index
-    rsf.pred <- rsf.obj$predicted
-    rsf.pred_oob <- rsf.obj$predicted.oob
-    yvar <- rsf.obj$yvar
-    rsf.err_oob <- get.cindex(yvar[[duration_col]], yvar[[event_col]], rsf.pred_oob)
-    rsf.err <- get.cindex(yvar[[duration_col]], yvar[[event_col]], rsf.pred)
-    log_info(paste("C-index on trainset: ", rsf.err_oob))
-    log_info(paste("C-index OOB on trainset: ", rsf.err_oob))
+    rsf.err_oob <- get.cindex(rsf.obj$yvar[[duration_col]], rsf.obj$yvar[[event_col]], rsf.obj$predicted.oob)
+    rsf.err <- get.cindex(rsf.obj$yvar[[duration_col]], rsf.obj$yvar[[event_col]], rsf.obj$predicted)
+    pred.testset <- predict(rsf.obj, newdata = df_model_test)
+    rsf.err.testset <- get.cindex(pred.testset$yvar[[duration_col]], pred.testset$yvar[[event_col]], pred.testset$predicted)
+    log_info(paste("C-index on trainset: ", 1-rsf.err_oob))
+    log_info(paste("C-index OOB on trainset: ", 1-rsf.err_oob))
+    log_info(paste("C-index on testset: ", 1-rsf.err.testset))
     # IBS
-    #bs.times <- c(0.0, sort(unique(fccss_vols$Attained_Age)))
-    bs.times <- seq(5, 50, by = 5)
-    rsf.pred.bs <- predictSurvProb(rsf.obj, newdata = df_heart_32X, times = bs.times)
+    rsf.pred.bs <- predictSurvProb(rsf.obj, newdata = df_model_train, times = bs.times)
     rsf.pred.oob.bs <- predictSurvProbOOB(rsf.obj, times = bs.times)
-    rsf.perror <- pec(object= list(rsf.pred.bs, rsf.pred.oob.bs), formula = formula_32X, data = formula_32X)
-    log_info(paste("IBS on trainset: ", crps(rsf.perror)[1]))
-    log_info(paste("IBS OOB on trainset: ", crps(rsf.perror)[2]))
+    rsf.pred.bs.test <- predictSurvProb(rsf.obj, newdata = df_model_test, times = bs.times)
+    rsf.perror.train <- pec(object= list(rsf.pred.bs, rsf.pred.oob.bs), formula = formula_model, data = df_model_train, 
+                            times = bs.times, start = bs.times[0], exact = FALSE, reference = FALSE)
+    rsf.perror.test <- pec(object= list(rsf.pred.bs.test), formula = formula_model, data = df_model_test, 
+                           times = bs.times, start = bs.times[0], exact = FALSE, reference = FALSE)
+    log_info(paste("IBS on trainset: ", crps(rsf.perror.train)[1]))
+    log_info(paste("IBS OOB on trainset: ", crps(rsf.perror.train)[2]))
+    log_info(paste("IBS on testset: ", crps(rsf.perror.test)[1]))
+}
+
+rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col) {
+    rsf_logfile <- paste(analyzes_dir, "rsf.log", sep = "")
+    if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
+    log_appender(appender_file(rsf_logfile, append = TRUE))
+    log_info("Random Survival Forest learning")
+    # Dataset
+    df_trainset <- read.csv(file_trainset, header = TRUE)
+    df_testset <- read.csv(file_trainset, header = TRUE)
+    clinical_vars <- get.clinical_features(colnames(df_trainset), event_col, duration_col)
+    log_info(paste("Trainset file:", file_trainset, "with", nrow(df_trainset), "samples"))
+
+    # Model 32X radiomics covariates
+    log_info("Model 32X")
+    cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
+    covariates_32X <- c(clinical_vars, cols_32X, "has_radiomics")
+    model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, rsf_logfile)
 
     # Model 1320 radiomics covariates
-    #df_global_heart <- na.omit(df_trainset[,c(event_col, duration_col, cols_1320)])
+    log_info("Model 1320")
+    cols_1320 <- grep("^X1320_", colnames(df_trainset), value = TRUE)
+    covariates_1320 <- c(clinical_vars, cols_1320, "has_radiomics")
 }
 
 # Script args

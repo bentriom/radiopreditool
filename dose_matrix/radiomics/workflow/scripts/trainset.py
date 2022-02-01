@@ -15,7 +15,7 @@ import os, sys, importlib, string, re
 sys.path.append("radiomics/workflow/scripts")
 
 import csv2nii, feature_extractor, check_dataset, trainset
-from radiopreditool_utils import setup_logger
+from radiopreditool_utils import *
 from lifelines import CoxPHFitter
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -64,9 +64,7 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     df_dataset.loc[pd.isnull(df_dataset["has_radiomics"]), "has_radiomics"] = 0
     features_radiomics = [feature for feature in df_dataset.columns if re.match("[0-9]+_.*", feature)]
     df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_radiomics] = 0
-    if col_treated_by_rt not in clinical_variables:
-        df_dataset.drop(columns = col_treated_by_rt, inplace = True)
-    logger.info(f"df_dataset: {df_dataset.shape}")
+    logger.info(f"Full dataset: {df_dataset.shape}")
     # Split train / test
     df_X = df_dataset[[c for c in df_dataset.columns if c not in cols_y]]
     df_y = df_dataset[["ctr", "numcent"] + cols_y]
@@ -75,10 +73,22 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
                                                                     test_size = test_size, stratify = df_y[event_col])
     df_trainset = df_X_train.merge(df_y_train, how = "inner", on = ["ctr", "numcent"]) 
     df_testset = df_X_test.merge(df_y_test, how = "inner", on = ["ctr", "numcent"]) 
-    logger.info(f"df_trainset: {df_trainset.shape}")
-    logger.info(f"df_testset: {df_testset.shape}")
-    logger.info(f"Balance train/test event: {df_trainset[event_col].sum()/df_trainset.shape[0]} {df_testset[event_col].sum()/df_testset.shape[0]}")
+    df_trainset_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1,:]
+    df_testset_radiomics = df_testset.loc[df_testset["has_radiomics"] == 1,:]
+    logger.info(f"Trainset: {df_trainset.shape}")
+    logger.info(f"Trainset with radiomics features: {df_trainset_radiomics.shape}")
+    logger.info(f"Testset: {df_testset.shape} ({test_size * 100}%)")
+    logger.info(f"Testset with radiomics features: {df_testset_radiomics.shape}")
+    nsamples_train = df_trainset.shape[0]
+    nsamples_test = df_testset.shape[0]
+    logger.info(f"Balance train/test event: {df_trainset[event_col].sum()/nsamples_train} {df_testset[event_col].sum()/nsamples_test}")
+    logger.info(f"Balance train/test treated by RT: {df_trainset[col_treated_by_rt].sum()/nsamples_train} {df_testset[col_treated_by_rt].sum()/nsamples_test}")
+    logger.info(f"Balance train/test that has radiomics features: {df_trainset['has_radiomics'].sum()/nsamples_train} {df_testset['has_radiomics'].sum()/nsamples_test}")
     # Save
+    if col_treated_by_rt not in clinical_variables:
+        df_dataset.drop(columns = col_treated_by_rt, inplace = True)
+        df_trainset.drop(columns = col_treated_by_rt, inplace = True)
+        df_testset.drop(columns = col_treated_by_rt, inplace = True)
     df_trainset.to_csv(analyzes_dir + "trainset.csv.gz", index = False)
     df_testset.to_csv(analyzes_dir + "testset.csv.gz", index = False)
 
@@ -169,7 +179,7 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     for label in labels_radiomics:
         df_corr = df_covariates_with_radiomics[dict_features_per_label[label]].corr(method = "kendall")
         fig = plt.figure(figsize=(16, 6))
-        heatmap = sns.heatmap(df_corr, vmin=-1, vmax=1, annot=True)
+        heatmap = sns.heatmap(df_corr, vmin = -1, vmax = 1, annot = True, center = 0, cmap = "vlag")
         plt.savefig(f"{analyzes_dir}corr_plots/mat_corr_{label}.png", dpi = 480, bbox_inches='tight', 
                     facecolor = "white", transparent = False)
     # Second filter: eliminate very correlated features with hierarchical clustering + univariate Cox
@@ -196,33 +206,40 @@ def col_class_event(event_col, delay, row):
         return 0
 
 def pca_viz(file_trainset, event_col, analyzes_dir):
+    logger = setup_logger("pca", analyzes_dir + "pca_viz.log")
     df_trainset = pd.read_csv(file_trainset)
-    features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
     df_trainset["class_" + event_col] = 0
     year_max = 20
     for delay_event in range(5, year_max + 1, 5):
         col_class = f"{event_col}_at_{delay_event}"
         df_trainset[col_class] = df_trainset.apply(lambda row: col_class_event(event_col, delay_event, row), axis = 1)
         df_trainset.loc[:, "class_" + event_col] += df_trainset[col_class]
-    df_trainset.dropna(subset = features_radiomics + [event_col, "survival_time_years"], inplace = True)
-    X = StandardScaler().fit_transform(df_trainset[features_radiomics])
-    pca = PCA(n_components = 2)
-    X_pca = pca.fit_transform(X)
-    y = df_trainset["class_" + event_col] 
-    nbr_classes = len(df_trainset["class_" + event_col].unique())
-    list_labels = ["No event" if i == 0 else f"Event {year_max - (5*i)} - {year_max - 5*(i-1)} years" for i in range(nbr_classes)]
-    list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
-    list_markers = ['o' if i == 0 else 'x' for i in range(nbr_classes)]
-    list_alphas = [0.5 if i == 0 else 1 for i in range(nbr_classes)]
-    for i in range(nbr_classes):
-        idx_cluster = (y == i)
-        plt.scatter(X_pca[idx_cluster, 0], X_pca[idx_cluster, 1], label = list_labels[i],
-                    alpha = list_alphas[i], marker = list_markers[i], color = list_colors[i])
-    plt.xlabel('PCA component 1')
-    plt.ylabel('PCA component 2')
-    plt.title(f"PCA ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
-    plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
-    os.makedirs(analyzes_dir + "viz", exist_ok=True)
-    plt.savefig(analyzes_dir + "viz/pca_radiomics.png", dpi = 480, bbox_inches='tight', 
-                    facecolor = "white", transparent = False)
+    labels = get_all_labels(df_trainset)
+    names_sets = ["all"] + labels 
+    set_of_features_radiomics = [get_all_radiomics_features(df_trainset)] + [[feature for feature in df_trainset.columns if re.match(f"{label}_.*", feature)] for label in labels]
+    for (i, features_radiomics) in enumerate(set_of_features_radiomics):
+        logger.info(f"PCA {names_sets[i]}")
+        logger.info(f"Covariates: {features_radiomics}")
+        df_subset = df_trainset.dropna(subset = features_radiomics + [event_col, "survival_time_years"])
+        X = StandardScaler().fit_transform(df_subset[features_radiomics])
+        pca = PCA(n_components = 2)
+        X_pca = pca.fit_transform(X)
+        y = df_subset["class_" + event_col] 
+        nbr_classes = len(df_subset["class_" + event_col].unique())
+        list_labels = ["No event" if i == 0 else f"Event {year_max - (5*i)} - {year_max - 5*(i-1)} years" for i in range(nbr_classes)]
+        list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
+        list_markers = ['o' if i == 0 else 'x' for i in range(nbr_classes)]
+        list_alphas = [0.5 if i == 0 else 1 for i in range(nbr_classes)]
+        plt.figure()
+        for i in range(nbr_classes):
+            idx_cluster = (y == i)
+            plt.scatter(X_pca[idx_cluster, 0], X_pca[idx_cluster, 1], label = list_labels[i],
+                        alpha = list_alphas[i], marker = list_markers[i], color = list_colors[i])
+        plt.xlabel('PCA component 1')
+        plt.ylabel('PCA component 2')
+        plt.title(f"PCA ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
+        plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
+        os.makedirs(analyzes_dir + "viz", exist_ok=True)
+        plt.savefig(analyzes_dir + f"viz/pca_radiomics_{names_sets[i]}.png", dpi = 480, bbox_inches='tight', 
+                        facecolor = "white", transparent = False)
 

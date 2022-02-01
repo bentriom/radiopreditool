@@ -4,6 +4,13 @@ library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
 
+# Get clinical variables from all features
+get.clinical_features <- function(columns, event_col, duration_col) {
+    regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
+    idx_non_clinical_vars <- grep(regex_non_clinical, columns)
+    return (columns[-idx_non_clinical_vars])
+}
+
 # Automatically create a survival formula
 get.surv.formula <- function(event_col, covariates, duration_col = "survival_time_years") {
     str.surv_formula <- paste("Surv(", duration_col, ",", event_col, ") ~ ", sep = '')
@@ -43,11 +50,13 @@ create.params.df <- function(ntrees, nodesizes, nsplits) {
 }
 
 # Cross-validation for RSF
-cv.rsf <- function(formula, data, params.df, event_col, duration_col = "survival_time_years", nfolds = 3, error.metric = "ibs", bootstrap.strategy = NULL) {
+cv.rsf <- function(formula, data, params.df, event_col, duration_col = "survival_time_years", 
+                   nfolds = 3, pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
   nbr.params <- nrow(params.df)
   params.error <- rep(0.0, nbr.params)
   params.ibs <- rep(0.0, nbr.params)
   params.cindex <- rep(0.0, nbr.params)
+  final.time.bs <- pred.times[length(pred.times)]
   folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
   
   for (idx.row in 1:nrow(params.df)) {
@@ -69,14 +78,14 @@ cv.rsf <- function(formula, data, params.df, event_col, duration_col = "survival
       }
       rsf.fold <- rfsrc(formula, data = fold.train, ntree = row$ntree, nodesize = row$nodesize, nsplit = row$nsplit, bootstrap = rsf.fold.bootstrap, samp = rsf.fold.samp)
       # C-index
-      fold.test.pred <- predict(rsf.fold, fold.test)
+      fold.test.pred <- predict(rsf.fold, newdata = fold.test)
       cindex.fold <- get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
       cindex.folds[i] <- cindex.fold
       # IBS
-      bs.times <- seq(5, 50, by = 5)
-      fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = bs.times)
-      perror = pec(object = fold.test.pred.bs, data = fold.test, reference = FALSE, formula = formula)
-      ibs.fold <- crps(perror)[1]
+      fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
+      perror = pec(object = fold.test.pred.bs, data = fold.test, formula = formula, 
+                   times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+      ibs.fold <- crps(perror, times = final.time.bs)[1]
       ibs.folds[i] <- ibs.fold
     }
     if (error.metric == "ibs") {
@@ -92,7 +101,7 @@ cv.rsf <- function(formula, data, params.df, event_col, duration_col = "survival
     log_info(paste("Parameters ", idx.row, "/", nbr.params, " (", row$ntree, ",", row$nodesize, ",", row$nsplit, ") : ", param.error))
   }
   params.df$error <- params.error
-  params.df$cindex <- params.cindex
+  params.df$cindex_error <- params.cindex
   params.df$ibs <- params.ibs
   params.df[order(params.error),]
 }
