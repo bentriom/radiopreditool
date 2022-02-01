@@ -59,13 +59,14 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
     ibs_preds_test = [[surv_func(t) for t in ibs_timeline] for surv_func in coxph_surv_func_test]
     ibs_score_train = integrated_brier_score(surv_y_train, surv_y_train, ibs_preds_train, ibs_timeline)
     ibs_score_test = integrated_brier_score(surv_y_train, surv_y_test, ibs_preds_test, ibs_timeline)
-    logger.info(f"IBS trainset: {ibs_score}")
-    logger.info(f"IBS testset: {ibs_score}")
+    logger.info(f"IBS trainset: {ibs_score_train}")
+    logger.info(f"IBS testset: {ibs_score_test}")
 
 def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_testset, event_col, analyzes_dir):
     duration_col = "survival_time_years"
     logger = setup_logger("baseline_models", analyzes_dir + "baseline_models.log")
     df_trainset = pd.read_csv(file_trainset)
+    df_preprocessed_trainset = pd.read_csv(file_preprocessed_trainset)
     df_testset = pd.read_csv(file_testset)
     clinical_vars = get_clinical_features(df_trainset, event_col, duration_col)
 
@@ -76,11 +77,11 @@ def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_tes
 
     # Coxph radiomics heart 32X
     covariates = [feature for feature in df_preprocessed_trainset.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
-    logger.info("Model heart dosiomics 32X")
+    logger.info("Model heart dosiomics 32X (filtered)")
     coxph_analysis(df_preprocessed_trainset, df_testset, covariates, event_col, duration_col)
     
     # Coxph radiomics heart 1320
     covariates = [feature for feature in df_preprocessed_trainset.columns if re.match("^1320_.*", feature)] + clinical_vars
-    logger.info("Model heart dosiomics 1320")
+    logger.info("Model heart dosiomics 1320 (filtered)")
     coxph_analysis(df_preprocessed_trainset, df_testset, covariates, event_col, duration_col)
     
