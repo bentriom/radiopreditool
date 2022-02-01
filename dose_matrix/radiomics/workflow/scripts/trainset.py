@@ -218,7 +218,8 @@ def pca_viz(file_trainset, event_col, analyzes_dir):
     names_sets = ["all"] + labels 
     set_of_features_radiomics = [get_all_radiomics_features(df_trainset)] + [[feature for feature in df_trainset.columns if re.match(f"{label}_.*", feature)] for label in labels]
     for (i, features_radiomics) in enumerate(set_of_features_radiomics):
-        logger.info(f"PCA {names_sets[i]}")
+        name_set = names_sets[i]
+        logger.info(f"PCA {name_set}")
         logger.info(f"Covariates: {features_radiomics}")
         df_subset = df_trainset.dropna(subset = features_radiomics + [event_col, "survival_time_years"])
         X = StandardScaler().fit_transform(df_subset[features_radiomics])
@@ -226,20 +227,20 @@ def pca_viz(file_trainset, event_col, analyzes_dir):
         X_pca = pca.fit_transform(X)
         y = df_subset["class_" + event_col] 
         nbr_classes = len(df_subset["class_" + event_col].unique())
-        list_labels = ["No event" if i == 0 else f"Event {year_max - (5*i)} - {year_max - 5*(i-1)} years" for i in range(nbr_classes)]
+        list_labels = ["No event" if k == 0 else f"Event {year_max - (5*k)} - {year_max - 5*(k-1)} years" for k in range(nbr_classes)]
         list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
-        list_markers = ['o' if i == 0 else 'x' for i in range(nbr_classes)]
-        list_alphas = [0.5 if i == 0 else 1 for i in range(nbr_classes)]
+        list_markers = ['o' if k == 0 else 'x' for k in range(nbr_classes)]
+        list_alphas = [0.5 if k == 0 else 1 for k in range(nbr_classes)]
         plt.figure()
-        for i in range(nbr_classes):
-            idx_cluster = (y == i)
-            plt.scatter(X_pca[idx_cluster, 0], X_pca[idx_cluster, 1], label = list_labels[i],
-                        alpha = list_alphas[i], marker = list_markers[i], color = list_colors[i])
+        for j in range(nbr_classes):
+            idx_cluster = (y == j)
+            plt.scatter(X_pca[idx_cluster, 0], X_pca[idx_cluster, 1], label = list_labels[j],
+                        alpha = list_alphas[j], marker = list_markers[j], color = list_colors[j])
         plt.xlabel('PCA component 1')
         plt.ylabel('PCA component 2')
-        plt.title(f"PCA ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
+        plt.title(f"PCA {name_set} ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
         plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
         os.makedirs(analyzes_dir + "viz", exist_ok=True)
-        plt.savefig(analyzes_dir + f"viz/pca_radiomics_{names_sets[i]}.png", dpi = 480, bbox_inches='tight', 
+        plt.savefig(analyzes_dir + f"viz/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight', 
                         facecolor = "white", transparent = False)
 
