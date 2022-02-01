@@ -42,8 +42,10 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
                     test_size = 0.3, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
     df_radiomics = pd.read_csv(file_radiomics)
+    logger.info(f"df_radiomics: {df_radiomics.shape}")
     df_radiomics["has_radiomics"] = 1
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
+    logger.info(f"df_fccss: {df_fccss.shape}")
     cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
     cols_survival = ["numcent", event_col, "deces", date_event_col, "date_deces"] + cols_date 
     df_survival = df_fccss[cols_survival]
