@@ -11,37 +11,38 @@ source("workflow/scripts/utils_rsf.R")
 
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, rsf_logfile) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
-    df_model_train <- na.omit(df_trainset[,c(event_col, duration_col, covariates)])
+    df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
+    df_model_train[is.na(df_model_train)] <- -1
     df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
     df_model_test[is.na(df_model_test)] <- -1
     log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
-    log_info(paste("Trained on", nrow(df_model_train), "samples (NA are dropped)"))
+    log_info(paste("Trained on", nrow(df_model_train), "samples (NAs are filled with -1)"))
     log_info("Testset NAs are filled with -1")
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     bs.times <- seq(5, 50, by = 5)
-    test.params.df <- data.frame(ntree = c(1000), nodesize = c(10), nsplit = c(10))
+    #test.params.df <- data.frame(ntree = c(1000), nodesize = c(10), nsplit = c(10))
     ntrees <- c(10, 100, 200, 500, 1000, 1500, 3000)
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, pred.times = bs.times, error.metric = "ibs")
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = bs.times, error.metric = "ibs")
     # Best RSF
     params.best <- cv.params[1,]
     log_info("CV params:")
     log_info(toString(cv.params))
-    rsf.obj <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
+    rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
     # C-index
-    rsf.err_oob <- get.cindex(rsf.obj$yvar[[duration_col]], rsf.obj$yvar[[event_col]], rsf.obj$predicted.oob)
-    rsf.err <- get.cindex(rsf.obj$yvar[[duration_col]], rsf.obj$yvar[[event_col]], rsf.obj$predicted)
-    pred.testset <- predict(rsf.obj, newdata = df_model_test)
+    rsf.err_oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
+    rsf.err <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted)
+    pred.testset <- predict(rsf.best, newdata = df_model_test)
     rsf.err.testset <- get.cindex(pred.testset$yvar[[duration_col]], pred.testset$yvar[[event_col]], pred.testset$predicted)
     log_info(paste("C-index on trainset: ", 1-rsf.err_oob))
     log_info(paste("C-index OOB on trainset: ", 1-rsf.err_oob))
     log_info(paste("C-index on testset: ", 1-rsf.err.testset))
     # IBS
-    rsf.pred.bs <- predictSurvProb(rsf.obj, newdata = df_model_train, times = bs.times)
-    rsf.pred.oob.bs <- predictSurvProbOOB(rsf.obj, times = bs.times)
-    rsf.pred.bs.test <- predictSurvProb(rsf.obj, newdata = df_model_test, times = bs.times)
+    rsf.pred.bs <- predictSurvProb(rsf.best, newdata = df_model_train, times = bs.times)
+    rsf.pred.oob.bs <- predictSurvProbOOB(rsf.best, times = bs.times)
+    rsf.pred.bs.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = bs.times)
     rsf.perror.train <- pec(object= list(rsf.pred.bs, rsf.pred.oob.bs), formula = formula_model, data = df_model_train, 
                             times = bs.times, start = bs.times[0], exact = FALSE, reference = FALSE)
     rsf.perror.test <- pec(object= list(rsf.pred.bs.test), formula = formula_model, data = df_model_test, 
