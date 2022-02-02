@@ -1,6 +1,7 @@
 
 import pandas as pd
 import numpy as np
+import logging
 from multiprocessing import Pool, cpu_count
 from radiopreditool_utils import *
 
@@ -10,7 +11,8 @@ class Checker(object):
     def __call__(self, df):
         return check_files_patient(self.doses_dataset_dir, df)
 
-def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
+def check_files_patient(doses_dataset_dir, df_files_patient):
+    logger = logging.getLogger("check_dataset")
     relevant_cols = ['X', 'Y', 'Z', 'T', 'ID2013A']
     int_cols = ['X', 'Y', 'Z', 'T']
     df_result = df_files_patient.copy().reset_index()
@@ -31,7 +33,7 @@ def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
         df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
         nbr_rows_after = df_dosi.shape[0]
         nbr_nan_rows = nbr_rows_before - nbr_rows_after
-        print(f"{nbr_nan_rows} {nbr_rows_after}")
+        logger.info(f"{first_newdosi_file}: {nbr_nan_rows} => {nbr_rows_after} rows")
         df_result.loc[0, ["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
     # Check if missing date
     date_last_treatment = get_date(first_newdosi_file)
@@ -58,6 +60,7 @@ def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
             df_other_dosi = df_other_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
             nbr_rows_after = df_other_dosi.shape[0]
             nbr_nan_rows = nbr_rows_before - nbr_rows_after
+            logger.info(f"{current_newdosi_file}: {nbr_nan_rows} => {nbr_rows_after} rows")
             df_result.loc[i, ["nbr_nan_rows", "remaining_rows"]] = [nbr_nan_rows, nbr_rows_after]
         # Check the dimensions between the two df
         if df_dosi.shape[0] != df_other_dosi.shape[0]:
@@ -80,18 +83,16 @@ def check_files_patient(doses_dataset_dir, model_name, df_files_patient):
             df_result.at[i, "summable"] = int(check_summable_df(df_dosi, df_other_dosi))
     return df_result
 
-check_files_patient_set = None
-
 def analyze_dataset(doses_dataset_dir, metadata_dir):
-    #global check_files_patient_set
-    #check_files_patient_set = lambda grp: check_files_patient(doses_ataset_dir, grp)
     df_files = pd.read_csv(metadata_dir + "list_newdosi_files.csv")
     grouped_files = df_files.groupby(by = ["ctr", "numcent"])
-    print(cpu_count())
+    logger = setup_logger("check_dataset", metadata_dir + "check_dataset.log")
+    logger.info(f"Number of files: {df_files.shape[0]}")
+    logger.info(f"Number of patients: {len(grouped_files)}")
+    logger.info(f"Number of workers: {cpu_count()}")
     with Pool(cpu_count()) as p:
         res_checks = p.map(Checker(doses_dataset_dir), [group for name, group in grouped_files])
     df_files_checks = pd.concat(res_checks)
-    #df_files_checks = grouped_files.apply(lambda df: check_files_patient(doses_dataset_dir, df, model_name))
     del df_files_checks["index"]
     df_files_checks.to_csv(metadata_dir + "list_newdosi_checks.csv", index = False)
 
