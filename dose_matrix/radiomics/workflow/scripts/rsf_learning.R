@@ -52,8 +52,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("IBS on testset: ", crps(rsf.perror.test)[1]))
 }
 
-rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col) {
-    rsf_logfile <- paste(analyzes_dir, "rsf.log", sep = "")
+rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile) {
+    rsf_logfile <- paste(analyzes_dir, rsf_name_logfile, sep = "")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info("Random Survival Forest learning")
@@ -81,12 +81,13 @@ file_trainset = args[1]
 file_testset = args[2]
 event_col <- args[3]
 analyzes_dir <- args[4]
-if (length(args) == 5) {
-    duration_col <- args[5]
+rsf_name_logfile <- args[5]
+if (length(args) == 6) {
+    duration_col <- args[6]
 } else {
     duration_col <- "survival_time_years"
 }
 
 log_threshold(INFO)
-rsf_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col)
+rsf_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile)
 

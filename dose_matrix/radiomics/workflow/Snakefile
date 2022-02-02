@@ -157,8 +157,8 @@ rule pca_visualisation:
     input:
         ANALYZES_DIR + "trainset.csv.gz"
     output:
-        ANALYZES_DIR + "pca_viz.log"
-        #expand(ANALYZES_DIR + "viz/pca_radiomics_{label}.png", label = ["all"] + LABELS_SUPER_T_VOI + LABELS_T_VOI)
+        ANALYZES_DIR + "pca_viz.log",
+        ANALYZES_DIR + "viz/pca_radiomics_all.png"
     run:
         trainset.pca_viz(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
@@ -187,26 +187,21 @@ rule rsf_preprocessed_trainset_analysis:
         ANALYZES_DIR + "testset.csv.gz"
     output:
         ANALYZES_DIR + "rsf_preprocessed_trainset.log"
+    conda:
+        "envs/rsf_R_env.yaml"
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR}"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_preprocessed_trainset.log"
 
 rule rsf_trainset_analysis:
     input:
-        ANALYZES_DIR + "preprocessed_trainset.csv.gz",
+        ANALYZES_DIR + "trainset.csv.gz",
         ANALYZES_DIR + "testset.csv.gz"
     output:
-        ANALYZES_DIR + "rsf.log"
+        ANALYZES_DIR + "rsf_trainset.log"
     conda:
         "envs/rsf_R_env.yaml"
     threads:
         20
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR}"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_trainset.log"
  
-#"cat '"+ RADIOMICS_DIR + "header.csv'" + "  > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv.gz"
-#test_csv_file = "/home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/Curie/newdosi_3_197704641B_19770715.csv.gz"
-#test_nii_file = "/home/moud/Documents/RadioPrediTool/code/dose_matrix/test/nii/Curie/newdosi_3_197704641B_19770715_T.nii.gz"
-#print(list_newdosi_files)
-#print(RADIOMICS_DIR + "{subdir}/{dosi_file}_radiomics_" + MODEL_NAME + ".csv")
-#print("cat '"+ RADIOMICS_DIR + "header.csv'" + " '" + RADIOMICS_DIR + "'{" + str_cmd_dataset_subdirs + "}/* > '" + RADIOMICS_DIR + "'dose_matrix_radiomics_" + MODEL_NAME + ".csv")
-
