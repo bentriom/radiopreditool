@@ -200,8 +200,6 @@ rule rsf_trainset_analysis:
         ANALYZES_DIR + "rsf_trainset.log"
     conda:
         "envs/rsf_R_env.yaml"
-    threads:
-        20
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_trainset.log"
  
