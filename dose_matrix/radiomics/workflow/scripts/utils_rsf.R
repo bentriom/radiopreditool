@@ -107,7 +107,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
         } else {
             stop("Error metric not implemented")
         }
-        log_info(paste("Parameters ", idx.row, "/", nbr.params, " (", row$ntree, ",", row$nodesize, ",", row$nsplit, ") : ", param.error))
+        log_info(paste(Sys.getpid(), "- Parameters ", idx.row, "/", nbr.params, " (", row$ntree, ",", row$nodesize, ",", row$nsplit, ") : ", param.error))
         c(row, mean(ibs.folds), mean(cindex.folds), param.error)
     }
     colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Cindex", "Error")
