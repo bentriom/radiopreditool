@@ -3,12 +3,14 @@ import pandas as pd
 import numpy as np
 import logging
 from datetime import datetime
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
 from scipy.stats import zscore
 from scipy.cluster.hierarchy import dendrogram
 import scipy.cluster.hierarchy as hac
-
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from multiprocessing import Pool, cpu_count
 import os, sys, importlib, string, re
@@ -123,7 +125,7 @@ def plot_dendrogram(model, **kwargs):
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)
 
-def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir = "./"):
+def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir = "./", name = ""):
     hclust = AgglomerativeClustering(n_clusters = None, linkage = "complete", 
                                      affinity = "precomputed", distance_threshold = 1 - threshold)
     distance_matrix = df_covariates_hclust.corr(method = "kendall").apply(lambda x: 1 - abs(x)).to_numpy()
@@ -134,7 +136,7 @@ def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir =
         # plot the top three levels of the dendrogram
         plot_dendrogram(hclust, orientation = "right", labels = df_covariates_hclust.columns, leaf_font_size = 3)
         plt.axvline(1 - threshold)
-        plt.savefig(f"{analyzes_dir}corr_plots/hclust_{threshold}.png", dpi = 480, bbox_inches='tight', 
+        plt.savefig(f"{analyzes_dir}corr_plots/hclust_{threshold}_{name}.png", dpi = 480, bbox_inches='tight', 
                     facecolor = "white", transparent = False)
     return df_covariates_hclust.columns.values, y_clusters
 
@@ -142,8 +144,8 @@ def get_nbr_features_hclust(df_covariates_hclust, threshold, do_plot = False):
     _, y_clusters = hclust_corr(df_covariates_hclust, threshold, do_plot)
     return len(np.unique(y_clusters))
 
-def filter_corr_hclust(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir):
-    all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold, do_plot = True, analyzes_dir = analyzes_dir) 
+def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir, name = ""):
+    all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold, do_plot = True, analyzes_dir = analyzes_dir, name = name) 
     filter_2_cols_radiomics = []
     id_clusters = np.unique(y_clusters)
     df_survival = df_trainset.copy()
@@ -161,6 +163,17 @@ def filter_corr_hclust(df_trainset, df_covariates_hclust, corr_threshold, event_
         selected_feature = list_features[np.argmin(list_pvalues)]
         filter_2_cols_radiomics.append(selected_feature)
     return filter_2_cols_radiomics
+
+def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir):
+    all_filter_2_cols = []
+    labels = get_all_labels(df_covariates_hclust) 
+    logger = logging.getLogger("preprocessing")
+    logger.info(f"Hclust on labels: {labels}")
+    for label in labels:
+        cols_from_label = [feature for feature in df_covariates_hclust.columns if re.match(f"{label}_.*", feature)]
+        df_covariates_hclust_label = df_covariates_hclust[cols_from_label]
+        all_filter_2_cols += filter_corr_hclust_label(df_trainset, df_covariates_hclust_label, corr_threshold, event_col, surv_duration_col, analyzes_dir, name = label)
+    return all_filter_2_cols
 
 # Eliminate sparse and redundant columns
 def preprocessing(file_trainset, event_col, analyzes_dir):
@@ -194,11 +207,12 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     corr_threshold = 0.85
     surv_duration_col = "survival_time_years"
     logger.info(f"Hclust on dataframe: {df_covariates_hclust.shape}")
-    filter_2_cols_radiomics = filter_corr_hclust(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir)
+    filter_2_cols_radiomics = filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir)
     logger.info(f"After the second filter (hclust): {len(filter_2_cols_radiomics)}")
     preprocessed_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]+_.*", feature) or feature in filter_2_cols_radiomics]
     df_trainset[preprocessed_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
 
+# PCA
 def col_class_event(event_col, delay, row):
     if row[event_col] == 0:
         return 0
