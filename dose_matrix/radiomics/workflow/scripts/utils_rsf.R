@@ -60,7 +60,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
     nbr.params <- nrow(params.df)
     final.time.bs <- pred.times[length(pred.times)]
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
-    ntasks = as.numeric(Sys.getenv("SLURM_NTASKS"))
+    ntasks = as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     if (is.na(ntasks)) {
         nworkers <- parallel::detectCores() - 1
     }

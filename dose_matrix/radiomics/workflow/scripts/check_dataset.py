@@ -90,7 +90,7 @@ def analyze_dataset(doses_dataset_dir, metadata_dir):
     logger.info(f"Number of files: {df_files.shape[0]}")
     logger.info(f"Number of patients: {len(grouped_files)}")
     logger.info(f"Number of workers: {cpu_count()}")
-    nworkers = int(os.getenv("SLURM_NTASKS"))
+    nworkers = int(os.getenv("SLURM_CPUS_PER_TASK"))
     if nworkers == None:
         nworkers = cpu_count()
     with Pool(nworkers) as p:
