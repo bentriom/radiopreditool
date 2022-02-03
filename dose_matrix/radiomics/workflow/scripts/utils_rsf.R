@@ -60,8 +60,13 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
     nbr.params <- nrow(params.df)
     final.time.bs <- pred.times[length(pred.times)]
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
-    nworkers <- parallel::detectCores() - 1
-    cluster <- parallel::makeCluster(nworkers)
+    ntasks = as.numeric(Sys.getenv("SLURM_NTASKS"))
+    if (is.na(ntasks)) {
+        nworkers <- parallel::detectCores() - 1
+    else {
+        nworkers <- ntasks - 1
+    }
+    cluster <- parallel::makeCluster(nworkers, type = "FORK")
     doParallel::registerDoParallel(cl = cluster)
     log_info(paste("Running CV with", nworkers, "workers")) 
     cv.params.df <- foreach(idx.row = 1:nbr.params, .combine = 'rbind', .packages = c("survival", "randomForestSRC", "pec", "logger")) %dopar% {
