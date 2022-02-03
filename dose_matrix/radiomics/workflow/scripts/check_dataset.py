@@ -1,7 +1,7 @@
 
 import pandas as pd
 import numpy as np
-import logging
+import os, logging
 from multiprocessing import Pool, cpu_count
 from radiopreditool_utils import *
 
@@ -90,7 +90,10 @@ def analyze_dataset(doses_dataset_dir, metadata_dir):
     logger.info(f"Number of files: {df_files.shape[0]}")
     logger.info(f"Number of patients: {len(grouped_files)}")
     logger.info(f"Number of workers: {cpu_count()}")
-    with Pool(cpu_count()) as p:
+    nworkers = os.getenv("SLURM_NTASKS")
+    if nworkers == None:
+        nworkers = cpu_count()
+    with Pool(nworkers) as p:
         res_checks = p.map(Checker(doses_dataset_dir), [group for name, group in grouped_files])
     df_files_checks = pd.concat(res_checks)
     del df_files_checks["index"]
