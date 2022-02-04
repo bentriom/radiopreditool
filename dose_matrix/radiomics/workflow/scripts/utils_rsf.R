@@ -5,7 +5,7 @@ library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
 library("foreach", quietly = TRUE)
 library("doParallel", quietly = TRUE)
-# library("doMC", quietly = TRUE)
+library("doMC", quietly = TRUE)
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
@@ -106,14 +106,14 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
     ntasks = as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- ifelse(is.na(ntasks), parallel::detectCores()-2, ntasks-1)
-    log_info(paste("Running CV with", nworkers, "workers")) 
-    cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = nworkers)
+    # log_info(paste("Running mclapply CV with", nworkers, "workers")) 
+    # cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = nworkers)
     # doMC
-    # registerDoMC(nworkers)
-    # log_info(paste("Running CV with", getDoParWorkers(), "workers"))
-    # foreach (idx.row = 1:nbr.params, .combine = 'rbind') %dopar% {
-    #     get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
-    # }
+    registerDoMC(nworkers)
+    log_info(paste("Running doMC CV with", getDoParWorkers(), "workers"))
+    cv.params.df <- foreach (idx.row = 1:nbr.params, .combine = 'rbind') %dopar% {
+        get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
+    }
     cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
     rownames(cv.params.df) <- NULL
     colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Cindex", "Error")
