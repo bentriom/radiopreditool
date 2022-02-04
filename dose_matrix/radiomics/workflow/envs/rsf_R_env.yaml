@@ -13,4 +13,5 @@ dependencies:
   - r-logger
   - r-doparallel
   - r-foreach
+  - r-domc
 
