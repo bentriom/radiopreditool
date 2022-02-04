@@ -6,6 +6,7 @@ library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
 library("logger", quietly = TRUE)
+library("parallel", quietly = TRUE)
 
 source("workflow/scripts/utils_rsf.R")
 
@@ -56,6 +57,9 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
 }
 
 rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile) {
+    ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+    nworkers <- ifelse(is.na(ntasks), parallel::detectCores(), ntasks)
+    options(rf.cores = nworkers, mc.cores = nworkers)
     rsf_logfile <- paste(analyzes_dir, rsf_name_logfile, sep = "")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
