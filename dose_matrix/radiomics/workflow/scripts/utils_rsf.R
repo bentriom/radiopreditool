@@ -105,16 +105,27 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
     nbr.params <- nrow(params.df)
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
     ntasks = as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- ifelse(is.na(ntasks), parallel::detectCores()-2, ntasks-1)
+    nworkers <- ifelse(is.na(ntasks), parallel::detectCores()-4, ntasks-1)
+    # mclapply
     # log_info(paste("Running mclapply CV with", nworkers, "workers")) 
     # cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = nworkers)
+    # cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
     # doMC
-    registerDoMC(nworkers)
-    log_info(paste("Running doMC CV with", getDoParWorkers(), "workers"))
-    cv.params.df <- foreach (idx.row = 1:nbr.params, .combine = 'rbind') %dopar% {
+    # registerDoMC(nworkers)
+    #  log_info(paste("Running doMC CV with", getDoParWorkers(), "workers"))
+    #  cv.params.df <- foreach (idx.row = 1:nbr.params, .combine = rbind) %dopar% {
+    #     get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
+    #  }
+    #  cv.params.df <- as.data.frame(cv.params.df)
+    # doParallel
+    cluster <- parallel::makeCluster(nworkers)
+    doParallel::registerDoParallel(cluster)
+    log_info(paste("Running doParallel CV with", getDoParWorkers(), "workers"))
+    cv.params.df <- foreach (idx.row = 1:nbr.params, .combine = rbind, .export = "get.param.cv.error", .packages = c("randomForestSRC", "pec", "logger", "survival")) %dopar% {
         get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
     }
-    cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
+    cv.params.df <- as.data.frame(cv.params.df)
+    
     rownames(cv.params.df) <- NULL
     colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Cindex", "Error")
     cv.params.df[order(cv.params.df$Error),]

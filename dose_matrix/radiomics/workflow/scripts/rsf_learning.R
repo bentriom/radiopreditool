@@ -21,15 +21,18 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     bs.times <- seq(5, 50, by = 5)
     test.params.df <- data.frame(ntree = c(1000), nodesize = c(20), nsplit = c(500))
-    ntrees <- c(10, 100, 200, 500, 1000, 2000)
+    # ntrees <- c(10, 100, 200, 500, 1000, 2000)
+    ntrees <- c(10, 100, 200)
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
     cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = bs.times, error.metric = "ibs")
     # Best RSF
     params.best <- cv.params[1,]
-    log_info("CV params:")
-    log_info(toString(cv.params))
+    log_info("Best params:")
+    log_info(typeof(params.best))
+    log_info(toString(names(params.best)))
+    log_info(toString(params.best))
     rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
     # C-index
     rsf.err_oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
