@@ -5,6 +5,7 @@ library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
 library("foreach", quietly = TRUE)
 library("doParallel", quietly = TRUE)
+# library("doMC", quietly = TRUE)
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
@@ -51,67 +52,72 @@ create.params.df <- function(ntrees, nodesizes, nsplits) {
     params.df
 }
 
-# Job for a parameter
-
+# Job for one parameter
+get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) {
+    log_appender(appender_file(rsf_logfile, append = TRUE))
+    elapsed.time <- system.time({
+    row <- params.df[idx.row,]
+    nbr.params <- nrow(params.df)
+    log_info(paste(Sys.getpid(), "- Parameters", idx.row, "/", nbr.params, ": Begin"))
+    nfolds <- length(unique(folds))
+    final.time.bs <- pred.times[length(pred.times)]
+    cindex.folds <- rep(0.0, nfolds)
+    ibs.folds <- rep(0.0, nfolds)
+    for (i in 1:nfolds) {
+        fold.index <- which(folds == i)
+        fold.test <- data[fold.index,]
+        fold.train <- data[-fold.index,]
+        # RSF model
+        if (is.null(bootstrap.strategy)) {
+            rsf.fold.bootstrap <- "by.root"
+            rsf.fold.samp <- NULL
+        } else if (bootstrap.strategy == "undersampling") {
+            rsf.fold.bootstrap <- "by.user"
+            rsf.fold.samp <- bootstrap.undersampling(fold.train, row$ntree)
+        }
+        rsf.fold <- rfsrc(formula, data = fold.train, ntree = row$ntree, nodesize = row$nodesize, nsplit = row$nsplit, bootstrap = rsf.fold.bootstrap, samp = rsf.fold.samp)
+        # C-index
+        fold.test.pred <- predict(rsf.fold, newdata = fold.test)
+        cindex.fold <- get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
+        cindex.folds[i] <- cindex.fold
+        # IBS
+        fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
+        perror = pec(object = fold.test.pred.bs, data = fold.test, formula = formula, 
+                     times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+        ibs.fold <- crps(perror, times = final.time.bs)[1]
+        ibs.folds[i] <- ibs.fold
+    }
+    if (error.metric == "ibs") {
+        param.error <- mean(ibs.folds)
+    } else if (error.metric == "cindex") {
+        param.error <- mean(cindex.folds)
+    } else {
+        stop("Error metric not implemented")
+    }
+    })[["elapsed"]]
+    log_info(paste(Sys.getpid(), "-", elapsed.time, "s -  Parameters ", idx.row, "/", nbr.params, " (", row$ntree, ",", row$nodesize, ",", row$nsplit, ") : ", param.error))
+    c(unlist(row), mean(ibs.folds), mean(cindex.folds), param.error)
+}
 
 # Cross-validation for RSF
 cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_col = "survival_time_years", 
                    nfolds = 3, pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
     nbr.params <- nrow(params.df)
-    final.time.bs <- pred.times[length(pred.times)]
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
     ntasks = as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    if (is.na(ntasks)) {
-        nworkers <- parallel::detectCores() - 1
-    }
-    else {
-        nworkers <- ntasks - 1
-    }
-    cluster <- parallel::makeCluster(nworkers, type = "FORK", outfile = rsf_logfile)
-    doParallel::registerDoParallel(cl = cluster)
+    nworkers <- ifelse(is.na(ntasks), parallel::detectCores()-2, ntasks-1)
     log_info(paste("Running CV with", nworkers, "workers")) 
-    cv.params.df <- foreach(idx.row = 1:nbr.params, .combine = 'rbind', .packages = c("survival", "randomForestSRC", "pec", "logger")) %dopar% {
-        log_appender(appender_file(rsf_logfile, append = TRUE))
-        row <- params.df[idx.row,]
-        cindex.folds <- rep(0.0, nfolds)
-        ibs.folds <- rep(0.0, nfolds)
-        for (i in 1:nfolds) {
-            fold.index <- which(folds == i)
-            fold.test <- data[fold.index,]
-            fold.train <- data[-fold.index,]
-
-            # RSF model
-            if (is.null(bootstrap.strategy)) {
-                rsf.fold.bootstrap <- "by.root"
-                rsf.fold.samp <- NULL
-            } else if (bootstrap.strategy == "undersampling") {
-                rsf.fold.bootstrap <- "by.user"
-                rsf.fold.samp <- bootstrap.undersampling(fold.train, row$ntree)
-            }
-            rsf.fold <- rfsrc(formula, data = fold.train, ntree = row$ntree, nodesize = row$nodesize, nsplit = row$nsplit, bootstrap = rsf.fold.bootstrap, samp = rsf.fold.samp)
-            # C-index
-            fold.test.pred <- predict(rsf.fold, newdata = fold.test)
-            cindex.fold <- get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
-            cindex.folds[i] <- cindex.fold
-            # IBS
-            fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
-            perror = pec(object = fold.test.pred.bs, data = fold.test, formula = formula, 
-                         times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
-            ibs.fold <- crps(perror, times = final.time.bs)[1]
-            ibs.folds[i] <- ibs.fold
-        }
-        if (error.metric == "ibs") {
-            param.error <- mean(ibs.folds)
-        } else if (error.metric == "cindex") {
-            param.error <- mean(cindex.folds)
-        } else {
-            stop("Error metric not implemented")
-        }
-        log_info(paste(Sys.getpid(), "- Parameters ", idx.row, "/", nbr.params, " (", row$ntree, ",", row$nodesize, ",", row$nsplit, ") : ", param.error))
-        c(row, mean(ibs.folds), mean(cindex.folds), param.error)
-    }
+    cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = nworkers)
+    # doMC
+    # registerDoMC(nworkers)
+    # log_info(paste("Running CV with", getDoParWorkers(), "workers"))
+    # foreach (idx.row = 1:nbr.params, .combine = 'rbind') %dopar% {
+    #     get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
+    # }
+    cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
+    rownames(cv.params.df) <- NULL
     colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Cindex", "Error")
-    cv.params.df[order(cv.params.df$error),]
+    cv.params.df[order(cv.params.df$Error),]
 }
 
 # Under-sampling
