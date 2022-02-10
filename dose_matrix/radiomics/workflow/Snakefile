@@ -158,7 +158,7 @@ rule pca_visualisation:
         ANALYZES_DIR + "trainset.csv.gz"
     output:
         ANALYZES_DIR + "pca_viz.log",
-        ANALYZES_DIR + "viz/pca_radiomics_all.png"
+        ANALYZES_DIR + "pca/pca_radiomics_all.png"
     run:
         trainset.pca_viz(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 

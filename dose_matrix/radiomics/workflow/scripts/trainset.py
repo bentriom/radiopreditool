@@ -24,7 +24,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 
-# Create trainset
+## Create trainset
 def survival_date(event_col, date_event_col, row):
     if row["numcent"] == 199103047:
         return datetime.strptime("03/11/2019", "%d/%m/%Y")
@@ -96,13 +96,16 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     df_trainset.to_csv(analyzes_dir + "trainset.csv.gz", index = False)
     df_testset.to_csv(analyzes_dir + "testset.csv.gz", index = False)
 
-# Preprocessing
+## Preprocessing: eliminate sparse and redundant columns
+
+# Filter 1: eliminate radiomics with too much missing values
 def filter_nan_values_radiomics(df_covariates_nan_values, features_radiomics, threshold):
     nbr_newdosi_patients = df_covariates_nan_values.shape[0]
     prop_values_cols = df_covariates_nan_values.apply(lambda col_series: 1 - sum(pd.isnull(col_series))/nbr_newdosi_patients)
     filter_1_cols_radiomics = list(prop_values_cols[prop_values_cols > threshold].index.values)
     return filter_1_cols_radiomics
 
+# Filter 2: hclust + cox analysis
 def plot_dendrogram(model, **kwargs):
     # Create linkage matrix and then plot the dendrogram
 
@@ -132,12 +135,10 @@ def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir =
     y_clusters = hclust.fit_predict(distance_matrix)
     if do_plot:
         fig = plt.figure(figsize=(8,10))
-        plt.title(f"Hierarchical Clustering Dendrogram (threshold: {threshold} - number of features: {hclust.n_clusters_})")
+        plt.title(f"Hierarchical Clustering Dendrogram (threshold: {threshold} - features: {hclust.n_clusters_}/{distance_matrix.shape[0]})")
         # plot the top three levels of the dendrogram
-        plot_dendrogram(hclust, orientation = "right", labels = df_covariates_hclust.columns, leaf_font_size = 3)
+        plot_dendrogram(hclust, orientation = "right", labels = df_covariates_hclust.columns, leaf_font_size = 8)
         plt.axvline(1 - threshold)
-        plt.savefig(f"{analyzes_dir}corr_plots/hclust_{threshold}_{name}.png", dpi = 480, bbox_inches='tight', 
-                    facecolor = "white", transparent = False)
     return df_covariates_hclust.columns.values, y_clusters
 
 def get_nbr_features_hclust(df_covariates_hclust, threshold, do_plot = False):
@@ -162,6 +163,10 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, 
             list_pvalues.append(pvalue)
         selected_feature = list_features[np.argmin(list_pvalues)]
         filter_2_cols_radiomics.append(selected_feature)
+    plt.text(1.1, 0, '\n'.join(filter_2_cols_radiomics))
+    plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight', 
+                    facecolor = "white", transparent = False)
+    plt.close()
     return filter_2_cols_radiomics
 
 def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir):
@@ -175,7 +180,7 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
         all_filter_2_cols += filter_corr_hclust_label(df_trainset, df_covariates_hclust_label, corr_threshold, event_col, surv_duration_col, analyzes_dir, name = label)
     return all_filter_2_cols
 
-# Eliminate sparse and redundant columns
+# Preprocessing pipeline 
 def preprocessing(file_trainset, event_col, analyzes_dir):
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
@@ -197,6 +202,7 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
         heatmap = sns.heatmap(df_corr, vmin = -1, vmax = 1, annot = True, center = 0, cmap = "vlag")
         plt.savefig(f"{analyzes_dir}corr_plots/mat_corr_{label}.png", dpi = 480, bbox_inches='tight', 
                     facecolor = "white", transparent = False)
+        plt.close()
     # Second filter: eliminate very correlated features with hierarchical clustering + univariate Cox
     df_covariates_hclust = df_covariates_with_radiomics[filter_1_cols_radiomics]
     # Eliminate rows with na
@@ -212,7 +218,8 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     preprocessed_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]+_.*", feature) or feature in filter_2_cols_radiomics]
     df_trainset[preprocessed_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
 
-# PCA
+
+## PCA
 def col_class_event(event_col, delay, row):
     if row[event_col] == 0:
         return 0
@@ -233,6 +240,7 @@ def pca_viz(file_trainset, event_col, analyzes_dir):
     labels = get_all_labels(df_trainset)
     names_sets = ["all"] + labels 
     set_of_features_radiomics = [get_all_radiomics_features(df_trainset)] + [[feature for feature in df_trainset.columns if re.match(f"{label}_.*", feature)] for label in labels]
+    os.makedirs(analyzes_dir + "pca", exist_ok=True)
     for (i, features_radiomics) in enumerate(set_of_features_radiomics):
         name_set = names_sets[i]
         logger.info(f"PCA {name_set}")
@@ -256,7 +264,7 @@ def pca_viz(file_trainset, event_col, analyzes_dir):
         plt.ylabel('PCA component 2')
         plt.title(f"PCA {name_set} ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
         plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
-        os.makedirs(analyzes_dir + "viz", exist_ok=True)
-        plt.savefig(analyzes_dir + f"viz/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight', 
+        plt.savefig(analyzes_dir + f"pca/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight', 
                         facecolor = "white", transparent = False)
+        plt.close()
 

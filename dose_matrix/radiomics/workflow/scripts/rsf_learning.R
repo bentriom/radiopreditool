@@ -54,9 +54,20 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("IBS on trainset: ", crps(rsf.perror.train)[1]))
     log_info(paste("IBS OOB on trainset: ", crps(rsf.perror.train)[2]))
     log_info(paste("IBS on testset: ", crps(rsf.perror.test)[1]))
+    rsf.best
+}
+
+plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
+    subs.rsf.best <- subsample(rsf.best, B = 100)
+    pdf(paste(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".png"), width = 15, height = 20)
+    par(oma = c(0.5, 10, 0.5, 0.5))
+    par(cex.axis = 2.0, cex.lab = 2.0, cex.main = 2.0, mar = c(6.0,17,1,1), mgp = c(4, 1, 0))
+    plot(subs.rsf.best, xlab = "Variable Importance (x 1O0)", cex = 1.2)
+    dev.off()
 }
 
 rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile) {
+    dir.create(paste(analyzes_dir, "rsf_plots/", sep = ""), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- ifelse(is.na(ntasks), parallel::detectCores(), ntasks)
     options(rf.cores = nworkers, mc.cores = nworkers)
@@ -74,27 +85,34 @@ rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, d
     log_info("Model 32X")
     cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
     covariates_32X <- c(clinical_vars, cols_32X, "has_radiomics")
-    model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, rsf_logfile)
+    rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, rsf_logfile)
+    plot_vimp(rsf.obj, analyzes_dir, "model_32X")
 
     # Model 1320 radiomics covariates
     log_info("Model 1320")
     cols_1320 <- grep("^X1320_", colnames(df_trainset), value = TRUE)
     covariates_1320 <- c(clinical_vars, cols_1320, "has_radiomics")
+    rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, rsf_logfile)
+    plot_vimp(rsf.obj, analyzes_dir, "model_1320")
 }
 
 # Script args
 args = commandArgs(trailingOnly = TRUE)
-file_trainset = args[1]
-file_testset = args[2]
-event_col <- args[3]
-analyzes_dir <- args[4]
-rsf_name_logfile <- args[5]
-if (length(args) == 6) {
-    duration_col <- args[6]
-} else {
-    duration_col <- "survival_time_years"
-}
+if (length(args) > 1) {
+    file_trainset = args[1]
+    file_testset = args[2]
+    event_col <- args[3]
+    analyzes_dir <- args[4]
+    rsf_name_logfile <- args[5]
+    if (length(args) == 6) {
+        duration_col <- args[6]
+    } else {
+        duration_col <- "survival_time_years"
+    }
 
-log_threshold(INFO)
-rsf_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile)
+    log_threshold(INFO)
+    rsf_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile)
+} else {
+    print("No arguments provided. Skipping.")
+}
 
