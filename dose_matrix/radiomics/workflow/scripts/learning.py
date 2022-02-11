@@ -14,11 +14,78 @@ from sksurv.preprocessing import OneHotEncoder
 from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
 from sksurv.metrics import concordance_index_censored, concordance_index_ipcw, integrated_brier_score, brier_score
 
-def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, seed = None, test_size = 0.3, name = ""):
+def plot_coefficients(coefs, n_highlight):
+    _, ax = plt.subplots(figsize=(13, 5))
+    n_features = coefs.shape[0]
+    alphas = coefs.columns
+    for row in coefs.itertuples():
+        ax.semilogx(alphas, row[1:], ".-", label=row.Index)
+
+    alpha_min = alphas.min()
+    top_coefs = coefs.loc[:, alpha_min].map(abs).sort_values().tail(n_highlight)
+    for name in top_coefs.index:
+        coef = coefs.loc[name, alpha_min]
+        plt.text(
+            alpha_min, coef, name + "   ",
+            horizontalalignment="right",
+            verticalalignment="center"
+        )
+
+    ax.yaxis.set_label_position("right")
+    ax.yaxis.tick_right()
+    ax.grid(True)
+    ax.set_xlabel("alpha")
+    ax.set_ylabel("coefficient")
+
+def cv_fit_cox(X_train, surv_y_train, covariates, analyzes_dir, penalty, name):
+    stratified_cv = StratifiedKFold(n_splits = 3)
+    split_cv = stratified_cv.split(X_train, get_events(surv_y_train))
+    if penalty == "ridge":
+        coxph = CoxPHSurvivalAnalysis()
+        dict_params_coxph = {'alpha': [0.0001, 0.5, 1.0, 1.5, 2.0, 5.0]}
+        cv_coxph = GridSearchCV(estimator = coxph, param_grid = dict_params_coxph, cv = split_cv, n_jobs = get_ncpus())
+        cv_coxph.fit(X_train, surv_y_train)
+        return cv_coxph.best_estimator_
+    elif penalty == "lasso":
+        coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 1.0, alpha_min_ratio = 0.01, max_iter = 100)
+        coxnet.fit(X_train, surv_y_train)
+        # Plot coefs
+        coefficients_lasso = pd.DataFrame(coxnet.coef_, index = covariates, columns = np.round(coxnet.alphas_, 5))
+        plot_coefficients(coefficients_lasso, n_highlight = 5)
+        plt.savefig(analyzes_dir + f"coxph_plots/coef_select_alphas_{name}.png", dpi = 480)
+        plt.close()
+        # Gridsearch CV
+        list_alphas = coxnet.alphas_
+        dict_params_coxnet = {'alphas': [[a] for a in list_alphas]}
+        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = 0.95)
+        cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
+        cv_coxnet.fit(X_train, surv_y_train)
+        cv_results = cv_coxnet.cv_results_
+        # Plot CV
+        cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
+        cv_mean = cv_results["mean_test_score"]
+        cv_std = cv_results["std_test_score"]
+        fig, ax = plt.subplots(figsize=(9, 6))
+        ax.plot(cv_alphas, cv_mean)
+        ax.fill_between(cv_alphas, cv_mean - cv_std, cv_mean + cv_std, alpha = .15)
+        ax.set_xscale("log")
+        ax.set_ylabel("concordance index")
+        ax.set_xlabel("alpha")
+        ax.axvline(cv_coxnet.best_params_["alphas"][0], c = "C1")
+        ax.axhline(0.5, color = "grey", linestyle = "--")
+        ax.grid(True)
+        plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{name}.png", dpi = 480)
+        plt.close()
+        best_coxnet = CoxnetSurvivalAnalysis(**cv_coxnet.best_params_, fit_baseline_model = True)
+        best_coxnet.fit(X_train, surv_y_train)
+        return best_coxnet
+
+def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", seed = None, test_size = 0.3, name = ""):
     logger = logging.getLogger("baseline_models")
     logger.info(covariates)
     df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()
     df_model_test = df_testset[covariates + [event_col, duration_col]].dropna()
+    logger.info(f"Penalty: {penalty}")
     logger.info(f"Trainset number of samples: {df_model_train.shape[0]}")
     logger.info(f"Testset number of samples: {df_model_test.shape[0]}")
     logger.info(f"Train/test events (non-censored data): {df_model_train[event_col].sum()} {df_model_test[event_col].sum()}")
@@ -35,26 +102,19 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
     logger.info(f"Balance train/test events: {event_balance(surv_y_train)} {event_balance(surv_y_test)}")
 
     # CoxPH model
-    coxph = CoxPHSurvivalAnalysis()
-    stratified_cv = StratifiedKFold(n_splits = 3)
-    split_cv = stratified_cv.split(X_train, get_events(surv_y_train))
-    dict_params_coxph = {'alpha': [0.0001, 0.5, 1.0, 1.5, 2.0, 5.0]}
-    cv_coxph = GridSearchCV(estimator = coxph, param_grid = dict_params_coxph, cv = split_cv)
-    cv_coxph.fit(X_train, surv_y_train)
-    best_coxph = cv_coxph.best_estimator_
-    
+    best_coxph = cv_fit_cox(X_train, surv_y_train, covariates, analyzes_dir, penalty, name)
+
     # Coefficients
     best_coefs = pd.DataFrame(best_coxph.coef_, index = covariates, columns = ["coefficient"])
     mask_non_zero = best_coefs.iloc[:, 0] != 0
     nbr_non_zero = np.sum(mask_non_zero)
-    logger.info(f"Alpha: {best_coxph.alpha}")
     logger.info(f"Number of non-zero coefficients: {nbr_non_zero}")
     non_zero_coefs = best_coefs.loc[mask_non_zero, :]
     coef_order = non_zero_coefs.abs().sort_values("coefficient").index
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(12, 6))
     non_zero_coefs.loc[coef_order].plot.barh(ax = ax, legend = False)
     ax.set_xlabel("coefficient")
-    plt.title(name + " (non zero coeffs: {nbr_non_zero}/{len(covariates)}")
+    plt.title(name + f" (non zero coeffs: {nbr_non_zero}/{len(covariates)}")
     ax.grid(True)
     fig.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480)
 
@@ -99,20 +159,20 @@ def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_tes
     os.makedirs(analyzes_dir + "coxph_plots", exist_ok = True)
 
     # Coxph mean dose of heart (1320)
-    model_name = "1320_mean"
+    model_name = "1320_mean_lasso"
     covariates = ["1320_original_firstorder_Mean"] + clinical_vars
     logger.info("Model heart mean dose (1320)")
     coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, name = model_name)
 
     # Coxph radiomics heart 32X
-    model_name = "32X_radiomics"
+    model_name = "32X_radiomics_lasso"
     covariates = [feature for feature in df_preprocessed_trainset.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 32X (filtered)")
     coxph_analysis(df_preprocessed_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, name = model_name)
     
     # Coxph radiomics heart 1320
-    model_name = "1320_radiomics"
+    model_name = "1320_radiomics_lasso"
     covariates = [feature for feature in df_preprocessed_trainset.columns if re.match("^1320_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 1320 (filtered)")
     coxph_analysis(df_preprocessed_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, name = model_name)
-    
+   
