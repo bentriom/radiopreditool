@@ -4,7 +4,7 @@ import pandas as pd
 import os, sys, logging
 sys.path.append("./workflow/scripts/")
 import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning
-from radiopreditool_utils import setup_logger
+from radiopreditool_utils import setup_logger, get_ncpus
 
 MODEL_NAME = config["MODEL_NAME"]
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
@@ -178,6 +178,8 @@ rule baseline_analysis:
         ANALYZES_DIR + "testset.csv.gz"
     output:
         ANALYZES_DIR + "baseline_models.log"
+    threads:
+        get_ncpus() - 1
     run:
         learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv.gz", ANALYZES_DIR + "preprocessed_trainset.csv.gz", ANALYZES_DIR + "testset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
@@ -189,6 +191,8 @@ rule rsf_preprocessed_trainset_analysis:
         ANALYZES_DIR + "rsf_preprocessed_trainset.log"
     conda:
         "envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_preprocessed_trainset.log"
 
@@ -200,6 +204,8 @@ rule rsf_trainset_analysis:
         ANALYZES_DIR + "rsf_trainset.log"
     conda:
         "envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_trainset.log"
  
