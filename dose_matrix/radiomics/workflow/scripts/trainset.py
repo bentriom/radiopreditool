@@ -48,6 +48,7 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     df_radiomics["has_radiomics"] = 1
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
     logger.info(f"df_fccss: {df_fccss.shape}")
+    # Create survival time col
     cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
     cols_survival = ["numcent", event_col, "deces", date_event_col, "date_deces"] + cols_date 
     df_survival = df_fccss[cols_survival]
@@ -69,6 +70,7 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     features_radiomics = [feature for feature in df_dataset.columns if re.match("[0-9]+_.*", feature)]
     df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_radiomics] = 0
     logger.info(f"Full dataset: {df_dataset.shape}")
+    logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
     # Split train / test
     df_X = df_dataset[[c for c in df_dataset.columns if c not in cols_y]]
     df_y = df_dataset[["ctr", "numcent"] + cols_y]
