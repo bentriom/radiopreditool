@@ -60,6 +60,7 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
     nfolds <- length(unique(folds))
     final.time.bs <- pred.times[length(pred.times)]
     cindex.folds <- rep(0.0, nfolds)
+    cindex.ipcw.folds <- rep(0.0, nfolds)
     ibs.folds <- rep(0.0, nfolds)
     for (i in 1:nfolds) {
         fold.index <- which(folds == i)
@@ -78,6 +79,9 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         fold.test.pred <- predict(rsf.fold, newdata = fold.test)
         cindex.fold <- get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
         cindex.folds[i] <- cindex.fold
+        # IPCW C-index
+        cindex.ipcw.fold <- pec::cindex(list("RSF test fold" = rsf.fold), formula, data = fold.test)$AppCindex[["RSF test fold"]]
+        cindex.ipcw.folds[i] <- cindex.ipcw.fold
         # IBS
         fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
         perror = pec(object = fold.test.pred.bs, data = fold.test, formula = formula, 
@@ -89,12 +93,14 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         param.error <- mean(ibs.folds)
     } else if (error.metric == "cindex") {
         param.error <- mean(cindex.folds)
+    } else if (error.metric == "cindex.ipcw") {
+        param.error <- mean(cindex.ipcw.folds)
     } else {
         stop("Error metric not implemented")
     }
     })[["elapsed"]]
     log_info(paste(Sys.getpid(), "-", elapsed.time, "s -  Parameters ", idx.row, "/", nbr.params, " (", row$ntree, ",", row$nodesize, ",", row$nsplit, ") : ", param.error))
-    c(unlist(row), mean(ibs.folds), mean(cindex.folds), param.error)
+    c(unlist(row), mean(ibs.folds), mean(cindex.folds), mean(cindex.ipcw.folds), param.error)
 }
 
 # Cross-validation for RSF
@@ -122,7 +128,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
     # cv.params.df <- as.data.frame(cv.params.df)
     
     rownames(cv.params.df) <- NULL
-    colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Cindex", "Error")
+    colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Harrel Cindex", "IPCW Cindex", "Error")
     cv.params.df[order(cv.params.df$Error),]
 }
 

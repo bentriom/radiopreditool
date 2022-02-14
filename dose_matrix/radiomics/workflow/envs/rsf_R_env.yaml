@@ -10,8 +10,8 @@ dependencies:
   - r-caret
   - r-randomforestsrc
   - r-pec
+  - r-hmisc
   - r-logger
   - r-doparallel
   - r-foreach
-  - r-domc
 
