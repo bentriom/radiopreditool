@@ -120,8 +120,7 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
 
     # Metrics
     # Harell's C-index
-    #coxph_cindex_train = best_coxph.score(X_train, surv_y_train)
-    #coxph_cindex_test = best_coxph.score(X_test, surv_y_test)
+    # CoxPH.predict() predcits risk score
     coxph_cindex_train = concordance_index_censored(y_train[event_col], y_train[duration_col], best_coxph.predict(X_train))
     coxph_cindex_test = concordance_index_censored(y_test[event_col], y_test[duration_col], best_coxph.predict(X_test))
     logger.info(f"C-index trainset: {coxph_cindex_train}")
@@ -132,7 +131,8 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
     logger.info(f"Uno's C-index trainset: {coxph_cindex_uno_train}")
     logger.info(f"Uno's C-index testset: {coxph_cindex_uno_test}")
     # Brier score
-    final_time = 50
+    ibs_timeline = np.arange(1, 61, step = 1)
+    final_time = ibs_timeline[-1]
     coxph_surv_func_train = best_coxph.predict_survival_function(X_train)
     coxph_surv_func_test = best_coxph.predict_survival_function(X_test)
     prob_surv_train = [coxph_surv_func_train[i](final_time) for i in range(len(surv_y_train))]
@@ -141,7 +141,6 @@ def coxph_analysis(df_trainset, df_testset, covariates, event_col, duration_col,
     times_brier_test, scores_brier_test = brier_score(surv_y_train, surv_y_test, prob_surv_test, final_time)
     logger.info(f"Brier score at time {final_time} trainset: {scores_brier_train}")
     logger.info(f"Brier score at time {final_time} testset: {scores_brier_test}")
-    ibs_timeline = np.arange(5, 51, step = 5)
     ibs_preds_train = [[surv_func(t) for t in ibs_timeline] for surv_func in coxph_surv_func_train]
     ibs_preds_test = [[surv_func(t) for t in ibs_timeline] for surv_func in coxph_surv_func_test]
     ibs_score_train = integrated_brier_score(surv_y_train, surv_y_train, ibs_preds_train, ibs_timeline)

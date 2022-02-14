@@ -5,6 +5,7 @@ library("caret", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
+library("Hmisc", quietly = TRUE)
 library("logger", quietly = TRUE)
 library("parallel", quietly = TRUE)
 
@@ -18,39 +19,51 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_test[is.na(df_model_test)] <- -1
     log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
     log_info(paste("Trained on", nrow(df_model_train), "samples (NAs are filled with -1)"))
-    log_info("Testset NAs are filled with -1")
+    log_info(paste("Testset (", nrow(df_model_test), " samples) NAs are filled with -1", sep = ""))
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
-    bs.times <- seq(5, 50, by = 5)
-    test.params.df <- data.frame(ntree = c(1000), nodesize = c(20), nsplit = c(500))
-    # ntrees <- c(10, 100, 200, 500, 1000, 2000)
-    ntrees <- c(10, 100, 200)
+    pred.times <- seq(1, 60, by = 1)
+    ntrees <- c(50, 100, 300, 1000, 2000)
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = bs.times, error.metric = "ibs")
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "ibs")
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
-    log_info(typeof(params.best))
     log_info(toString(names(params.best)))
     log_info(toString(params.best))
     rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
-    # C-index
-    rsf.err_oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
-    rsf.err <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted)
-    pred.testset <- predict(rsf.best, newdata = df_model_test)
-    rsf.err.testset <- get.cindex(pred.testset$yvar[[duration_col]], pred.testset$yvar[[event_col]], pred.testset$predicted)
-    log_info(paste("C-index on trainset: ", 1-rsf.err_oob))
-    log_info(paste("C-index OOB on trainset: ", 1-rsf.err_oob))
-    log_info(paste("C-index on testset: ", 1-rsf.err.testset))
+    # Predictions
+    rsf.survprob.train <- predictSurvProb(rsf.best, newdata = df_model_train, times = pred.times)
+    rsf.survprob.oob <- predictSurvProbOOB(rsf.best, times = pred.times)
+    rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
+    rsf.pred.test <- predict(rsf.best, newdata = df_model_test)
+    # C-index ipcw (censored free, marginal = KM)
+    rsf.cindex.ipcw.oob <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_train, method = "OutOfBagCindex")$AppCindex[["Best rsf"]]
+    rsf.cindex.ipcw.train <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_train)$AppCindex[["Best rsf"]]
+    rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_test)$AppCindex[["Best rsf"]]
+    # Harrell's C-index
+    rsf.cindex.harrell.train <- 1-rcorr.cens(rsf.best$predicted, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
+    rsf.cindex.harrell.oob <- 1-rcorr.cens(rsf.best$predicted.oob, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
+    rsf.cindex.harrell.test <- 1-rcorr.cens(rsf.pred.test$predicted, S = Surv(df_model_test[[duration_col]], df_model_test[[event_col]]))[["C Index"]]
+    # Cindex rfsrc
+    rsf.err.oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
+    rsf.err.train <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted)
+    rsf.err.test <- get.cindex(rsf.pred.test$yvar[[duration_col]], rsf.pred.test$yvar[[event_col]], rsf.pred.test$predicted)
+    log_info(paste("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
+    log_info(paste("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
+    log_info(paste("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
+    log_info(paste("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
+    log_info(paste("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
+    log_info(paste("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
+    log_info(paste("rfsrc C-index on trainset: ", 1-rsf.err.train))
+    log_info(paste("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
+    log_info(paste("rfsrc C-index on testset: ", 1-rsf.err.test))
     # IBS
-    rsf.pred.bs <- predictSurvProb(rsf.best, newdata = df_model_train, times = bs.times)
-    rsf.pred.oob.bs <- predictSurvProbOOB(rsf.best, times = bs.times)
-    rsf.pred.bs.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = bs.times)
-    rsf.perror.train <- pec(object= list(rsf.pred.bs, rsf.pred.oob.bs), formula = formula_model, data = df_model_train, 
-                            times = bs.times, start = bs.times[0], exact = FALSE, reference = FALSE)
-    rsf.perror.test <- pec(object= list(rsf.pred.bs.test), formula = formula_model, data = df_model_test, 
-                           times = bs.times, start = bs.times[0], exact = FALSE, reference = FALSE)
+    rsf.perror.train <- pec(object= list(rsf.survprob.train, rsf.survprob.oob), formula = formula_model, data = df_model_train, 
+                            times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+    rsf.perror.test <- pec(object= list(rsf.survprob.test), formula = formula_model, data = df_model_test, 
+                           times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
     log_info(paste("IBS on trainset: ", crps(rsf.perror.train)[1]))
     log_info(paste("IBS OOB on trainset: ", crps(rsf.perror.train)[2]))
     log_info(paste("IBS on testset: ", crps(rsf.perror.test)[1]))
