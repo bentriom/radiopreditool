@@ -26,7 +26,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "ibs")
+    # test.params.df <- data.frame(ntrees = c(100), nodesizes = c(50), nsplits = c(10))
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
