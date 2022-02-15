@@ -26,7 +26,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    # test.params.df <- data.frame(ntrees = c(100), nodesizes = c(50), nsplits = c(10))
+    # test.params.df <- data.frame(ntrees = c(100), nodesizes = c(50), nsplits = c(10))
     cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
     # Best RSF
     params.best <- cv.params[1,]
@@ -73,7 +73,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
 
 plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
     subs.rsf.best <- subsample(rsf.best, B = 100)
-    pdf(paste(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".png"), width = 15, height = 20)
+    pdf(paste(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".pdf", sep = ""), width = 15, height = 20)
     par(oma = c(0.5, 10, 0.5, 0.5))
     par(cex.axis = 2.0, cex.lab = 2.0, cex.main = 2.0, mar = c(6.0,17,1,1), mgp = c(4, 1, 0))
     plot(subs.rsf.best, xlab = "Variable Importance (x 1O0)", cex = 1.2)
