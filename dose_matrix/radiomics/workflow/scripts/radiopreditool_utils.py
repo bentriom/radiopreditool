@@ -85,6 +85,13 @@ def get_labels_super_t(df_dataset):
 def get_all_labels(df_dataset):
     return get_labels_super_t(df_dataset) + get_labels_t(df_dataset)
 
+def pretty_label(label):
+    matches = re.match("([0-9]{3,4})_[a-z]+_[a-z]+_(\w+)", label)
+    return matches[1] + " " + matches[2] if bool(matches) else label
+
+def pretty_labels(labels):
+    return [pretty_label(label) for label in labels]
+
 # Sksurv utils
 def get_events(structured_y):
     return [event[0] for event in structured_y]

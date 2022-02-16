@@ -1,4 +1,5 @@
 
+library("stringr", quietly = TRUE)
 library("caret", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
@@ -10,6 +11,19 @@ get.clinical_features <- function(columns, event_col, duration_col) {
     regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
     idx_non_clinical_vars <- grep(regex_non_clinical, columns)
     return (columns[-idx_non_clinical_vars])
+}
+
+# Pretty label names
+pretty.label <- function(label) {
+    pattern = "X([0-9]{3,4})_[a-z]+_[a-z]+_(\\w+)"
+    if (str_detect(label, pattern)) {
+        matches = str_match(label, pattern)
+        paste(matches[2], matches[3])
+    } else { label }
+}
+
+pretty.labels <- function(labels) {
+    sapply(labels, pretty.label)
 }
 
 # Automatically create a survival formula
