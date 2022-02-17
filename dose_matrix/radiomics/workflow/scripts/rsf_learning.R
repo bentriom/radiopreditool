@@ -82,12 +82,12 @@ plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
     dev.off()
 }
 
-rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile) {
+rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col, suffix_model) {
     dir.create(paste(analyzes_dir, "rsf_plots/", sep = ""), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- ifelse(is.na(ntasks), parallel::detectCores(), ntasks)
     options(rf.cores = nworkers, mc.cores = nworkers)
-    rsf_logfile <- paste(analyzes_dir, rsf_name_logfile, sep = "")
+    rsf_logfile <- paste(analyzes_dir, "rsf_", suffix_model, ".log", sep = "")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info("Random Survival Forest learning")
@@ -102,14 +102,14 @@ rsf_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, d
     cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
     covariates_32X <- c(clinical_vars, cols_32X, "has_radiomics")
     rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, rsf_logfile)
-    plot_vimp(rsf.obj, analyzes_dir, "model_32X")
+    plot_vimp(rsf.obj, analyzes_dir, paste("model_32X_", suffix_model, sep = ""))
 
     # Model 1320 radiomics covariates
     log_info("Model 1320")
     cols_1320 <- grep("^X1320_", colnames(df_trainset), value = TRUE)
     covariates_1320 <- c(clinical_vars, cols_1320, "has_radiomics")
     rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, rsf_logfile)
-    plot_vimp(rsf.obj, analyzes_dir, "model_1320")
+    plot_vimp(rsf.obj, analyzes_dir, paste("model_1320_", suffix_model, sep = ""))
 }
 
 # Script args

@@ -75,7 +75,7 @@ def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
         cv_coxph.fit(X_train, surv_y_train)
         return cv_coxph.best_estimator_
     elif penalty == "lasso":
-        coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 1.0, alpha_min_ratio = 0.01, max_iter = 100)
+        coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 1.0, alpha_min_ratio = 0.01, max_iter = 1000)
         coxnet.fit(X_train, surv_y_train)
         # Plot coefs
         coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = np.round(coxnet.alphas_, 5))

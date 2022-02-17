@@ -194,7 +194,7 @@ rule rsf_preprocessed_trainset_analysis:
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_preprocessed_trainset.log"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} preprocessed_trainset"
 
 rule rsf_trainset_analysis:
     input:
@@ -207,5 +207,5 @@ rule rsf_trainset_analysis:
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} rsf_trainset.log"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} trainset"
  
