@@ -119,7 +119,7 @@ if (length(args) > 1) {
     file_testset = args[2]
     event_col <- args[3]
     analyzes_dir <- args[4]
-    rsf_name_logfile <- args[5]
+    suffix_model <- args[5]
     if (length(args) == 6) {
         duration_col <- args[6]
     } else {
@@ -127,7 +127,7 @@ if (length(args) > 1) {
     }
 
     log_threshold(INFO)
-    rsf_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col, rsf_name_logfile)
+    rsf_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col, suffix_model)
 } else {
     print("No arguments provided. Skipping.")
 }
