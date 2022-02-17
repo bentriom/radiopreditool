@@ -75,17 +75,17 @@ def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
         cv_coxph.fit(X_train, surv_y_train)
         return cv_coxph.best_estimator_
     elif penalty == "lasso":
-        coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 1.0, alpha_min_ratio = 0.01, max_iter = 1000)
+        coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 0.99, alpha_min_ratio = 0.01, max_iter = 1000)
         coxnet.fit(X_train, surv_y_train)
         # Plot coefs
         coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = np.round(coxnet.alphas_, 5))
-        plot_coefficients(coefficients_lasso, n_highlight = 5)
+        plot_coefficients(coefficients_lasso, n_highlight = 7)
         plt.savefig(analyzes_dir + f"coxph_plots/coef_select_alphas_{name}.png", dpi = 480)
         plt.close()
         # Gridsearch CV
         list_alphas = coxnet.alphas_
         dict_params_coxnet = {'alphas': [[a] for a in list_alphas]}
-        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = 0.95)
+        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = 0.99)
         cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
         cv_coxnet.fit(X_train, surv_y_train)
         cv_results = cv_coxnet.cv_results_
@@ -163,7 +163,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
         plt.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480)
         plt.close()
     elif penalty in ["lasso", "ridge"]:
-        best_coefs = pd.DataFrame(best_coxph.coef_, index = covariates, columns = ["coefficient"])
+        best_coefs = pd.DataFrame(best_coxph.coef_, index = pretty_labels(covariates), columns = ["coefficient"])
         mask_non_zero = best_coefs.iloc[:, 0] != 0
         nbr_non_zero = np.sum(mask_non_zero)
         logger.info(f"Number of non-zero coefficients: {nbr_non_zero}")
