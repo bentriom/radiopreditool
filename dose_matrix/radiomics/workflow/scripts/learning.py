@@ -28,7 +28,7 @@ def get_risk_scores(cph_object, X):
 def get_probs_bs(cph_object, X, bs_time, ibs_timeline):
     if type(cph_object) is CoxPHSurvivalAnalysis or type(cph_object) is CoxnetSurvivalAnalysis:
         coxph_surv_func = cph_object.predict_survival_function(X)
-        prob_surv = [coxph_surv_func[i](final_time) for i in range(X.shape[0])]
+        prob_surv = [coxph_surv_func[i](bs_time) for i in range(X.shape[0])]
         ibs_preds = [[surv_func(t) for t in ibs_timeline] for surv_func in coxph_surv_func]
         return prob_surv, ibs_preds 
     elif type(cph_object) is CoxPHFitter:
