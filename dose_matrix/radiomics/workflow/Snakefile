@@ -162,50 +162,52 @@ rule pca_visualisation:
     run:
         trainset.pca_viz(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
-rule preprocessing_train_dataset:
+rule feature_elimination_dataset_hclust_corr:
     input:
         ANALYZES_DIR + "trainset.csv.gz"
     output: 
-        ANALYZES_DIR + "preprocessed_trainset.csv.gz"
+        ANALYZES_DIR + "features_hclust_corr.csv",
+        ANALYZES_DIR + "feature_elimination_hclust_corr.log"
     run:
-        trainset.preprocessing(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        trainset.feature_elimination_hclust_corr(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
 # Models
 rule baseline_analysis:
     input:
         ANALYZES_DIR + "trainset.csv.gz",
-        ANALYZES_DIR + "preprocessed_trainset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv",
         ANALYZES_DIR + "testset.csv.gz"
     output:
         ANALYZES_DIR + "baseline_models.log"
     threads:
         get_ncpus() - 1
     run:
-        learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv.gz", ANALYZES_DIR + "preprocessed_trainset.csv.gz", ANALYZES_DIR + "testset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "testset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
-rule rsf_preprocessed_trainset_analysis:
+rule rsf_features_hclust_corr_analysis:
     input:
-        ANALYZES_DIR + "preprocessed_trainset.csv.gz",
+        ANALYZES_DIR + "trainset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv",
         ANALYZES_DIR + "testset.csv.gz"
     output:
-        ANALYZES_DIR + "rsf_preprocessed_trainset.log"
+        ANALYZES_DIR + "rsf_features_hclust_corr.log"
     conda:
         "envs/rsf_R_env.yaml"
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}preprocessed_trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} preprocessed_trainset"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
 
-rule rsf_trainset_analysis:
+rule rsf_analysis:
     input:
         ANALYZES_DIR + "trainset.csv.gz",
         ANALYZES_DIR + "testset.csv.gz"
     output:
-        ANALYZES_DIR + "rsf_trainset.log"
+        ANALYZES_DIR + "rsf_all.log"
     conda:
         "envs/rsf_R_env.yaml"
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {EVENT_COL} {ANALYZES_DIR} trainset"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all"
  

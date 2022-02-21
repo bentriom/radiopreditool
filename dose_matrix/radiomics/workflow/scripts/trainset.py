@@ -79,6 +79,8 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
                                                                     test_size = test_size, stratify = df_y[event_col])
     df_trainset = df_X_train.merge(df_y_train, how = "inner", on = ["ctr", "numcent"]) 
     df_testset = df_X_test.merge(df_y_test, how = "inner", on = ["ctr", "numcent"]) 
+    df_trainset_omit = df_trainset.dropna()
+    df_testset_omit = df_testset.dropna()
     df_trainset_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1,:]
     df_testset_radiomics = df_testset.loc[df_testset["has_radiomics"] == 1,:]
     logger.info(f"Trainset: {df_trainset.shape}")
@@ -87,7 +89,10 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     logger.info(f"Testset with radiomics features: {df_testset_radiomics.shape}")
     nsamples_train = df_trainset.shape[0]
     nsamples_test = df_testset.shape[0]
+    nsamples_train_omit = df_trainset_omit.shape[0]
+    nsamples_test_omit = df_testset_omit.shape[0]
     logger.info(f"Balance train/test event: {df_trainset[event_col].sum()/nsamples_train} {df_testset[event_col].sum()/nsamples_test}")
+    logger.info(f"Balance train/test event and omitting NAs: {df_trainset_omit[event_col].sum()/nsamples_train_omit} {df_testset_omit[event_col].sum()/nsamples_test_omit}")
     logger.info(f"Balance train/test treated by RT: {df_trainset[col_treated_by_rt].sum()/nsamples_train} {df_testset[col_treated_by_rt].sum()/nsamples_test}")
     logger.info(f"Balance train/test that has radiomics features: {df_trainset['has_radiomics'].sum()/nsamples_train} {df_testset['has_radiomics'].sum()/nsamples_test}")
     # Save
@@ -98,7 +103,7 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     df_trainset.to_csv(analyzes_dir + "trainset.csv.gz", index = False)
     df_testset.to_csv(analyzes_dir + "testset.csv.gz", index = False)
 
-## Preprocessing: eliminate sparse and redundant columns
+## Feature elimination: eliminate sparse and redundant columns
 
 # Filter 1: eliminate radiomics with too much missing values
 def filter_nan_values_radiomics(df_covariates_nan_values, features_radiomics, threshold):
@@ -139,7 +144,7 @@ def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir =
         fig = plt.figure(figsize=(8,10))
         plt.title(f"Hierarchical Clustering Dendrogram (threshold: {threshold} - features: {hclust.n_clusters_}/{distance_matrix.shape[0]})")
         # plot the top three levels of the dendrogram
-        plot_dendrogram(hclust, orientation = "right", labels = df_covariates_hclust.columns, leaf_font_size = 8)
+        plot_dendrogram(hclust, orientation = "right", labels = pretty_labels(df_covariates_hclust.columns), leaf_font_size = 8)
         plt.axvline(1 - threshold)
     return df_covariates_hclust.columns.values, y_clusters
 
@@ -165,7 +170,7 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, 
             list_pvalues.append(pvalue)
         selected_feature = list_features[np.argmin(list_pvalues)]
         filter_2_cols_radiomics.append(selected_feature)
-    plt.text(1.1, 0, '\n'.join(filter_2_cols_radiomics))
+    plt.text(1.1, 0, '\n'.join(pretty_labels(filter_2_cols_radiomics)))
     plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight', 
                     facecolor = "white", transparent = False)
     plt.close()
@@ -174,7 +179,7 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, 
 def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir):
     all_filter_2_cols = []
     labels = get_all_labels(df_covariates_hclust) 
-    logger = logging.getLogger("preprocessing")
+    logger = logging.getLogger("feature_elimination_hclust_corr")
     logger.info(f"Hclust on labels: {labels}")
     for label in labels:
         cols_from_label = [feature for feature in df_covariates_hclust.columns if re.match(f"{label}_.*", feature)]
@@ -182,14 +187,14 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
         all_filter_2_cols += filter_corr_hclust_label(df_trainset, df_covariates_hclust_label, corr_threshold, event_col, surv_duration_col, analyzes_dir, name = label)
     return all_filter_2_cols
 
-# Preprocessing pipeline 
-def preprocessing(file_trainset, event_col, analyzes_dir):
+# Feature elimination pipeline with hclust on kendall's tau corr
+def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
     labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("[0-9]+_.*", label)])
     dict_features_per_label = {label: [col for col in df_trainset.columns if re.match(f"{label}_", col)] for label in labels_radiomics}
     df_covariates_with_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1, features_radiomics]
-    logger = setup_logger("preprocessing", analyzes_dir + "preprocessing.log")
+    logger = setup_logger("feature_elimination_hclust_corr", analyzes_dir + "feature_elimination_hclust_corr.log")
     logger.info(f"Trainset dataframe: {df_trainset.shape}")
     logger.info(f"Initial number of radiomics covariates: {df_covariates_with_radiomics.shape[1]}")
     # First filter: eliminate features with enough missing values
@@ -217,8 +222,9 @@ def preprocessing(file_trainset, event_col, analyzes_dir):
     logger.info(f"Hclust on dataframe: {df_covariates_hclust.shape}")
     filter_2_cols_radiomics = filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir)
     logger.info(f"After the second filter (hclust): {len(filter_2_cols_radiomics)}")
-    preprocessed_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]+_.*", feature) or feature in filter_2_cols_radiomics]
-    df_trainset[preprocessed_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
+    kept_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]{3,4}_.*", feature) or feature in filter_2_cols_radiomics]
+    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + "features_hclust_corr.csv", index = False, header = None)
+    # df_trainset[kept_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
 
 
 ## PCA

@@ -121,6 +121,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     logger.info(f"Penalty: {penalty}")
     logger.info(f"Trainset number of samples: {df_model_train.shape[0]}")
     logger.info(f"Testset number of samples: {df_model_test.shape[0]}")
+    logger.info("NAs are dropped")
     logger.info(f"Train/test events (non-censored data): {df_model_train[event_col].sum()} {df_model_test[event_col].sum()}")
     # Prepare train and test datasets
     X_train, y_train = df_model_train.loc[:,covariates], df_model_train.loc[:,[duration_col, event_col]] 
@@ -172,7 +173,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
         fig, ax = plt.subplots(figsize=(12, 6))
         non_zero_coefs.loc[coef_order].plot.barh(ax = ax, legend = False)
         ax.set_xlabel("coefficient")
-        plt.title(name + f" (non zero coeffs: {nbr_non_zero}/{len(covariates)}")
+        plt.title(name + f" (non zero coeffs: {nbr_non_zero}/{len(covariates)})")
         ax.grid(True)
         fig.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480)
         plt.close()
@@ -186,24 +187,26 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     # Uno's C-index
     coxph_cindex_uno_train = concordance_index_ipcw(surv_y_train, surv_y_train, risk_scores_train)
     coxph_cindex_uno_test = concordance_index_ipcw(surv_y_train, surv_y_test, risk_scores_test)
-    logger.info(f"Uno's C-index trainset: {coxph_cindex_uno_train}")
-    logger.info(f"Uno's C-index testset: {coxph_cindex_uno_test}")
+    logger.info(f"IPCW C-index trainset: {coxph_cindex_uno_train}")
+    logger.info(f"IPCW C-index testset: {coxph_cindex_uno_test}")
     # Brier score
-    times_brier_train, scores_brier_train = brier_score(surv_y_train, surv_y_train, prob_surv_train, final_time)
-    times_brier_test, scores_brier_test = brier_score(surv_y_train, surv_y_test, prob_surv_test, final_time)
+    times_brier_train, brier_score_train = brier_score(surv_y_train, surv_y_train, prob_surv_train, final_time)
+    times_brier_test, brier_score_test = brier_score(surv_y_train, surv_y_test, prob_surv_test, final_time)
     ibs_score_train = integrated_brier_score(surv_y_train, surv_y_train, ibs_preds_train, ibs_timeline)
     ibs_score_test = integrated_brier_score(surv_y_train, surv_y_test, ibs_preds_test, ibs_timeline)
-    logger.info(f"Brier score at time {final_time} trainset: {scores_brier_train}")
-    logger.info(f"Brier score at time {final_time} testset: {scores_brier_test}")
+    logger.info(f"Brier score at time {final_time} trainset: {brier_score_train}")
+    logger.info(f"Brier score at time {final_time} testset: {brier_score_test}")
     logger.info(f"IBS trainset: {ibs_score_train}")
     logger.info(f"IBS testset: {ibs_score_test}")
+    logger.info(f"Train: {coxph_cindex_train[0]:.2f} & {coxph_cindex_uno_train[0]:.2f} & {brier_score_train[0]:.2f} & {ibs_score_train:.2f}") 
+    logger.info(f"Test: {coxph_cindex_test[0]:.2f} & {coxph_cindex_uno_test[0]:.2f} & {brier_score_test[0]:.2f} & {ibs_score_test:.2f}")
 
 # Run baseline models
-def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_testset, event_col, analyzes_dir):
+def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir):
     logger = setup_logger("baseline_models", analyzes_dir + "baseline_models.log")
     duration_col = "survival_time_years"
     df_trainset = pd.read_csv(file_trainset)
-    df_preprocessed_trainset = pd.read_csv(file_preprocessed_trainset)
+    features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
     clinical_vars = get_clinical_features(df_trainset, event_col, duration_col)
     os.makedirs(analyzes_dir + "coxph_plots", exist_ok = True)
 
@@ -221,9 +224,9 @@ def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_tes
     
     # Coxph radiomics heart 32X preprocessed trainset lasso
     model_name = "32X_radiomics_filtered_lasso"
-    covariates = [feature for feature in df_preprocessed_trainset.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
+    covariates = [feature for feature in features_hclust_corr if re.match("^32[0-9]_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 32X (preprocessed trainset lasso)")
-    coxph_analysis(file_preprocessed_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
     
     # Coxph radiomics heart 1320 full trainset lasso
     model_name = "1320_radiomics_lasso"
@@ -233,7 +236,7 @@ def baseline_models_analysis(file_trainset, file_preprocessed_trainset, file_tes
 
     # Coxph radiomics heart 1320 full trainset lasso
     model_name = "1320_radiomics_filtered_lasso"
-    covariates = [feature for feature in df_preprocessed_trainset.columns if re.match("^1320_.*", feature)] + clinical_vars
+    covariates = [feature for feature in features_hclust_corr if re.match("^1320_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 1320 (preprocessed trainset lasso)")
-    coxph_analysis(file_preprocessed_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
 
