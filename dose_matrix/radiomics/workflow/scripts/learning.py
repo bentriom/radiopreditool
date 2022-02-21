@@ -154,7 +154,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     
     # Summary / coefficients plots
     if penalty == None:
-        logger.info(best_coxph.summary.to_markdown())
+        logger.info("\n" + best_coxph.summary.to_markdown())
         best_coxph.plot()
         fig, ax = plt.gcf(), plt.gca()
         fig.set_size_inches(12, 6)
