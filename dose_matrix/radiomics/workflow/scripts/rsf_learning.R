@@ -21,7 +21,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_test <- na.omit(df_model_test)
     log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
     log_info(paste("Trained:", nrow(df_model_train), "samples"))
-    log_info(paste("Testset: ", nrow(df_model_test), " samples)", sep = ""))
+    log_info(paste("Testset: ", nrow(df_model_test), " samples", sep = ""))
     log_info("NAs are omitted")
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     pred.times <- seq(1, 60, by = 1)
@@ -30,8 +30,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
-    cv.params <- cv.rsf(formula_model, df_model_train, test.params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
+    # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "ibs")
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
@@ -113,7 +113,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
     log_info("Random Survival Forest learning")
     # Dataset
     df_trainset <- read.csv(file_trainset, header = TRUE)
-    df_testset <- read.csv(file_trainset, header = TRUE)
+    df_testset <- read.csv(file_testset, header = TRUE)
     # Select subset of features due to feature elimination
     features <- `if`(file_features == "all", colnames(df_trainset), as.character(read.csv(file_features)[,1]))
     # Add "X" for R colname compatibility
