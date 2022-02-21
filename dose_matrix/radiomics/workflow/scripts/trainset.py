@@ -11,6 +11,7 @@ import seaborn as sns
 from scipy.stats import zscore
 from scipy.cluster.hierarchy import dendrogram
 import scipy.cluster.hierarchy as hac
+import statsmodels.stats.multitest as mlt
 
 from multiprocessing import Pool, cpu_count
 import os, sys, importlib, string, re
@@ -100,6 +101,7 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
         df_dataset.drop(columns = col_treated_by_rt, inplace = True)
         df_trainset.drop(columns = col_treated_by_rt, inplace = True)
         df_testset.drop(columns = col_treated_by_rt, inplace = True)
+    df_dataset.to_csv(analyzes_dir + "dataset.csv.gz", index = False)
     df_trainset.to_csv(analyzes_dir + "trainset.csv.gz", index = False)
     df_testset.to_csv(analyzes_dir + "testset.csv.gz", index = False)
 
@@ -156,19 +158,28 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, 
     all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold, do_plot = True, analyzes_dir = analyzes_dir, name = name) 
     filter_2_cols_radiomics = []
     id_clusters = np.unique(y_clusters)
-    df_survival = df_trainset.copy()
+    df_survival = df_trainset.copy().dropna()
     for c in id_clusters:
-        list_features = [f for (idx, f) in enumerate(all_features_radiomics)  if y_clusters[idx] == c]
+        list_features = [f for (idx, f) in enumerate(all_features_radiomics) if y_clusters[idx] == c]
         list_pvalues = []
-        df_survival.dropna(subset = list_features, inplace = True)
+        list_coefs = []
         for feature in list_features:
             cph_feature = CoxPHFitter(penalizer = 0.0001)
             df_survival.loc[:,feature] = StandardScaler().fit_transform(df_survival[[feature]])
             cph_feature.fit(df_survival, step_size = 0.5, duration_col = surv_duration_col,
                             event_col = event_col, formula = feature)
             pvalue = cph_feature.summary.loc[feature, "p"]
+            coef = cph_feature.summary.loc[feature, "coef"]
             list_pvalues.append(pvalue)
-        selected_feature = list_features[np.argmin(list_pvalues)]
+            list_coefs.append(coef)
+        bh_correction = mlt.fdrcorrection(list_pvalues, alpha = 0.05)
+        mask_reject = bh_correction[0]
+        if sum(mask_reject) == 0:
+            selected_feature = list_features[np.argmin(list_pvalues)]
+        else:
+            cox_rejected_features = np.asarray(list_features)[mask_reject]
+            cox_rejected_coefs = abs(np.asarray(list_coefs)[mask_reject])
+            selected_feature = cox_rejected_features[np.argmin(cox_rejected_coefs)]
         filter_2_cols_radiomics.append(selected_feature)
     plt.text(1.1, 0, '\n'.join(pretty_labels(filter_2_cols_radiomics)))
     plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight', 
@@ -228,32 +239,46 @@ def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
 
 
 ## PCA
-def col_class_event(event_col, delay, row):
+def col_class_event(event_col, duration_col, delay, row):
     if row[event_col] == 0:
         return 0
-    if row[event_col] == 1 and row["survival_time_years"] <= delay:
+    if row[event_col] == 1 and row[duration_col] <= delay:
         return 1
     else:
         return 0
 
-def pca_viz(file_trainset, event_col, analyzes_dir):
+def pca_viz(file_dataset, event_col, analyzes_dir):
     logger = setup_logger("pca", analyzes_dir + "pca_viz.log")
-    df_trainset = pd.read_csv(file_trainset)
-    df_trainset["class_" + event_col] = 0
+    duration_col = "survival_time_years"
+    df_dataset = pd.read_csv(file_dataset)
+    df_dataset["class_" + event_col] = 0
     year_max = 20
     for delay_event in range(5, year_max + 1, 5):
         col_class = f"{event_col}_at_{delay_event}"
-        df_trainset[col_class] = df_trainset.apply(lambda row: col_class_event(event_col, delay_event, row), axis = 1)
-        df_trainset.loc[:, "class_" + event_col] += df_trainset[col_class]
-    labels = get_all_labels(df_trainset)
+        df_dataset[col_class] = df_dataset.apply(lambda row: col_class_event(event_col, duration_col, delay_event, row), axis = 1)
+        df_dataset.loc[:, "class_" + event_col] += df_dataset[col_class]
+    labels = get_all_labels(df_dataset)
+    list_pvalues = []
+    all_features = get_all_radiomics_features(df_dataset)
+    for feature in all_features:
+        cph_feature = CoxPHFitter(penalizer = 0.0001)
+        df_univariate = df_dataset[[event_col, duration_col, feature]].dropna()
+        df_univariate.loc[:,feature] = StandardScaler().fit_transform(df_univariate[[feature]])
+        cph_feature.fit(df_univariate, step_size = 0.5, duration_col = duration_col, event_col = event_col, formula = feature)
+        pvalue = cph_feature.summary.loc[feature, "p"]
+        list_pvalues.append(pvalue)
+    logger.info("Non-rejected Cox test features are dropped (FDR correction - 0.01)")
+    bh_correction = mlt.fdrcorrection(list_pvalues, alpha = 0.01)
+    mask_reject = bh_correction[0]
+    cox_rejected_features = [all_features[i] for i in range(len(all_features)) if mask_reject[i]]
     names_sets = ["all"] + labels 
-    set_of_features_radiomics = [get_all_radiomics_features(df_trainset)] + [[feature for feature in df_trainset.columns if re.match(f"{label}_.*", feature)] for label in labels]
+    set_of_features_radiomics = [cox_rejected_features] + [[feature for feature in cox_rejected_features if re.match(f"{label}_.*", feature)] for label in labels]
     os.makedirs(analyzes_dir + "pca", exist_ok=True)
     for (i, features_radiomics) in enumerate(set_of_features_radiomics):
         name_set = names_sets[i]
         logger.info(f"PCA {name_set}")
         logger.info(f"Covariates: {features_radiomics}")
-        df_subset = df_trainset.dropna(subset = features_radiomics + [event_col, "survival_time_years"])
+        df_subset = df_dataset.dropna(subset = features_radiomics + [event_col, "survival_time_years"])
         X = StandardScaler().fit_transform(df_subset[features_radiomics])
         pca = PCA(n_components = 2)
         X_pca = pca.fit_transform(X)
@@ -272,6 +297,7 @@ def pca_viz(file_trainset, event_col, analyzes_dir):
         plt.ylabel('PCA component 2')
         plt.title(f"PCA {name_set} ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
         plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
+        plt.text(1.1 * max(X_pca[:, 0]), min(X_pca[:, 1]), '\n'.join(pretty_labels(features_radiomics)), size = "small")
         plt.savefig(analyzes_dir + f"pca/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight', 
                         facecolor = "white", transparent = False)
         plt.close()
