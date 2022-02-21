@@ -80,7 +80,7 @@ def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
         # Plot coefs
         coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = np.round(coxnet.alphas_, 5))
         plot_coefficients(coefficients_lasso, n_highlight = 7)
-        plt.savefig(analyzes_dir + f"coxph_plots/coef_select_alphas_{name}.png", dpi = 480)
+        plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{name}.png", dpi = 480)
         plt.close()
         # Gridsearch CV
         list_alphas = coxnet.alphas_
