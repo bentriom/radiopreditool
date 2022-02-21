@@ -222,10 +222,10 @@ def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_test
     logger.info("Model heart dosiomics 32X (full trainset lasso)")
     coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
     
-    # Coxph radiomics heart 32X preprocessed trainset lasso
+    # Coxph radiomics heart 32X hclust corr features trainset lasso
     model_name = "32X_radiomics_filtered_lasso"
     covariates = [feature for feature in features_hclust_corr if re.match("^32[0-9]_.*", feature)] + clinical_vars
-    logger.info("Model heart dosiomics 32X (preprocessed trainset lasso)")
+    logger.info("Model heart dosiomics 32X (hclust corr feature elimination trainset lasso)")
     coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
     
     # Coxph radiomics heart 1320 full trainset lasso
@@ -234,9 +234,9 @@ def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_test
     logger.info("Model heart dosiomics 1320 (full trainset lasso)")
     coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
 
-    # Coxph radiomics heart 1320 full trainset lasso
+    # Coxph radiomics heart 1320 hclust corr features trainset lasso
     model_name = "1320_radiomics_filtered_lasso"
     covariates = [feature for feature in features_hclust_corr if re.match("^1320_.*", feature)] + clinical_vars
-    logger.info("Model heart dosiomics 1320 (preprocessed trainset lasso)")
+    logger.info("Model heart dosiomics 1320 (hclust corr feature elimination trainset lasso)")
     coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
 
