@@ -251,13 +251,18 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
     logger = setup_logger("pca", analyzes_dir + "pca_viz.log")
     duration_col = "survival_time_years"
     df_dataset = pd.read_csv(file_dataset)
+    # Create columns for events within some time window
+    # class_event_col: 0 if no event, 1 if event after year_max, 2 if event within year_max - year_max - 5... 
     df_dataset["class_" + event_col] = 0
     year_max = 20
     for delay_event in range(5, year_max + 1, 5):
-        col_class = f"{event_col}_at_{delay_event}"
+        col_class = f"{event_col}_before_{delay_event}"
         df_dataset[col_class] = df_dataset.apply(lambda row: col_class_event(event_col, duration_col, delay_event, row), axis = 1)
         df_dataset.loc[:, "class_" + event_col] += df_dataset[col_class]
+    # Events after year_max
+    df_dataset.loc[:, "class_" + event_col] += df_dataset[event_col]
     labels = get_all_labels(df_dataset)
+    # Only keep radiomics with significative p-values (with BH procedure)
     list_pvalues = []
     all_features = get_all_radiomics_features(df_dataset)
     for feature in all_features:
@@ -271,6 +276,7 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
     bh_correction = mlt.fdrcorrection(list_pvalues, alpha = 0.01)
     mask_reject = bh_correction[0]
     cox_rejected_features = [all_features[i] for i in range(len(all_features)) if mask_reject[i]]
+    # PCA on all labels
     names_sets = ["all"] + labels 
     set_of_features_radiomics = [cox_rejected_features] + [[feature for feature in cox_rejected_features if re.match(f"{label}_.*", feature)] for label in labels]
     os.makedirs(analyzes_dir + "pca", exist_ok=True)
@@ -280,14 +286,16 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
         logger.info(f"Covariates: {features_radiomics}")
         df_subset = df_dataset.dropna(subset = features_radiomics + [event_col, "survival_time_years"])
         X = StandardScaler().fit_transform(df_subset[features_radiomics])
+        logger.info(f"X shape: {X.shape}")
         pca = PCA(n_components = 2)
         X_pca = pca.fit_transform(X)
         y = df_subset["class_" + event_col] 
         nbr_classes = len(df_subset["class_" + event_col].unique())
-        list_labels = ["No event" if k == 0 else f"Event {year_max - (5*k)} - {year_max - 5*(k-1)} years" for k in range(nbr_classes)]
+        # list_labels = ["No event" if k == 0 else f"Event {year_max - (5*k)} - {year_max - 5*(k-1)} years" for k in range(nbr_classes)]
+        list_labels = ["No event"] + [f"Event after {year_max}"] + [f"Event {year_max - (5*k)} - {year_max - 5*(k-1)} years" for k in range(1, nbr_classes-1)]
         list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
         list_markers = ['o' if k == 0 else 'x' for k in range(nbr_classes)]
-        list_alphas = [0.5 if k == 0 else 1 for k in range(nbr_classes)]
+        list_alphas = [0.4 if k == 0 else 0.9 for k in range(nbr_classes)]
         plt.figure()
         for j in range(nbr_classes):
             idx_cluster = (y == j)
@@ -297,7 +305,7 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
         plt.ylabel('PCA component 2')
         plt.title(f"PCA {name_set} ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)")
         plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
-        plt.text(1.1 * max(X_pca[:, 0]), min(X_pca[:, 1]), '\n'.join(pretty_labels(features_radiomics)), size = "small")
+        plt.text(1.1 * max(X_pca[:, 0]), min(X_pca[:, 1]) - 0.2, '\n'.join(pretty_labels(features_radiomics)), size = "small")
         plt.savefig(analyzes_dir + f"pca/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight', 
                         facecolor = "white", transparent = False)
         plt.close()
