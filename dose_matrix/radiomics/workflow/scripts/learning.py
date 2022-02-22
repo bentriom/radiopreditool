@@ -200,8 +200,8 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     logger.info(f"Brier score at time {final_time} testset: {brier_score_test}")
     logger.info(f"IBS trainset: {ibs_score_train}")
     logger.info(f"IBS testset: {ibs_score_test}")
-    logger.info(f"Train: {coxph_cindex_train[0]:.2f} & {coxph_cindex_uno_train[0]:.2f} & {brier_score_train[0]:.2f} & {ibs_score_train:.2f}") 
-    logger.info(f"Test: {coxph_cindex_test[0]:.2f} & {coxph_cindex_uno_test[0]:.2f} & {brier_score_test[0]:.2f} & {ibs_score_test:.2f}")
+    logger.info(f"Train: {coxph_cindex_train[0]:.3f} & {coxph_cindex_uno_train[0]:.3f} & {brier_score_train[0]:.3f} & {ibs_score_train:.3f}") 
+    logger.info(f"Test: {coxph_cindex_test[0]:.3f} & {coxph_cindex_uno_test[0]:.3f} & {brier_score_test[0]:.3f} & {ibs_score_test:.3f}")
 
 # Run baseline models
 def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir):
