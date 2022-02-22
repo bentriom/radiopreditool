@@ -41,21 +41,23 @@ def get_probs_bs(cph_object, X, bs_time, ibs_timeline):
 
 # Plot for scikit-surv
 def plot_coefficients(coefs, n_highlight):
-    _, ax = plt.subplots(figsize=(13, 7))
+    _, ax = plt.subplots(figsize=(11, 6))
     n_features = coefs.shape[0]
     alphas = coefs.columns
     for row in coefs.itertuples():
-        ax.semilogx(alphas, row[1:], ".-", label=row.Index)
+        ax.semilogx(alphas, row[1:], ".-", label = row.Index)
 
-    alpha_min = alphas.min()
+    sorted_alphas = np.sort(alphas)
+    alpha_min = sorted_alphas[0]
     top_coefs = coefs.loc[:, alpha_min].map(abs).sort_values().tail(n_highlight)
     for name in top_coefs.index:
-        coef = coefs.loc[name, alpha_min]
+        loc_ytick = np.mean(coefs.loc[name, sorted_alphas[0:2]])
         plt.text(
-            alpha_min, coef, name + "   ",
+            alpha_min, loc_ytick, name + "   ",
             horizontalalignment = "right",
             verticalalignment = "center",
-            fontsize = "small"
+            fontsize = "small",
+            rotation = 10
         )
     ax.yaxis.set_label_position("right")
     ax.yaxis.tick_right()
