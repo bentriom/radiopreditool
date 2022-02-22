@@ -91,7 +91,7 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         rsf.fold <- rfsrc(formula, data = fold.train, ntree = row$ntree, nodesize = row$nodesize, nsplit = row$nsplit, bootstrap = rsf.fold.bootstrap, samp = rsf.fold.samp)
         # C-index
         fold.test.pred <- predict(rsf.fold, newdata = fold.test)
-        cindex.fold <- get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
+        cindex.fold <- 1 - get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
         cindex.folds[i] <- cindex.fold
         # IPCW C-index
         cindex.ipcw.fold <- pec::cindex(list("RSF test fold" = rsf.fold), formula, data = fold.test)$AppCindex[["RSF test fold"]]
@@ -106,9 +106,9 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
     if (error.metric == "ibs") {
         param.error <- mean(ibs.folds)
     } else if (error.metric == "cindex") {
-        param.error <- mean(cindex.folds)
+        param.error <- mean(1-cindex.folds)
     } else if (error.metric == "cindex.ipcw") {
-        param.error <- mean(cindex.ipcw.folds)
+        param.error <- mean(1-cindex.ipcw.folds)
     } else {
         stop("Error metric not implemented")
     }
@@ -286,7 +286,6 @@ new.plot.subsample.rfsrc <- function(x, alpha = .01,
     ##--------------------------------------------------------------
     p <- ncol(boxplot.dta)
     pend <- min(p, pmax)
-    o.pt <- 1:pend
     o.pt <- order(ci[1, ], decreasing = TRUE)[1:pend]
     boxplot.dta <- boxplot.dta[, o.pt]
     ci <- ci[, o.pt]

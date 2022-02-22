@@ -26,12 +26,12 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     pred.times <- seq(1, 60, by = 1)
     final.time <- tail(pred.times, 1)
-    ntrees <- c(50, 100, 300, 1000, 2000)
+    ntrees <- c(50, 100, 300, 1000)
     nodesizes <- c(15, 50, 100)
     nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
-    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "ibs")
+    # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
@@ -81,11 +81,10 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("IBS on trainset: ", rsf.ibs.train))
     log_info(paste("IBS OOB on trainset: ", rsf.ibs.oob))
     log_info(paste("IBS on testset: ", rsf.ibs.test))
-    old_digits <- getOption("digits")
-    options(digits = 2)
-    log_info(paste("Train:", rsf.cindex.harrell.train , "&", rsf.cindex.ipcw.train, "&", rsf.bs.final.train, "&", rsf.ibs.train))
-    log_info(paste("Test:", rsf.cindex.harrell.test , "&", rsf.cindex.ipcw.test, "&", rsf.bs.final.test, "&", rsf.ibs.test))
-    options(digits = old_digits)
+    log_info(paste("Train:", round(rsf.cindex.harrell.train, digits = 3) , "&", round(rsf.cindex.ipcw.train, digits = 3), 
+                   "&", round(rsf.bs.final.train, digits = 3), "&", round(rsf.ibs.train, digits = 3)))
+    log_info(paste("Test:", round(rsf.cindex.harrell.test, digits = 3) , "&", round(rsf.cindex.ipcw.test, digits = 3), 
+                   "&", round(rsf.bs.final.test, digits = 3), "&", round(rsf.ibs.test, digits = 3)))
     rsf.best
 }
 
