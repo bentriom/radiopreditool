@@ -216,6 +216,8 @@ def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
     os.makedirs(analyzes_dir + "corr_plots", exist_ok = True)
     for label in labels_radiomics:
         df_corr = df_covariates_with_radiomics[dict_features_per_label[label]].corr(method = "kendall")
+        df_corr.index = pretty_labels(df_corr.index)
+        df_corr.columns = pretty_labels(df_corr.columns)
         fig = plt.figure(figsize=(16, 6))
         heatmap = sns.heatmap(df_corr, vmin = -1, vmax = 1, annot = True, center = 0, cmap = "vlag")
         plt.savefig(f"{analyzes_dir}corr_plots/mat_corr_{label}.png", dpi = 480, bbox_inches='tight', 
@@ -255,7 +257,8 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
     # class_event_col: 0 if no event, 1 if event after year_max, 2 if event within year_max - year_max - 5... 
     df_dataset["class_" + event_col] = 0
     year_max = 20
-    for delay_event in range(5, year_max + 1, 5):
+    timestep = 5
+    for delay_event in range(timestep, year_max + 1, timestep):
         col_class = f"{event_col}_before_{delay_event}"
         df_dataset[col_class] = df_dataset.apply(lambda row: col_class_event(event_col, duration_col, delay_event, row), axis = 1)
         df_dataset.loc[:, "class_" + event_col] += df_dataset[col_class]
@@ -276,10 +279,25 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
     bh_correction = mlt.fdrcorrection(list_pvalues, alpha = 0.01)
     mask_reject = bh_correction[0]
     cox_rejected_features = [all_features[i] for i in range(len(all_features)) if mask_reject[i]]
+    # Bar plots of event classes
+    nbr_classes = len(df_dataset["class_" + event_col].unique())
+    list_labels = ["No event"] + [f"Event after {year_max}"] + [f"Event {year_max - timestep*k} - {year_max - timestep*(k-1)} years" for k in range(1, nbr_classes-1)]
+    plt.figure()
+    plt.bar(*np.unique(df_dataset.loc[:, "class_" + event_col], return_counts = True), tick_label = list_labels)
+    plt.xticks(rotation = 15, fontsize = "small")
+    plt.yscale("log")
+    plt.title("Number of patients (logscale)")
+    plt.savefig(analyzes_dir + "pca/barplot_class_event.png", dpi = 480)
+    plt.close()
     # PCA on all labels
     names_sets = ["all"] + labels 
     set_of_features_radiomics = [cox_rejected_features] + [[feature for feature in cox_rejected_features if re.match(f"{label}_.*", feature)] for label in labels]
-    os.makedirs(analyzes_dir + "pca", exist_ok=True)
+    os.makedirs(analyzes_dir + "pca", exist_ok = True)
+    # Plot settings
+    list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
+    list_markers = ['o' if k == 0 else 'x' for k in range(nbr_classes)]
+    list_alphas = [0.4 if k == 0 else 0.9 for k in range(nbr_classes)]
+    # Iterate over labels: run PCA
     for (i, features_radiomics) in enumerate(set_of_features_radiomics):
         name_set = names_sets[i]
         logger.info(f"PCA {name_set}")
@@ -290,12 +308,6 @@ def pca_viz(file_dataset, event_col, analyzes_dir):
         pca = PCA(n_components = 2)
         X_pca = pca.fit_transform(X)
         y = df_subset["class_" + event_col] 
-        nbr_classes = len(df_subset["class_" + event_col].unique())
-        # list_labels = ["No event" if k == 0 else f"Event {year_max - (5*k)} - {year_max - 5*(k-1)} years" for k in range(nbr_classes)]
-        list_labels = ["No event"] + [f"Event after {year_max}"] + [f"Event {year_max - (5*k)} - {year_max - 5*(k-1)} years" for k in range(1, nbr_classes-1)]
-        list_colors = plt.cm.get_cmap('Set1', nbr_classes).colors
-        list_markers = ['o' if k == 0 else 'x' for k in range(nbr_classes)]
-        list_alphas = [0.4 if k == 0 else 0.9 for k in range(nbr_classes)]
         plt.figure()
         for j in range(nbr_classes):
             idx_cluster = (y == j)
