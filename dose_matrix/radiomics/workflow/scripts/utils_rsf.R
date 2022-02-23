@@ -67,6 +67,7 @@ create.params.df <- function(ntrees, nodesizes, nsplits) {
 # Job for one parameter
 get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
+    log_info(paste("Error CV:", error.metric))
     elapsed.time <- system.time({
     row <- params.df[idx.row,]
     nbr.params <- nrow(params.df)

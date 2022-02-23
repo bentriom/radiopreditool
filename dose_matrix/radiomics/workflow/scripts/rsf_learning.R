@@ -58,12 +58,12 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
     log_info(paste("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
     log_info(paste("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
-    log_info(paste("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
-    log_info(paste("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
-    log_info(paste("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
     log_info(paste("rfsrc C-index on trainset: ", 1-rsf.err.train))
     log_info(paste("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
     log_info(paste("rfsrc C-index on testset: ", 1-rsf.err.test))
+    log_info(paste("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
+    log_info(paste("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
+    log_info(paste("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
     # IBS
     rsf.perror.train <- pec(object= list("train" = rsf.survprob.train, "oob" = rsf.survprob.oob), formula = formula_model, data = df_model_train, 
                             times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
