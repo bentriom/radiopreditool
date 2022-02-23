@@ -43,21 +43,34 @@ def get_probs_bs(cph_object, X, bs_time, ibs_timeline):
 def plot_coefficients(coefs, n_highlight):
     _, ax = plt.subplots(figsize=(11, 6))
     n_features = coefs.shape[0]
-    alphas = coefs.columns
-    for row in coefs.itertuples():
-        ax.semilogx(alphas, row[1:], ".-", label = row.Index)
+    alphas = coefs.columns.values
+    cmap = plt.cm.get_cmap('tab20', n_features).colors
+    color_plot = {coefs.index[i]: cmap[i] for i in range(len(coefs.index))}
+    for index, row in coefs.iterrows():
+        ax.semilogx(alphas, row[alphas], ".-", label = index, color = color_plot[index])
 
     sorted_alphas = np.sort(alphas)
     alpha_min = sorted_alphas[0]
     top_coefs = coefs.loc[:, alpha_min].map(abs).sort_values().tail(n_highlight)
-    for name in top_coefs.index:
-        loc_ytick = np.mean(coefs.loc[name, sorted_alphas[0:2]])
+    # Sort by the first on alpha_min for ytick labels
+    top_coefs = top_coefs[np.argsort(coefs.loc[top_coefs.index, alpha_min])]
+    df_top_coefs = pd.DataFrame({"loc_ytick": coefs.loc[top_coefs.index, alpha_min] - 0.01}, index = top_coefs.index)
+    for i, name in enumerate(top_coefs.index):
+        # loc_ytick = np.mean(coefs.loc[name, sorted_alphas[0:2]])
+        if i < n_highlight - 1:
+            future_name = df_top_coefs.index[i+1]
+            ytick_gap = df_top_coefs.loc[future_name, "loc_ytick"] - df_top_coefs.loc[name, "loc_ytick"] 
+            if abs(ytick_gap) <= 0.02:
+                df_top_coefs.loc[name, "loc_ytick"] -= 0.01
+                df_top_coefs.loc[future_name, "loc_ytick"] += 0.01
+        loc_ytick = df_top_coefs.loc[name, "loc_ytick"]
         plt.text(
             alpha_min, loc_ytick, name + "   ",
             horizontalalignment = "right",
             verticalalignment = "center",
             fontsize = "small",
-            rotation = 10
+            color = color_plot[name],
+            rotation = 5
         )
     ax.yaxis.set_label_position("right")
     ax.yaxis.tick_right()
