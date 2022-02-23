@@ -19,6 +19,11 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     # df_model_test[is.na(df_model_test)] <- -1
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
+    # Z normalisation
+    means_train <- as.numeric(lapply(df_model_train[, covariates], mean))
+    stds_train <- as.numeric(lapply(df_model_train[, covariates], sd))
+    df_model_train[, covariates] <- scale(df_model_train[, covariates], center = means_train, scale = stds_train)
+    df_model_test[, covariates] <- scale(df_model_test[, covariates], center = means_train, scale = stds_train)
     log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
     log_info(paste("Trained:", nrow(df_model_train), "samples"))
     log_info(paste("Testset: ", nrow(df_model_test), " samples", sep = ""))
