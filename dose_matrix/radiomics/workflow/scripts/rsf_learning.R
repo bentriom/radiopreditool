@@ -11,7 +11,7 @@ library("parallel", quietly = TRUE)
 
 source("workflow/scripts/utils_rsf.R")
 
-model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, rsf_logfile) {
+model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
     df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
     df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
@@ -20,10 +20,10 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
     # Z normalisation
-    means_train <- as.numeric(lapply(df_model_train[, covariates], mean))
-    stds_train <- as.numeric(lapply(df_model_train[, covariates], sd))
-    df_model_train[, covariates] <- scale(df_model_train[, covariates], center = means_train, scale = stds_train)
-    df_model_test[, covariates] <- scale(df_model_test[, covariates], center = means_train, scale = stds_train)
+    # means_train <- as.numeric(lapply(df_model_train[, covariates], mean))
+    # stds_train <- as.numeric(lapply(df_model_train[, covariates], sd))
+    # df_model_train[, covariates] <- scale(df_model_train[, covariates], center = means_train, scale = stds_train)
+    # df_model_test[, covariates] <- scale(df_model_test[, covariates], center = means_train, scale = stds_train)
     log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
     log_info(paste("Trained:", nrow(df_model_train), "samples"))
     log_info(paste("Testset: ", nrow(df_model_test), " samples", sep = ""))
@@ -37,6 +37,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
     # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
     cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
+    write.csv(cv.params, file = paste(analyzes_dir, "rsf_results/cv_", model_name, ".csv", sep = ""), row.names = FALSE)
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
@@ -86,10 +87,15 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("IBS on trainset: ", rsf.ibs.train))
     log_info(paste("IBS OOB on trainset: ", rsf.ibs.oob))
     log_info(paste("IBS on testset: ", rsf.ibs.test))
-    log_info(paste("Train:", round(rsf.cindex.harrell.train, digits = 3) , "&", round(rsf.cindex.ipcw.train, digits = 3), 
-                   "&", round(rsf.bs.final.train, digits = 3), "&", round(rsf.ibs.train, digits = 3)))
-    log_info(paste("Test:", round(rsf.cindex.harrell.test, digits = 3) , "&", round(rsf.cindex.ipcw.test, digits = 3), 
-                   "&", round(rsf.bs.final.test, digits = 3), "&", round(rsf.ibs.test, digits = 3)))
+    results_train = c(round(rsf.cindex.harrell.train, digits = 3), round(rsf.cindex.ipcw.train, digits = 3), 
+                      round(rsf.bs.final.train, digits = 3), round(rsf.ibs.train, digits = 3))
+    results_test = c(round(rsf.cindex.harrell.test, digits = 3), round(rsf.cindex.ipcw.test, digits = 3), 
+                      round(rsf.bs.final.test, digits = 3), round(rsf.ibs.test, digits = 3))
+    log_info(paste("Train:", results_train[1], "&", results_train[2], "&", resuls_train[3], "&", results_train[4]))
+    log_info(paste("Test:", results_test[1], "&", results_test[2], "&", resuls_test[3], "&", results_test[4]))
+    df_results <- data.frame(Train = results_train, Test = results_test)
+    rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+    write.csv(df_results, file = paste(analyzes_dir, "rsf_results/metrics_", model_name, ".csv", sep = ""), row.names = FALSE)
     rsf.best
 }
 
@@ -108,6 +114,7 @@ plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
 
 rsf_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
     dir.create(paste(analyzes_dir, "rsf_plots/", sep = ""), showWarnings = FALSE)
+    dir.create(paste(analyzes_dir, "rsf_results/", sep = ""), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
     options(rf.cores = nworkers, mc.cores = nworkers)
@@ -129,17 +136,19 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
 
     # Model 32X radiomics covariates
     log_info("Model 32X")
+    model_name <- paste("model_32X_", suffix_model, sep = "")
     cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
     covariates_32X <- c(clinical_vars, cols_32X, "has_radiomics")
-    rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, rsf_logfile)
-    plot_vimp(rsf.obj, analyzes_dir, paste("model_32X_", suffix_model, sep = ""))
+    rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
+    plot_vimp(rsf.obj, analyzes_dir, model_name)
 
     # Model 1320 radiomics covariates
     log_info("Model 1320")
+    model_name <- paste("model_1320_", suffix_model, sep = "")
     cols_1320 <- grep("^X1320_", colnames(df_trainset), value = TRUE)
     covariates_1320 <- c(clinical_vars, cols_1320, "has_radiomics")
-    rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, rsf_logfile)
-    plot_vimp(rsf.obj, analyzes_dir, paste("model_1320_", suffix_model, sep = ""))
+    rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
+    plot_vimp(rsf.obj, analyzes_dir, model_name)
 }
 
 # Script args

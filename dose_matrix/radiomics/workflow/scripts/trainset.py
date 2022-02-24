@@ -41,13 +41,13 @@ def survival_date(event_col, date_event_col, row):
         min_date = datetime.strptime("31/12/2016", "%d/%m/%Y")
         return max([datetime.strptime(row[col], "%d/%m/%Y") for col in cols_date if not pd.isna(row[col])] + [min_date])
 
-def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
-                    test_size = 0.3, seed = None):
-    logger = setup_logger("trainset", analyzes_dir + "trainset.log")
+# Create dataset based on availaible dosiomics, clinical variables and survival data
+def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col):
+    logger = setup_logger("dataset", analyzes_dir + "dataset.log")
     df_radiomics = pd.read_csv(file_radiomics)
-    logger.info(f"df_radiomics: {df_radiomics.shape}")
     df_radiomics["has_radiomics"] = 1
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
+    logger.info(f"df_radiomics: {df_radiomics.shape}")
     logger.info(f"df_fccss: {df_fccss.shape}")
     # Create survival time col
     cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
@@ -71,8 +71,17 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
     features_radiomics = [feature for feature in df_dataset.columns if re.match("[0-9]+_.*", feature)]
     df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_radiomics] = 0
     logger.info(f"Full dataset: {df_dataset.shape}")
+    logger.info(f"Full dataset without NA: {df_dataset.dropna()shape}")
     logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
-    # Split train / test
+    df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
+    
+# Split train / test
+def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
+                  test_size = 0.3, seed = None):
+    logger = setup_logger("trainset", analyzes_dir + "trainset.log")
+    df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
+    cols_y = [event_col, surv_duration_col]
+    col_treated_by_rt = "radiotherapie_1K"
     df_X = df_dataset[[c for c in df_dataset.columns if c not in cols_y]]
     df_y = df_dataset[["ctr", "numcent"] + cols_y]
     df_X_train, df_X_test, df_y_train, df_y_test = train_test_split(df_X, df_y,
@@ -101,9 +110,8 @@ def create_trainset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_
         df_dataset.drop(columns = col_treated_by_rt, inplace = True)
         df_trainset.drop(columns = col_treated_by_rt, inplace = True)
         df_testset.drop(columns = col_treated_by_rt, inplace = True)
-    df_dataset.to_csv(analyzes_dir + "dataset.csv.gz", index = False)
-    df_trainset.to_csv(analyzes_dir + "trainset.csv.gz", index = False)
-    df_testset.to_csv(analyzes_dir + "testset.csv.gz", index = False)
+    df_trainset.to_csv(analyzes_dir + "datasets/trainset.csv.gz", index = False)
+    df_testset.to_csv(analyzes_dir + "datasets/testset.csv.gz", index = False)
 
 ## Feature elimination: eliminate sparse and redundant columns
 

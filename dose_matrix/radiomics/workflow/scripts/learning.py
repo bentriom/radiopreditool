@@ -39,7 +39,7 @@ def get_probs_bs(cph_object, X, bs_time, ibs_timeline):
     else:
         raise TypeError(f"Unrecognized Cox object type: {type(cph_object)}")
 
-# Plot for scikit-surv
+# Plot regularization path in Lasso
 def plot_coefficients(coefs, n_highlight):
     _, ax = plt.subplots(figsize=(11, 6))
     n_features = coefs.shape[0]
@@ -78,6 +78,20 @@ def plot_coefficients(coefs, n_highlight):
     ax.set_xlabel("alpha")
     ax.set_ylabel("coefficient")
 
+# Plot CV results
+def plot_cv_results(df):
+    df_plot = df.sort_values("alpha")
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.plot(df_plot["alpha"], df_plot["mean_score"])
+    ax.fill_between(df_plot["alpha"], df_plot["mean_score"] - df_plot["std_score"], 
+                    df_plot["mean_score"] + df_plot["std_score"], alpha = .15)
+    ax.set_xscale("log")
+    ax.set_ylabel("concordance index")
+    ax.set_xlabel("alpha")
+    ax.axvline(df.iloc[0]["alpha"], c = "C1")
+    ax.axhline(0.5, color = "grey", linestyle = "--")
+    ax.grid(True)
+ 
 # Cross-validation for penalty estimation in regularized Cox
 def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
     covariates = X_train.columns.values
@@ -88,13 +102,20 @@ def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
         dict_params_coxph = {'alpha': [0.0001, 0.5, 1.0, 1.5, 2.0, 5.0]}
         cv_coxph = GridSearchCV(estimator = coxph, param_grid = dict_params_coxph, cv = split_cv, n_jobs = get_ncpus())
         cv_coxph.fit(X_train, surv_y_train)
+        cv_results = cv_coxph.cv_results_
+        cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
+        cv_mean = cv_results["mean_test_score"]
+        cv_std = cv_results["std_test_score"]
+        df_cv_res = pd.DataFrame({"alpha": cv_alphas, "mean_score": cv_mean, "std_score": cv_std})
+        df_cv_res.sort_values("mean_score", ascending = False, inplace = True)
+        df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{name}.csv", index = False)
         return cv_coxph.best_estimator_
     elif penalty == "lasso":
         coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 0.99, alpha_min_ratio = 0.01, max_iter = 1000)
         coxnet.fit(X_train, surv_y_train)
         # Plot coefs
         coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = np.round(coxnet.alphas_, 5))
-        plot_coefficients(coefficients_lasso, n_highlight = 7)
+        plot_coefficients(coefficients_lasso, n_highlight = min(7, len(covariates)))
         plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{name}.png", dpi = 480)
         plt.close()
         # Gridsearch CV
@@ -104,19 +125,14 @@ def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
         cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
         cv_coxnet.fit(X_train, surv_y_train)
         cv_results = cv_coxnet.cv_results_
-        # Plot CV
         cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
         cv_mean = cv_results["mean_test_score"]
         cv_std = cv_results["std_test_score"]
-        fig, ax = plt.subplots(figsize=(9, 6))
-        ax.plot(cv_alphas, cv_mean)
-        ax.fill_between(cv_alphas, cv_mean - cv_std, cv_mean + cv_std, alpha = .15)
-        ax.set_xscale("log")
-        ax.set_ylabel("concordance index")
-        ax.set_xlabel("alpha")
-        ax.axvline(cv_coxnet.best_params_["alphas"][0], c = "C1")
-        ax.axhline(0.5, color = "grey", linestyle = "--")
-        ax.grid(True)
+        df_cv_res = pd.DataFrame({"alpha": cv_alphas, "mean_score": cv_mean, "std_score": cv_std})
+        df_cv_res.sort_values("mean_score", ascending = False, inplace = True)
+        df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{name}.csv", index = False)
+        # Plot CV
+        plot_cv_results(df_cv_res)
         plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{name}.png", dpi = 480)
         plt.close()
         best_coxnet = CoxnetSurvivalAnalysis(**cv_coxnet.best_params_, fit_baseline_model = True)
@@ -176,6 +192,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
         plotted_yticks = ax.get_yticklabels()
         [t.set_text(pretty_label(t.get_text())) for t in plotted_yticks]
         ax.set_yticklabels(plotted_yticks)
+        plt.yticks(fontsize = "small")
         plt.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480)
         plt.close()
     elif penalty in ["lasso", "ridge"]:
@@ -209,12 +226,19 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     times_brier_test, brier_score_test = brier_score(surv_y_train, surv_y_test, prob_surv_test, final_time)
     ibs_score_train = integrated_brier_score(surv_y_train, surv_y_train, ibs_preds_train, ibs_timeline)
     ibs_score_test = integrated_brier_score(surv_y_train, surv_y_test, ibs_preds_test, ibs_timeline)
+    results_train = [coxph_cindex_train[0], coxph_cindex_uno_train[0], brier_score_train[0], ibs_score_train]
+    results_train = [round(x, 3) for x in results_train]
+    results_test = [coxph_cindex_test[0], coxph_cindex_uno_test[0], brier_score_test[0], ibs_score_test]
+    results_test = [round(x, 3) for x in results_test]
     logger.info(f"Brier score at time {final_time} trainset: {brier_score_train}")
     logger.info(f"Brier score at time {final_time} testset: {brier_score_test}")
     logger.info(f"IBS trainset: {ibs_score_train}")
     logger.info(f"IBS testset: {ibs_score_test}")
-    logger.info(f"Train: {coxph_cindex_train[0]:.3f} & {coxph_cindex_uno_train[0]:.3f} & {brier_score_train[0]:.3f} & {ibs_score_train:.3f}") 
-    logger.info(f"Test: {coxph_cindex_test[0]:.3f} & {coxph_cindex_uno_test[0]:.3f} & {brier_score_test[0]:.3f} & {ibs_score_test:.3f}")
+    logger.info(f"Train: {results_train[0]} & {results_train[1]} & {results_train[2]} & {results_train[3]}") 
+    logger.info(f"Test: {results_test[0]} & {results_test[1]} & {results_test[2]} & {results_test[3]}") 
+    df_results = pd.DataFrame({"Train": results_train, "Test": results_test}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/metrics_{name}.csv", index = True)
+    return best_coxph
 
 # Run baseline models
 def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir):
@@ -224,6 +248,7 @@ def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_test
     features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
     clinical_vars = get_clinical_features(df_trainset, event_col, duration_col)
     os.makedirs(analyzes_dir + "coxph_plots", exist_ok = True)
+    os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
 
     # Coxph mean dose of heart (1320)
     model_name = "1320_mean"

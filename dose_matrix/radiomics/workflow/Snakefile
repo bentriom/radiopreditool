@@ -141,55 +141,64 @@ rule gather_radiomics:
         cmd_concatenate_radiomics
 
 ## Analysis
-rule create_train_dataset:
+rule create_dataset:
     input:
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz",
         FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
     output:
-        ANALYZES_DIR + "dataset.csv.gz",
-        ANALYZES_DIR + "trainset.csv.gz",
-        ANALYZES_DIR + "testset.csv.gz"
+        ANALYZES_DIR + "datasets/dataset.csv.gz",
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
         file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
-        trainset.create_trainset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+        trainset.create_dataset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+
+rule split_dataset:
+    input:
+        ANALYZES_DIR + "datasets/dataset.csv.gz",
+    output:
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
+        ANALYZES_DIR + "datasets/testset.csv.gz"
+    run:
+        file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
+        file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
+        trainset.split_dataset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
 
 rule pca_visualisation:
     input:
-        ANALYZES_DIR + "dataset.csv.gz"
+        ANALYZES_DIR + "datasets/dataset.csv.gz"
     output:
         ANALYZES_DIR + "pca_viz.log",
         ANALYZES_DIR + "pca/pca_radiomics_all.png"
     run:
-        trainset.pca_viz(ANALYZES_DIR + "dataset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        trainset.pca_viz(ANALYZES_DIR + "datasets/dataset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
 rule feature_elimination_dataset_hclust_corr:
     input:
-        ANALYZES_DIR + "trainset.csv.gz"
+        ANALYZES_DIR + "datasets/trainset.csv.gz"
     output: 
         ANALYZES_DIR + "features_hclust_corr.csv",
         ANALYZES_DIR + "feature_elimination_hclust_corr.log"
     run:
-        trainset.feature_elimination_hclust_corr(ANALYZES_DIR + "trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        trainset.feature_elimination_hclust_corr(ANALYZES_DIR + "datasets/trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
 # Models
 rule baseline_analysis:
     input:
-        ANALYZES_DIR + "trainset.csv.gz",
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv",
-        ANALYZES_DIR + "testset.csv.gz"
+        ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
         ANALYZES_DIR + "baseline_models.log"
     threads:
         get_ncpus() - 1
     run:
-        learning.baseline_models_analysis(ANALYZES_DIR + "trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "testset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        learning.baseline_models_analysis(ANALYZES_DIR + "datasets/trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "datasets/testset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
 rule rsf_features_hclust_corr_analysis:
     input:
-        ANALYZES_DIR + "trainset.csv.gz",
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv",
-        ANALYZES_DIR + "testset.csv.gz"
+        ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr.log"
     conda:
@@ -197,12 +206,12 @@ rule rsf_features_hclust_corr_analysis:
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
 
 rule rsf_analysis:
     input:
-        ANALYZES_DIR + "trainset.csv.gz",
-        ANALYZES_DIR + "testset.csv.gz"
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
+        ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
         ANALYZES_DIR + "rsf_all.log"
     conda:
@@ -210,5 +219,5 @@ rule rsf_analysis:
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}trainset.csv.gz {ANALYZES_DIR}testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all"
  
