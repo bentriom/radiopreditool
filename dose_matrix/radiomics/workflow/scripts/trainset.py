@@ -71,7 +71,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     features_radiomics = [feature for feature in df_dataset.columns if re.match("[0-9]+_.*", feature)]
     df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_radiomics] = 0
     logger.info(f"Full dataset: {df_dataset.shape}")
-    logger.info(f"Full dataset without NA: {df_dataset.dropna()shape}")
+    logger.info(f"Full dataset without NA: {df_dataset.dropna().shape}")
     logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
     df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
     
