@@ -79,6 +79,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
 def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
                   test_size = 0.3, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
+    surv_duration_col = "survival_time_years"
     df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
     cols_y = [event_col, surv_duration_col]
     col_treated_by_rt = "radiotherapie_1K"
