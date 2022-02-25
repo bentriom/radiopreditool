@@ -2,6 +2,7 @@
 import io, sys
 import pandas as pd
 import numpy as np
+from scipy.stats.distributions import chi2
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -48,7 +49,6 @@ def plot_coefficients(coefs, n_highlight):
     color_plot = {coefs.index[i]: cmap[i] for i in range(len(coefs.index))}
     for index, row in coefs.iterrows():
         ax.semilogx(alphas, row[alphas], ".-", label = index, color = color_plot[index])
-
     sorted_alphas = np.sort(alphas)
     alpha_min = sorted_alphas[0]
     top_coefs = coefs.loc[:, alpha_min].map(abs).sort_values().tail(n_highlight)
@@ -75,28 +75,68 @@ def plot_coefficients(coefs, n_highlight):
     ax.yaxis.set_label_position("right")
     ax.yaxis.tick_right()
     ax.grid(True)
-    ax.set_xlabel("alpha")
-    ax.set_ylabel("coefficient")
+    ax.set_xlabel("penalty")
+    ax.set_ylabel("Cox model's coefficient")
+    plt.margins(tight = True)
 
 # Plot CV results
-def plot_cv_results(df):
+def plot_cv_results(df, alpha_lr):
     df_plot = df.sort_values("alpha")
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.plot(df_plot["alpha"], df_plot["mean_score"])
     ax.fill_between(df_plot["alpha"], df_plot["mean_score"] - df_plot["std_score"], 
                     df_plot["mean_score"] + df_plot["std_score"], alpha = .15)
+    df_nbr_features = df_plot.drop_duplicates(subset = ["non_zero_coefs"], keep = "first")
+    for i, row in enumerate(df_nbr_features.itertuples()):
+        sign_text = 1 if i % 2 == 0 else -1
+        ax.text(row.alpha, row.mean_score + sign_text * row.std_score, row.non_zero_coefs, horizontalalignment = "center")
+        ax.scatter(row.alpha, row.mean_score, marker = "x", color = "red")
     ax.set_xscale("log")
     ax.set_ylabel("concordance index")
     ax.set_xlabel("alpha")
-    ax.axvline(df.iloc[0]["alpha"], c = "C1")
+    ax.axvline(alpha_lr, c = "C2")
+    ax.axvline(df.iloc[0]["alpha"], c = "C1", linestyle = "--")
     ax.axhline(0.5, color = "grey", linestyle = "--")
     ax.grid(True)
- 
+
+# Estimate the maximum alpha, debuting with the one that maximizes the score,
+# that is not rejected by likelihood ratio test
+def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio):
+    # covariates = [col for col in df_coxph_train if col not in [event_col, duration_col]]
+    # X_train, y_train = df_coxph_train.loc[:,covariates], df_coxph_train.loc[:,[duration_col, event_col]] 
+    # y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
+    # surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
+    alpha_max_cv = df_cv_res.iloc[0]["alpha"]
+    nbr_features_max_cv = df_cv_res.iloc[0]["non_zero_coefs"]
+    df_alpha_candidates = df_cv_res.copy()
+    df_alpha_candidates = df_alpha_candidates.loc[(df_alpha_candidates["alpha"] > alpha_max_cv) &  
+                                                  (df_alpha_candidates["non_zero_coefs"] < nbr_features_max_cv), :].sort_values("alpha")
+    df_alpha_candidates.drop_duplicates(subset = ["non_zero_coefs"], keep = "first", inplace = True)
+    coxph_ref = CoxPHFitter(penalizer = alpha_max_cv, l1_ratio = l1_ratio)
+    coxph_ref.fit(df_coxph_train, duration_col, event_col, step_size = 0.6)
+    loglik_ref = coxph_ref.log_likelihood_
+    new_alpha = alpha_max_cv
+    for index, row in df_alpha_candidates.iterrows():
+        coxph = CoxPHFitter(penalizer = row["alpha"], l1_ratio = l1_ratio)
+        coxph.fit(df_coxph_train, duration_col, event_col, step_size = 0.5)
+        loglik_alpha = coxph.log_likelihood_
+        loglik_ratio = -2*(loglik_alpha - loglik_ref)
+        pvalue = chi2.sf(loglik_ratio, 1)
+        # coxnet = CoxnetSurvivalAnalysis(alphas = [new_alpha], l1_ratio = l1_ratio)
+        # coxnet.fit(X_train, surv_y_train)
+        # print(f"alpha: {new_alpha}, non zero coefs: {sum(np.abs(coxph.params_) > 0)} or {row['non_zero_coefs']}")
+        # print(f"loglik coxnet: {sum(coxnet.predict(X_train))}")
+        if pvalue < 0.05:
+            break
+        new_alpha = row["alpha"]
+    return new_alpha
+
 # Cross-validation for penalty estimation in regularized Cox
-def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
+def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, analyzes_dir, penalty, name, n_splits = 3):
     covariates = X_train.columns.values
-    stratified_cv = StratifiedKFold(n_splits = 3)
+    stratified_cv = StratifiedKFold(n_splits = n_splits)
     split_cv = stratified_cv.split(X_train, get_events(surv_y_train))
+    l1_ratio = 1.0
     if penalty == "ridge":
         coxph = CoxPHSurvivalAnalysis()
         dict_params_coxph = {'alpha': [0.0001, 0.5, 1.0, 1.5, 2.0, 5.0]}
@@ -111,31 +151,37 @@ def cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name):
         df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{name}.csv", index = False)
         return cv_coxph.best_estimator_
     elif penalty == "lasso":
-        coxnet = CoxnetSurvivalAnalysis(n_alphas = 100, l1_ratio = 0.99, alpha_min_ratio = 0.01, max_iter = 1000)
+        coxnet = CoxnetSurvivalAnalysis(n_alphas = 50, l1_ratio = l1_ratio, tol = 1e-6)
         coxnet.fit(X_train, surv_y_train)
         # Plot coefs
-        coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = np.round(coxnet.alphas_, 5))
+        coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = coxnet.alphas_)
         plot_coefficients(coefficients_lasso, n_highlight = min(7, len(covariates)))
-        plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{name}.png", dpi = 480)
+        plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{name}.png", dpi = 480, bbox_inches = 'tight')
         plt.close()
         # Gridsearch CV
         list_alphas = coxnet.alphas_
         dict_params_coxnet = {'alphas': [[a] for a in list_alphas]}
-        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = 0.99)
+        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = l1_ratio, tol = 1e-5, max_iter = 200000)
         cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
         cv_coxnet.fit(X_train, surv_y_train)
         cv_results = cv_coxnet.cv_results_
         cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
         cv_mean = cv_results["mean_test_score"]
         cv_std = cv_results["std_test_score"]
+        # Add number of non zeros coefs
+        series_nbr_features = (coefficients_lasso.transpose().abs() > 0).sum(axis = 1)
         df_cv_res = pd.DataFrame({"alpha": cv_alphas, "mean_score": cv_mean, "std_score": cv_std})
+        df_cv_res.insert(0, "non_zero_coefs", series_nbr_features[df_cv_res["alpha"]].values)
         df_cv_res.sort_values("mean_score", ascending = False, inplace = True)
         df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{name}.csv", index = False)
+        # Successive likelihood ratio tests
+        alpha_lr = max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio)
         # Plot CV
-        plot_cv_results(df_cv_res)
-        plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{name}.png", dpi = 480)
+        plot_cv_results(df_cv_res, alpha_lr)
+        plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{name}.png", dpi = 480, bbox_inches = 'tight')
         plt.close()
-        best_coxnet = CoxnetSurvivalAnalysis(**cv_coxnet.best_params_, fit_baseline_model = True)
+        # Refit with best alpha
+        best_coxnet = CoxnetSurvivalAnalysis(alphas = [alpha_lr], l1_ratio = l1_ratio, fit_baseline_model = True)
         best_coxnet.fit(X_train, surv_y_train)
         return best_coxnet
 
@@ -145,6 +191,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     logger.info(covariates)
     df_trainset = pd.read_csv(file_trainset)
     df_testset = pd.read_csv(file_testset)
+    # Select variables and drop NAs
     df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()
     df_model_test = df_testset[covariates + [event_col, duration_col]].dropna()
     logger.info(f"Trainset file: {file_trainset}")
@@ -155,11 +202,11 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     logger.info("NAs are dropped")
     logger.info(f"Train/test events (non-censored data): {df_model_train[event_col].sum()} {df_model_test[event_col].sum()}")
     # Prepare train and test datasets
+    norm_scaler = StandardScaler()
+    df_model_train.loc[:, covariates] = norm_scaler.fit_transform(df_model_train.loc[:, covariates])
+    df_model_test.loc[:, covariates] = norm_scaler.transform(df_model_test.loc[:, covariates])
     X_train, y_train = df_model_train.loc[:,covariates], df_model_train.loc[:,[duration_col, event_col]] 
     X_test, y_test = df_model_test.loc[:,covariates], df_model_test.loc[:,[duration_col, event_col]] 
-    norm_scaler = StandardScaler()
-    X_train = pd.DataFrame(norm_scaler.fit_transform(X_train), index = X_train.index, columns = X_train.columns)
-    X_test = pd.DataFrame(norm_scaler.transform(X_test), index = X_test.index, columns = X_test.columns)
     y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
     y_test[event_col].replace({1.0: True, 0.0: False}, inplace = True)
     surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
@@ -168,12 +215,10 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
 
     # CoxPH model
     if penalty == None:
-        df_coxph_train = df_model_train.copy()
-        df_coxph_train.loc[:,covariates] = norm_scaler.transform(X_train)
         best_coxph = CoxPHFitter(penalizer = 0.0, alpha = 0.05)
-        best_coxph.fit(df_coxph_train, duration_col, event_col)
+        best_coxph.fit(df_model_train, duration_col, event_col, step_size = 0.5)
     elif penalty in ["lasso", "ridge"]:
-        best_coxph = cv_fit_cox(X_train, surv_y_train, analyzes_dir, penalty, name)
+        best_coxph = cv_fit_cox(X_train, surv_y_train, df_model_train, event_col, duration_col, analyzes_dir, penalty, name)
 
     # Predictions of risk score (\beta^t exp(x)) / survival probabilities
     risk_scores_train = get_risk_scores(best_coxph, X_train)
@@ -193,7 +238,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
         [t.set_text(pretty_label(t.get_text())) for t in plotted_yticks]
         ax.set_yticklabels(plotted_yticks)
         plt.yticks(fontsize = "small")
-        plt.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480)
+        plt.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480, bbox_inches = 'tight')
         plt.close()
     elif penalty in ["lasso", "ridge"]:
         best_coefs = pd.DataFrame(best_coxph.coef_, index = pretty_labels(covariates), columns = ["coefficient"])
@@ -207,7 +252,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
         ax.set_xlabel("coefficient")
         plt.title(name + f" (non zero coeffs: {nbr_non_zero}/{len(covariates)})")
         ax.grid(True)
-        fig.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480)
+        fig.savefig(analyzes_dir + f"coxph_plots/coefs_{name}.png", dpi = 480, bbox_inches = 'tight')
         plt.close()
     
     # Metrics
