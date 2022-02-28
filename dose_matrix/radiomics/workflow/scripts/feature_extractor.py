@@ -2,11 +2,25 @@
 import SimpleITK as sitk
 import numpy as np
 import pandas as pd
+import dosesvolumes
 import radiomics
-import os, csv, logging
+# Kind of experimental trick to add my custom doses-volumes stastic
+# with pyradiomics engine
+features_classes = radiomics.getFeatureClasses()
+def newGetFeatureClasses(dict_features_classes):
+    if 'dosesvolumes' not in dict_features_classes:
+        dict_features_classes["dosesvolumes"] = dosesvolumes.RadiomicsDosesVolumes
+    return dict_features_classes
+radiomics.getFeatureClasses = lambda : newGetFeatureClasses(features_classes)
+radiomics.getFeatureClasses()
 from radiomics import featureextractor
+import re, os, csv, logging
 from functools import reduce
 from radiopreditool_utils import get_ctr_numcent
+
+def pretty_DV(label):
+    matches = re.match("([0-9]{3,4})_original_dosesvolumes_(\w+)", label)
+    return "dv_" + matches[2] + "_" + matches[1] if bool(matches) else label
 
 def create_image_mask_example():
     array_image = np.zeros((32,32,32)) 
@@ -28,6 +42,7 @@ def write_header(labels_super_t_voi, labels_t_voi, radiomics_dir, params_file):
     for label in labels_super_t_voi + labels_t_voi:
         all_features_names += [str(label) + "_" + x for x in features_name_per_label]
     header = ["ctr", "numcent"] +  all_features_names
+    header = [pretty_DV(col) for col in header]
     with open(radiomics_dir + "header.csv", "w") as header_file:
         header_writer = csv.writer(header_file, delimiter = ',')
         header_writer.writerow(header)

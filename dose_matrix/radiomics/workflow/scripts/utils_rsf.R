@@ -8,7 +8,7 @@ library("logger", quietly = TRUE)
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
-    regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
+    regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
     idx_non_clinical_vars <- grep(regex_non_clinical, columns)
     return (columns[-idx_non_clinical_vars])
 }

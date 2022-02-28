@@ -64,7 +64,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     col_treated_by_rt = "radiotherapie_1K"
     df_dataset = df_fccss[["ctr", "numcent"] + clinical_variables + cols_y]
     if col_treated_by_rt not in clinical_variables:
-        df_dataset[col_treated_by_rt] = df_fccss[col_treated_by_rt]
+        df_dataset.insert(len(df_dataset.columns), col_treated_by_rt, df_fccss[col_treated_by_rt])
     df_dataset = df_dataset.merge(df_radiomics, how = "left", on = ["ctr", "numcent"])
     # Fill columns about radiotherapie
     df_dataset.loc[pd.isnull(df_dataset["has_radiomics"]), "has_radiomics"] = 0

@@ -2,4 +2,5 @@
 featureClass:
     firstorder: ["Energy", "Entropy", "Minimum", "10Percentile", "Mean", "Median", "90Percentile", "Maximum", "InterquartileRange", "MeanAbsoluteDeviation", "RobustMeanAbsoluteDeviation", "RootMeanSquared", "Skewness", "Kurtosis", "Variance"]
     shape: ["VoxelVolume", "SurfaceVolumeRatio", "Sphericity"]
+    dosesvolumes: []
 
