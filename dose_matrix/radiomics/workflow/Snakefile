@@ -144,24 +144,23 @@ rule gather_radiomics:
 rule create_dataset:
     input:
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz",
-        FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
+        FCCSS_CLINICAL_DATASET
     output:
         ANALYZES_DIR + "datasets/dataset.csv.gz",
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
-        file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
-        trainset.create_dataset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+        trainset.create_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
 
 rule split_dataset:
     input:
         ANALYZES_DIR + "datasets/dataset.csv.gz",
+        FCCSS_CLINICAL_DATASET
     output:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz"
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
-        file_fccss_clinical = FCCSS_CLINICAL_DATASET + "base_fccss_igr_curie_011021.csv.gz"
-        trainset.split_dataset(file_radiomics, file_fccss_clinical, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+        trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
 
 rule pca_visualisation:
     input:
