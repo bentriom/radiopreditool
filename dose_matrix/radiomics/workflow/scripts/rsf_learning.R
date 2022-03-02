@@ -87,12 +87,12 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("IBS on trainset: ", rsf.ibs.train))
     log_info(paste("IBS OOB on trainset: ", rsf.ibs.oob))
     log_info(paste("IBS on testset: ", rsf.ibs.test))
-    results_train = c(round(rsf.cindex.harrell.train, digits = 3), round(rsf.cindex.ipcw.train, digits = 3), 
+    results_train <- c(round(rsf.cindex.harrell.train, digits = 3), round(rsf.cindex.ipcw.train, digits = 3), 
                       round(rsf.bs.final.train, digits = 3), round(rsf.ibs.train, digits = 3))
-    results_test = c(round(rsf.cindex.harrell.test, digits = 3), round(rsf.cindex.ipcw.test, digits = 3), 
+    results_test <- c(round(rsf.cindex.harrell.test, digits = 3), round(rsf.cindex.ipcw.test, digits = 3), 
                       round(rsf.bs.final.test, digits = 3), round(rsf.ibs.test, digits = 3))
-    log_info(paste("Train:", results_train[1], "&", results_train[2], "&", resuls_train[3], "&", results_train[4]))
-    log_info(paste("Test:", results_test[1], "&", results_test[2], "&", resuls_test[3], "&", results_test[4]))
+    log_info(paste("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
+    log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     write.csv(df_results, file = paste(analyzes_dir, "rsf_results/metrics_", model_name, ".csv", sep = ""), row.names = FALSE)
