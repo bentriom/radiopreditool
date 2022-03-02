@@ -1,4 +1,5 @@
 MODEL_NAME: pathol_cardiaque
+RADIOMICS_NAME: 30X_32X_1320_1702
 DOSES_DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/
 DOSES_DATASET_SUBDIRS:
     - CURIE

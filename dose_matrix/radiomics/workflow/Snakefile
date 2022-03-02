@@ -7,6 +7,7 @@ import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learn
 from radiopreditool_utils import setup_logger, get_ncpus
 
 MODEL_NAME = config["MODEL_NAME"]
+RADIOMICS_NAME = config["RADIOMICS_NAME"] if "RADIOMICS_NAME" in config else MODEL_NAME
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
 FCCSS_CLINICAL_VARIABLES = config["FCCSS_CLINICAL_VARIABLES"]
 LABELS_SUPER_T_VOI = config["LABELS_SUPER_T_VOI"] if "LABELS_SUPER_T_VOI" in config else [""]
@@ -20,7 +21,7 @@ FCCSS_CLINICAL_DATASET = config["FCCSS_CLINICAL_DATASET"]
 RESULTS_DIR = config["RESULTS_DIR"]
 NII_DIR = RESULTS_DIR + "nii/"
 METADATA_DIR = RESULTS_DIR + "metadata/"
-RADIOMICS_DIR = RESULTS_DIR + "extraction/" + MODEL_NAME + "/"
+RADIOMICS_DIR = RESULTS_DIR + "extraction/" + RADIOMICS_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
 
 # Create useful variables for rules based on configuration

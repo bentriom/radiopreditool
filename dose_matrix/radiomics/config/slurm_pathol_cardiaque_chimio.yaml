@@ -1,4 +1,4 @@
-MODEL_NAME: pathol_cardiaque_drugs
+MODEL_NAME: pathol_cardiaque
 RADIOMICS_NAME: 30X_32X_1320_1702
 DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
 DOSES_DATASET_SUBDIRS:
@@ -16,6 +16,6 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 # 702 - 704: thyroid
 LABELS_SUPER_T_VOI: [1320, 1702]
 LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
-FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011021_chemdrugs.csv.gz
-FCCSS_CLINICAL_VARIABLES: ["ALKYL", "ANTHRA", "ANTIM", "VINCA", "ANTIB", "DIVERS"]
+FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011021.csv.gz
+FCCSS_CLINICAL_VARIABLES: ["chimiotherapie"]
 
