@@ -309,13 +309,13 @@ def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_test
     
     # Coxph doses volumes indicators of heart (1320)
     model_name = "1320_dosesvol"
-    covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", col)] + clinical_vars
+    covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
     logger.info("Model heart doses volumes (1320)")
     coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, name = model_name, log_name = log_name)
     
     # Coxph doses volumes indicators of heart Lasso (1320)
     model_name = "1320_dosesvol_lasso"
-    covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", col)] + clinical_vars
+    covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
     logger.info("Model heart doses volumes lasso (1320)")
     coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name, log_name = log_name)
 
