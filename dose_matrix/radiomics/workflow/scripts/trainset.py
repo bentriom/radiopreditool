@@ -68,8 +68,10 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_dataset = df_dataset.merge(df_radiomics, how = "left", on = ["ctr", "numcent"])
     # Fill columns about radiotherapie
     df_dataset.loc[pd.isnull(df_dataset["has_radiomics"]), "has_radiomics"] = 0
-    features_radiomics = [feature for feature in df_dataset.columns if re.match("[0-9]+_.*", feature)]
+    features_radiomics = get_all_radiomics_features(df_dataset)
+    features_dosesvol = get_all_dosesvol_features(df_dataset)
     df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_radiomics] = 0
+    df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_dosesvol] = 0
     logger.info(f"Full dataset: {df_dataset.shape}")
     logger.info(f"Full dataset without NA: {df_dataset.dropna().shape}")
     logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")

@@ -101,21 +101,23 @@ def plot_cv_results(df, alpha_lr):
 
 # Estimate the maximum alpha, debuting with the one that maximizes the score,
 # that is not rejected by likelihood ratio test
-def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio):
+def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio, log_name = ""):
     # covariates = [col for col in df_coxph_train if col not in [event_col, duration_col]]
     # X_train, y_train = df_coxph_train.loc[:,covariates], df_coxph_train.loc[:,[duration_col, event_col]] 
     # y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
     # surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
+    logger = logging.getLogger(log_name)
     alpha_max_cv = df_cv_res.iloc[0]["alpha"]
     nbr_features_max_cv = df_cv_res.iloc[0]["non_zero_coefs"]
     df_alpha_candidates = df_cv_res.copy()
     df_alpha_candidates = df_alpha_candidates.loc[(df_alpha_candidates["alpha"] > alpha_max_cv) &  
                                                   (df_alpha_candidates["non_zero_coefs"] < nbr_features_max_cv), :].sort_values("alpha")
     df_alpha_candidates.drop_duplicates(subset = ["non_zero_coefs"], keep = "first", inplace = True)
+    df_alpha_candidates.index = df_alpha_candidates["alpha"]
     coxph_ref = CoxPHFitter(penalizer = alpha_max_cv, l1_ratio = l1_ratio)
     coxph_ref.fit(df_coxph_train, duration_col, event_col, step_size = 0.6)
     loglik_ref = coxph_ref.log_likelihood_
-    new_alpha = alpha_max_cv
+    new_alpha, ncoefs_new_alpha = alpha_max_cv, nbr_features_max_cv
     for index, row in df_alpha_candidates.iterrows():
         coxph = CoxPHFitter(penalizer = row["alpha"], l1_ratio = l1_ratio)
         coxph.fit(df_coxph_train, duration_col, event_col, step_size = 0.5)
@@ -126,13 +128,15 @@ def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_rat
         # coxnet.fit(X_train, surv_y_train)
         # print(f"alpha: {new_alpha}, non zero coefs: {sum(np.abs(coxph.params_) > 0)} or {row['non_zero_coefs']}")
         # print(f"loglik coxnet: {sum(coxnet.predict(X_train))}")
+        ncoefs_candidate = df_alpha_candidates.loc[row['alpha'],'non_zero_coefs']
+        logger.info(f"{new_alpha} ({ncoefs_new_alpha}) vs {row['alpha']} ({ncoefs_candidate}): {pvalue}")
         if pvalue < 0.05:
             break
-        new_alpha = row["alpha"]
+        new_alpha, ncoefs_new_alpha = row["alpha"], df_alpha_candidates.loc[new_alpha,'non_zero_coefs']
     return new_alpha
 
 # Cross-validation for penalty estimation in regularized Cox
-def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, analyzes_dir, penalty, name, n_splits = 3):
+def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, analyzes_dir, penalty, name, n_splits = 5, log_name = ""):
     covariates = X_train.columns.values
     stratified_cv = StratifiedKFold(n_splits = n_splits)
     split_cv = stratified_cv.split(X_train, get_events(surv_y_train))
@@ -151,7 +155,7 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{name}.csv", index = False)
         return cv_coxph.best_estimator_
     elif penalty == "lasso":
-        coxnet = CoxnetSurvivalAnalysis(n_alphas = 50, l1_ratio = l1_ratio, tol = 1e-6)
+        coxnet = CoxnetSurvivalAnalysis(n_alphas = 40, l1_ratio = l1_ratio, tol = 1e-5)
         coxnet.fit(X_train, surv_y_train)
         # Plot coefs
         coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = coxnet.alphas_)
@@ -161,7 +165,7 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         # Gridsearch CV
         list_alphas = coxnet.alphas_
         dict_params_coxnet = {'alphas': [[a] for a in list_alphas]}
-        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = l1_ratio, tol = 1e-5, max_iter = 200000)
+        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = l1_ratio, tol = 1e-6)
         cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
         cv_coxnet.fit(X_train, surv_y_train)
         cv_results = cv_coxnet.cv_results_
@@ -175,7 +179,7 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         df_cv_res.sort_values("mean_score", ascending = False, inplace = True)
         df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{name}.csv", index = False)
         # Successive likelihood ratio tests
-        alpha_lr = max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio)
+        alpha_lr = max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio, log_name = log_name)
         # Plot CV
         plot_cv_results(df_cv_res, alpha_lr)
         plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{name}.png", dpi = 480, bbox_inches = 'tight')
@@ -186,8 +190,9 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         return best_coxnet
 
 # Run a Cox analysis
-def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "ridge", seed = None, test_size = 0.3, name = ""):
-    logger = logging.getLogger("baseline_models")
+def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
+                   penalty = "ridge", seed = None, test_size = 0.3, name = "", log_name = ""):
+    logger = logging.getLogger(log_name)
     logger.info(covariates)
     df_trainset = pd.read_csv(file_trainset)
     df_testset = pd.read_csv(file_testset)
@@ -218,7 +223,7 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
         best_coxph = CoxPHFitter(penalizer = 0.0, alpha = 0.05)
         best_coxph.fit(df_model_train, duration_col, event_col, step_size = 0.5)
     elif penalty in ["lasso", "ridge"]:
-        best_coxph = cv_fit_cox(X_train, surv_y_train, df_model_train, event_col, duration_col, analyzes_dir, penalty, name)
+        best_coxph = cv_fit_cox(X_train, surv_y_train, df_model_train, event_col, duration_col, analyzes_dir, penalty, name, log_name = log_name)
 
     # Predictions of risk score (\beta^t exp(x)) / survival probabilities
     risk_scores_train = get_risk_scores(best_coxph, X_train)
@@ -287,7 +292,8 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
 
 # Run baseline models
 def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir):
-    logger = setup_logger("baseline_models", analyzes_dir + "baseline_models.log")
+    log_name = "baseline_models"
+    logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
     duration_col = "survival_time_years"
     df_trainset = pd.read_csv(file_trainset)
     features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
@@ -299,29 +305,51 @@ def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_test
     model_name = "1320_mean"
     covariates = ["1320_original_firstorder_Mean"] + clinical_vars
     logger.info("Model heart mean dose (1320)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, name = model_name, log_name = log_name)
+    
+    # Coxph doses volumes indicators of heart (1320)
+    model_name = "1320_dosesvol"
+    covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", col)] + clinical_vars
+    logger.info("Model heart doses volumes (1320)")
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, name = model_name, log_name = log_name)
+    
+    # Coxph doses volumes indicators of heart Lasso (1320)
+    model_name = "1320_dosesvol_lasso"
+    covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", col)] + clinical_vars
+    logger.info("Model heart doses volumes lasso (1320)")
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name, log_name = log_name)
 
+def cox_lasso_radiomics(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir):
+    log_name = "cox_lasso_radiomics"
+    logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
+    duration_col = "survival_time_years"
+    df_trainset = pd.read_csv(file_trainset)
+    features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
+    clinical_vars = get_clinical_features(df_trainset, event_col, duration_col)
+    os.makedirs(analyzes_dir + "coxph_plots", exist_ok = True)
+    os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
+    
     # Coxph radiomics heart 32X full trainset lasso
     model_name = "32X_radiomics_lasso"
     covariates = [feature for feature in df_trainset.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 32X (full trainset lasso)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name, log_name = log_name)
     
     # Coxph radiomics heart 32X hclust corr features trainset lasso
-    model_name = "32X_radiomics_filtered_lasso"
+    model_name = "32X_radiomics_features_hclust_lasso"
     covariates = [feature for feature in features_hclust_corr if re.match("^32[0-9]_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 32X (hclust corr feature elimination trainset lasso)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name, log_name = log_name)
     
     # Coxph radiomics heart 1320 full trainset lasso
     model_name = "1320_radiomics_lasso"
     covariates = [feature for feature in df_trainset.columns if re.match("^1320_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 1320 (full trainset lasso)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name, log_name = log_name)
 
     # Coxph radiomics heart 1320 hclust corr features trainset lasso
-    model_name = "1320_radiomics_filtered_lasso"
+    model_name = "1320_radiomics_features_hclust_lasso"
     covariates = [feature for feature in features_hclust_corr if re.match("^1320_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 1320 (hclust corr feature elimination trainset lasso)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = "lasso", name = model_name, log_name = log_name)
 

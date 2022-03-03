@@ -194,6 +194,19 @@ rule baseline_analysis:
     run:
         learning.baseline_models_analysis(ANALYZES_DIR + "datasets/trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "datasets/testset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
+rule cox_lasso_radiomics:
+    input:
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv",
+        ANALYZES_DIR + "datasets/testset.csv.gz"
+    output:
+        ANALYZES_DIR + "cox_lasso_radiomics.log"
+    threads:
+        get_ncpus() - 1
+    run:
+        learning.cox_lasso_radiomics(ANALYZES_DIR + "datasets/trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "datasets/testset.csv.gz", EVENT_COL, ANALYZES_DIR)
+
+
 rule rsf_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",

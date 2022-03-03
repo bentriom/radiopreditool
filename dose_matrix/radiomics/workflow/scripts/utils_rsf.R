@@ -120,7 +120,7 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
 
 # Cross-validation for RSF
 cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_col = "survival_time_years", 
-                   nfolds = 3, pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
+                   nfolds = 5, pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
     nbr.params <- nrow(params.df)
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
     log_info(paste("Running CV with rfsrc using", getOption("rf.cores"), "workers")) 

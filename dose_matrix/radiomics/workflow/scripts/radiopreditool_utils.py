@@ -85,6 +85,13 @@ def get_labels_super_t(df_dataset):
 def get_all_labels(df_dataset):
     return get_labels_super_t(df_dataset) + get_labels_t(df_dataset)
 
+def get_all_dosesvol_features(df_dataset):
+    return [col for col in df_dataset.columns if re.match("dv_\w+_[0-9]{3,4}", col)]
+
+def pretty_dosesvol(label):
+    matches = re.match("([0-9]{3,4})_original_dosesvolumes_(\w+)", label)
+    return "dv_" + matches[2] + "_" + matches[1] if bool(matches) else label
+
 def pretty_label(label):
     matches = re.match("([0-9]{3,4})_[a-z]+_[a-z]+_(\w+)", label)
     return matches[1] + " " + matches[2] if bool(matches) else label
