@@ -95,7 +95,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
-    write.csv(df_results, file = paste(analyzes_dir, "rsf_results/metrics_", model_name, ".csv", sep = ""), row.names = FALSE)
+    write.csv(df_results, file = paste(analyzes_dir, "rsf_results/metrics_", model_name, ".csv", sep = ""), row.names = TRUE)
     rsf.best
 }
 
