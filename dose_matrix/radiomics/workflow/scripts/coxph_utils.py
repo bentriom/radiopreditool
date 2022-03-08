@@ -1,0 +1,189 @@
+
+import io, sys
+import pandas as pd
+import numpy as np
+from scipy.stats.distributions import chi2
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from radiopreditool_utils import *
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.model_selection import StratifiedKFold, GridSearchCV
+from sksurv.util import Surv, check_y_survival
+from sksurv.preprocessing import OneHotEncoder
+from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
+from sksurv.metrics import concordance_index_censored, concordance_index_ipcw, integrated_brier_score, brier_score
+from lifelines import CoxPHFitter
+
+## Helpers for compatibility between lifelines / sksurv
+
+def get_risk_scores(cph_object, X):
+    if type(cph_object) is CoxPHSurvivalAnalysis or type(cph_object) is CoxnetSurvivalAnalysis:
+        return cph_object.predict(X)
+    elif type(cph_object) is CoxPHFitter:
+        return cph_object.predict_partial_hazard(X)
+    else:
+        raise TypeError(f"Unrecognized Cox object type: {type(cph_object)}")
+
+def get_probs_bs(cph_object, X, bs_time, ibs_timeline):
+    if type(cph_object) is CoxPHSurvivalAnalysis or type(cph_object) is CoxnetSurvivalAnalysis:
+        coxph_surv_func = cph_object.predict_survival_function(X)
+        prob_surv = [coxph_surv_func[i](bs_time) for i in range(X.shape[0])]
+        ibs_preds = [[surv_func(t) for t in ibs_timeline] for surv_func in coxph_surv_func]
+        return prob_surv, ibs_preds 
+    elif type(cph_object) is CoxPHFitter:
+        prob_surv = cph_object.predict_survival_function(X, bs_time).loc[bs_time, :].values
+        df_full_ibs_preds = cph_object.predict_survival_function(X, ibs_timeline)
+        ibs_preds = [df_full_ibs_preds[patient].values for patient in df_full_ibs_preds.columns]
+        return prob_surv, ibs_preds
+    else:
+        raise TypeError(f"Unrecognized Cox object type: {type(cph_object)}")
+
+# Estimate the maximum alpha, debuting with the one that maximizes the score,
+# that is not rejected by likelihood ratio test
+def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio, log_name = ""):
+    # covariates = [col for col in df_coxph_train if col not in [event_col, duration_col]]
+    # X_train, y_train = df_coxph_train.loc[:,covariates], df_coxph_train.loc[:,[duration_col, event_col]] 
+    # y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
+    # surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
+    logger = logging.getLogger(log_name)
+    alpha_max_cv = df_cv_res.iloc[0]["alpha"]
+    nbr_features_max_cv = df_cv_res.iloc[0]["non_zero_coefs"]
+    df_alpha_candidates = df_cv_res.copy()
+    df_alpha_candidates = df_alpha_candidates.loc[(df_alpha_candidates["alpha"] > alpha_max_cv) &  
+                                                  (df_alpha_candidates["non_zero_coefs"] < nbr_features_max_cv), :].sort_values("alpha")
+    df_alpha_candidates.drop_duplicates(subset = ["non_zero_coefs"], keep = "first", inplace = True)
+    df_alpha_candidates.index = df_alpha_candidates["alpha"]
+    coxph_ref = CoxPHFitter(penalizer = alpha_max_cv, l1_ratio = l1_ratio)
+    coxph_ref.fit(df_coxph_train, duration_col, event_col, step_size = 0.6)
+    loglik_ref = coxph_ref.log_likelihood_
+    new_alpha, ncoefs_new_alpha = alpha_max_cv, nbr_features_max_cv
+    for index, row in df_alpha_candidates.iterrows():
+        coxph = CoxPHFitter(penalizer = row["alpha"], l1_ratio = l1_ratio)
+        coxph.fit(df_coxph_train, duration_col, event_col, step_size = 0.5)
+        loglik_alpha = coxph.log_likelihood_
+        loglik_ratio = -2*(loglik_alpha - loglik_ref)
+        pvalue = chi2.sf(loglik_ratio, 1)
+        # coxnet = CoxnetSurvivalAnalysis(alphas = [new_alpha], l1_ratio = l1_ratio)
+        # coxnet.fit(X_train, surv_y_train)
+        # print(f"alpha: {new_alpha}, non zero coefs: {sum(np.abs(coxph.params_) > 0)} or {row['non_zero_coefs']}")
+        # print(f"loglik coxnet: {sum(coxnet.predict(X_train))}")
+        ncoefs_candidate = df_alpha_candidates.loc[row['alpha'],'non_zero_coefs']
+        logger.info(f"{new_alpha} ({ncoefs_new_alpha}) vs {row['alpha']} ({ncoefs_candidate}): {pvalue}")
+        if pvalue < 0.05:
+            break
+        new_alpha, ncoefs_new_alpha = row["alpha"], df_alpha_candidates.loc[new_alpha,'non_zero_coefs']
+    return new_alpha
+
+## Plots
+
+# Plot regularization path in Lasso
+def plot_coefficients(coefs, n_highlight):
+    _, ax = plt.subplots(figsize=(11, 6))
+    n_features = coefs.shape[0]
+    alphas = coefs.columns.values
+    cmap = plt.cm.get_cmap('tab20', n_features).colors
+    color_plot = {coefs.index[i]: cmap[i] for i in range(len(coefs.index))}
+    for index, row in coefs.iterrows():
+        ax.semilogx(alphas, row[alphas], ".-", label = index, color = color_plot[index])
+    sorted_alphas = np.sort(alphas)
+    alpha_min = sorted_alphas[0]
+    top_coefs = coefs.loc[:, alpha_min].map(abs).sort_values().tail(n_highlight)
+    # Sort by the first on alpha_min for ytick labels
+    top_coefs = top_coefs[np.argsort(coefs.loc[top_coefs.index, alpha_min])]
+    df_top_coefs = pd.DataFrame({"loc_ytick": coefs.loc[top_coefs.index, alpha_min] - 0.01}, index = top_coefs.index)
+    for i, name in enumerate(top_coefs.index):
+        # loc_ytick = np.mean(coefs.loc[name, sorted_alphas[0:2]])
+        if i < n_highlight - 1:
+            future_name = df_top_coefs.index[i+1]
+            ytick_gap = df_top_coefs.loc[future_name, "loc_ytick"] - df_top_coefs.loc[name, "loc_ytick"] 
+            if abs(ytick_gap) <= 0.02:
+                df_top_coefs.loc[name, "loc_ytick"] -= 0.01
+                df_top_coefs.loc[future_name, "loc_ytick"] += 0.01
+        loc_ytick = df_top_coefs.loc[name, "loc_ytick"]
+        plt.text(
+            alpha_min, loc_ytick, name + "   ",
+            horizontalalignment = "right",
+            verticalalignment = "center",
+            fontsize = "small",
+            color = color_plot[name],
+            rotation = 5
+        )
+    ax.yaxis.set_label_position("right")
+    ax.yaxis.tick_right()
+    ax.grid(True)
+    ax.set_xlabel("penalty")
+    ax.set_ylabel("Cox model's coefficient")
+    plt.margins(tight = True)
+
+# Plot CV results
+def plot_cv_results(df, alpha_lr):
+    df_plot = df.sort_values("alpha")
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.plot(df_plot["alpha"], df_plot["mean_score"])
+    ax.fill_between(df_plot["alpha"], df_plot["mean_score"] - df_plot["std_score"], 
+                    df_plot["mean_score"] + df_plot["std_score"], alpha = .15)
+    df_nbr_features = df_plot.drop_duplicates(subset = ["non_zero_coefs"], keep = "first")
+    for i, row in enumerate(df_nbr_features.itertuples()):
+        sign_text = 1 if i % 2 == 0 else -1
+        ax.text(row.alpha, row.mean_score + sign_text * row.std_score, row.non_zero_coefs, horizontalalignment = "center")
+        ax.scatter(row.alpha, row.mean_score, marker = "x", color = "red")
+    ax.set_xscale("log")
+    ax.set_ylabel("concordance index")
+    ax.set_xlabel("alpha")
+    ax.axvline(alpha_lr, c = "C2")
+    ax.axvline(df.iloc[0]["alpha"], c = "C1", linestyle = "--")
+    ax.axhline(0.5, color = "grey", linestyle = "--")
+    ax.grid(True)
+
+# Plot non zero coefs for lasso models
+def plot_non_zero_coefs(coefs, labels_covariates, model_name):
+    best_coefs = pd.DataFrame(coefs, index = labels_covariates, columns = ["coefficient"])
+    mask_non_zero = best_coefs.iloc[:, 0] != 0
+    nbr_non_zero = np.sum(mask_non_zero)
+    non_zero_coefs = best_coefs.loc[mask_non_zero, :]
+    coef_order = non_zero_coefs.abs().sort_values("coefficient").index
+    fig, ax = plt.subplots(figsize=(12, 6))
+    non_zero_coefs.loc[coef_order].plot.barh(ax = ax, legend = False)
+    ax.set_xlabel("coefficient")
+    plt.title(model_name + f" (non zero coeffs: {nbr_non_zero}/{len(labels_covariates)})")
+    ax.grid(True)
+
+# Replot Lasso results
+def redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name):
+    df_trainset = pd.read_csv(file_trainset)
+    df_testset = pd.read_csv(file_testset)
+    df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()
+    df_model_test = df_testset[covariates + [event_col, duration_col]].dropna()
+    norm_scaler = StandardScaler()
+    df_model_train.loc[:, covariates] = norm_scaler.fit_transform(df_model_train.loc[:, covariates])
+    df_model_test.loc[:, covariates] = norm_scaler.transform(df_model_test.loc[:, covariates])
+    X_train, y_train = df_model_train.loc[:,covariates], df_model_train.loc[:,[duration_col, event_col]] 
+    X_test, y_test = df_model_test.loc[:,covariates], df_model_test.loc[:,[duration_col, event_col]] 
+    y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
+    y_test[event_col].replace({1.0: True, 0.0: False}, inplace = True)
+    surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
+    surv_y_test = Surv.from_dataframe(event_col, duration_col, y_test)
+    l1_ratio = 1.0 
+    # Plot regularization path
+    coxnet = CoxnetSurvivalAnalysis(n_alphas = 40, l1_ratio = l1_ratio, tol = 1e-5)
+    coxnet.fit(X_train, surv_y_train)
+    coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = coxnet.alphas_)
+    plot_coefficients(coefficients_lasso, n_highlight = min(7, len(covariates)))
+    plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{model_name}.png", dpi = 480, bbox_inches = 'tight')
+    # Plot cross-validation results
+    df_cv_results = pd.read_csv(analyzes_dir + f"coxph_results/cv_{model_name}.csv")
+    alpha_max_cv = df_cv_results.iloc[0]["alpha"]
+    best_alpha = max_alpha_lr_test(df_cv_results, df_model_train, event_col, duration_col, l1_ratio)
+    plot_cv_results(df_cv_results, best_alpha)
+    plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{model_name}.png", dpi = 480, bbox_inches = 'tight')
+    plt.close()
+    # Plot of non zero coefficients 
+    best_coxnet = CoxnetSurvivalAnalysis(alphas = [best_alpha], l1_ratio = l1_ratio, fit_baseline_model = True)
+    best_coxnet.fit(X_train, surv_y_train)
+    plot_non_zero_coefs(best_coxnet.coef_, pretty_labels(covariates), model_name)
+    plt.savefig(analyzes_dir + f"coxph_plots/coefs_{model_name}.png", dpi = 480, bbox_inches = 'tight')
+    plt.close()
+

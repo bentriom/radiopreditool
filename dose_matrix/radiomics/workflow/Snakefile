@@ -198,7 +198,8 @@ rule cox_lasso_radiomics:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv",
-        ANALYZES_DIR + "datasets/testset.csv.gz"
+        ANALYZES_DIR + "datasets/testset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics.log"
     threads:
@@ -210,8 +211,8 @@ rule cox_lasso_radiomics:
 rule rsf_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
-        ANALYZES_DIR + "features_hclust_corr.csv",
-        ANALYZES_DIR + "datasets/testset.csv.gz"
+        ANALYZES_DIR + "datasets/testset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr.log"
     conda:

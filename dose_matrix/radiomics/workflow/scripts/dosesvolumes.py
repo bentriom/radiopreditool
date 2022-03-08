@@ -42,8 +42,8 @@ class RadiomicsDosesVolumes(firstorder.RadiomicsFirstOrder):
     def __init__(self, inputImage, inputMask, **kwargs):
         super(RadiomicsDosesVolumes, self).__init__(inputImage, inputMask, **kwargs)
         # Create getVxFeatureValue and getDxFeatureValue methods automatically
-        x_volumes = [1., 2., 5., 10., 15., 20., 25., 30., 40.]
-        x_doses = [10., 20., 30., 40., 50., 60., 70., 80., 90., 95., 99.]
+        x_volumes = [1., 2., 5., 10., 15., 20., 25., 30., 40.] # and V01, V05
+        x_doses = [10., 20., 30., 40., 50., 60., 70., 80., 90., 95., 99.] # and D01, D05
         for x in x_volumes:
             setattr(self, f"getV{int(x)}FeatureValue", GetVxFeatureValue(self, x))
         for x in x_doses:
