@@ -14,6 +14,7 @@ LABELS_SUPER_T_VOI = config["LABELS_SUPER_T_VOI"] if "LABELS_SUPER_T_VOI" in con
 LABELS_T_VOI = config["LABELS_T_VOI"] if "LABELS_T_VOI" in config else [""]
 EVENT_COL = "Pathologie_cardiaque"
 DATE_EVENT_COL = "date_pathol_cardiaque"
+NB_ESTIM_SCORE_MODELS = 50
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
@@ -23,6 +24,13 @@ NII_DIR = RESULTS_DIR + "nii/"
 METADATA_DIR = RESULTS_DIR + "metadata/"
 RADIOMICS_DIR = RESULTS_DIR + "extraction/" + RADIOMICS_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
+
+BASELINE_MODELS_COX = ["1320_mean", "1320_dosesvol"]
+BASELINE_MODELS_LASSO = ["1320_dosesvol_lasso"]
+COX_RADIOMICS_LASSO = ["32X_radiomics_lasso", "32X_radiomics_features_hclust_lasso", \
+                       "1320_radiomics_lasso", "1320_radiomics_features_hclust_lasso"]
+RSF_RADIOMICS_ALL = ["model_32X_all", "model_1320_all"]
+RSF_RADIOMICS_FE_HCLUST = ["model_32X_features_hclust_corr", "model_1320_features_hclust_corr"]
 
 # Create useful variables for rules based on configuration
 def addslash(subdir):
@@ -42,9 +50,13 @@ else:
     cmd_concatenate_radiomics +=  "'" + RADIOMICS_DIR + "'{{" + str_cmd_dataset_subdirs + "}}/*"
 cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
 cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
-## Utils
+
+# Utils
 def get_newdosi_files(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
+
+
+# Rules
 
 onstart:
     # Directory creations
@@ -54,13 +66,12 @@ onstart:
         os.remove(NII_DIR + "csv2nii.log")
     if os.path.isfile(RADIOMICS_DIR + "feature_extraction.log"):
         os.remove(RADIOMICS_DIR + "feature_extraction.log")
-# Rules
 
 rule all:
     input: 
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
 
-## Additional files
+## Metadata
 rule list_newdosi_files:
     input:
         expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files) 
@@ -141,7 +152,9 @@ rule gather_radiomics:
     shell:
         cmd_concatenate_radiomics
 
-## Analysis
+## Analyses
+
+# Datasets
 rule create_dataset:
     input:
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz",
@@ -163,6 +176,19 @@ rule split_dataset:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
         trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
 
+rule multiple_splits_dataset:
+    input:
+        ANALYZES_DIR + "datasets/dataset.csv.gz",
+        FCCSS_CLINICAL_DATASET
+    output:
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+    run:
+        file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
+        for i in range(NB_ESTIM_SCORE_MODELS):
+            trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL, end_name_sets = f"_{i}")
+
+# Visualisation
 rule pca_visualisation:
     input:
         ANALYZES_DIR + "datasets/dataset.csv.gz"
@@ -172,6 +198,7 @@ rule pca_visualisation:
     run:
         trainset.pca_viz(ANALYZES_DIR + "datasets/dataset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
+# Feature elimination
 rule feature_elimination_dataset_hclust_corr:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz"
@@ -188,11 +215,18 @@ rule baseline_analysis:
         ANALYZES_DIR + "features_hclust_corr.csv",
         ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
-        ANALYZES_DIR + "baseline_models.log"
+        ANALYZES_DIR + "baseline_models.log",
+        expand(ANALYZES_DIR + "coxph_plots/coefs_{model}.png", model = BASELINE_MODELS_COX),
+        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = BASELINE_MODELS_COX),
+        expand(ANALYZES_DIR + "coxph_plots/coefs_{model}.png", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_plots/mean_error_alphas_{model}.png", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_plots/regularization_path_{model}.png", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = BASELINE_MODELS_LASSO),
     threads:
         get_ncpus() - 1
     run:
-        learning.baseline_models_analysis(ANALYZES_DIR + "datasets/trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "datasets/testset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        learning.baseline_models_analysis(ANALYZES_DIR + "datasets/trainset.csv.gz", ANALYZES_DIR + "datasets/testset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
 rule cox_lasso_radiomics:
     input:
@@ -201,33 +235,26 @@ rule cox_lasso_radiomics:
         ANALYZES_DIR + "datasets/testset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
-        ANALYZES_DIR + "cox_lasso_radiomics.log"
+        ANALYZES_DIR + "cox_lasso_radiomics.log",
+        expand(ANALYZES_DIR + "coxph_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO),
+        expand(ANALYZES_DIR + "coxph_plots/mean_error_alphas_{model}.png", model = COX_RADIOMICS_LASSO),
+        expand(ANALYZES_DIR + "coxph_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO),
+        expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO),
+        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO)
     threads:
         get_ncpus() - 1
     run:
         learning.cox_lasso_radiomics(ANALYZES_DIR + "datasets/trainset.csv.gz", ANALYZES_DIR + "features_hclust_corr.csv", ANALYZES_DIR + "datasets/testset.csv.gz", EVENT_COL, ANALYZES_DIR)
-
-
-rule rsf_features_hclust_corr_analysis:
-    input:
-        ANALYZES_DIR + "datasets/trainset.csv.gz",
-        ANALYZES_DIR + "datasets/testset.csv.gz",
-        ANALYZES_DIR + "features_hclust_corr.csv"
-    output:
-        ANALYZES_DIR + "rsf_features_hclust_corr.log"
-    conda:
-        "envs/rsf_R_env.yaml"
-    threads:
-        get_ncpus() - 1
-    shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
 
 rule rsf_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
-        ANALYZES_DIR + "rsf_all.log"
+        ANALYZES_DIR + "rsf_all.log",
+        expand(ANALYZES_DIR + "coxph_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_ALL),
+        expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = RSF_RADIOMICS_ALL),
+        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = RSF_RADIOMICS_ALL)
     conda:
         "envs/rsf_R_env.yaml"
     threads:
@@ -235,3 +262,21 @@ rule rsf_analysis:
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all"
  
+rule rsf_features_hclust_corr_analysis:
+    input:
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
+        ANALYZES_DIR + "datasets/testset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv"
+    output:
+        ANALYZES_DIR + "rsf_features_hclust_corr.log",
+        expand(ANALYZES_DIR + "coxph_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST)
+    conda:
+        "envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
+
+

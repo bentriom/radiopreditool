@@ -153,6 +153,7 @@ def plot_non_zero_coefs(coefs, labels_covariates, model_name):
 
 # Replot Lasso results
 def redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name):
+    # Prepare train and test set
     df_trainset = pd.read_csv(file_trainset)
     df_testset = pd.read_csv(file_testset)
     df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()

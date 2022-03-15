@@ -161,15 +161,14 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     logger.info(f"Test: {results_test[0]} & {results_test[1]} & {results_test[2]} & {results_test[3]}") 
     df_results = pd.DataFrame({"Train": results_train, "Test": results_test}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
     df_results.to_csv(analyzes_dir + f"coxph_results/metrics_{model_name}.csv", index = True)
-    return best_coxph
+    return results_test
 
 # Run baseline models
-def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir, only_plots = False):
+def baseline_models_analysis(file_trainset, file_testset, event_col, analyzes_dir, only_plots = False):
     log_name = "baseline_models"
     logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
     duration_col = "survival_time_years"
     df_trainset = pd.read_csv(file_trainset)
-    features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
     clinical_vars = get_clinical_features(df_trainset, event_col, duration_col)
     os.makedirs(analyzes_dir + "coxph_plots", exist_ok = True)
     os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
@@ -178,13 +177,19 @@ def baseline_models_analysis(file_trainset, file_features_hclust_corr, file_test
     model_name = "1320_mean"
     covariates = ["1320_original_firstorder_Mean"] + clinical_vars
     logger.info("Model heart mean dose (1320)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, model_name = model_name, log_name = log_name)
+    if only_plots:
+        redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name)
+    else:
+        coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, model_name = model_name, log_name = log_name)
     
     # Coxph doses volumes indicators of heart (1320)
     model_name = "1320_dosesvol"
     covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
     logger.info("Model heart doses volumes (1320)")
-    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
+    if only_plots:
+        redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name)
+    else:
+        coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
                    penalty = None, model_name = model_name, log_name = log_name)
     
     # Coxph doses volumes indicators of heart Lasso (1320)

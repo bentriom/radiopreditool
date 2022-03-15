@@ -79,7 +79,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     
 # Split train / test
 def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
-                  test_size = 0.3, seed = None):
+                  end_name_sets = "", test_size = 0.3, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
     surv_duration_col = "survival_time_years"
     df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
@@ -113,8 +113,8 @@ def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_va
         df_dataset.drop(columns = col_treated_by_rt, inplace = True)
         df_trainset.drop(columns = col_treated_by_rt, inplace = True)
         df_testset.drop(columns = col_treated_by_rt, inplace = True)
-    df_trainset.to_csv(analyzes_dir + "datasets/trainset.csv.gz", index = False)
-    df_testset.to_csv(analyzes_dir + "datasets/testset.csv.gz", index = False)
+    df_trainset.to_csv(analyzes_dir + f"datasets/trainset{end_name_sets}.csv.gz", index = False)
+    df_testset.to_csv(analyzes_dir + f"datasets/testset{end_name_sets}.csv.gz", index = False)
 
 ## Feature elimination: eliminate sparse and redundant columns
 
