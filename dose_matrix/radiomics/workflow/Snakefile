@@ -275,9 +275,9 @@ rule rsf_analysis:
         ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
         ANALYZES_DIR + "rsf_all.log",
-        expand(ANALYZES_DIR + "coxph_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_ALL),
-        expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = RSF_RADIOMICS_ALL),
-        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = RSF_RADIOMICS_ALL)
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_ALL),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_ALL),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_ALL)
     conda:
         "envs/rsf_R_env.yaml"
     threads:
@@ -292,9 +292,9 @@ rule rsf_features_hclust_corr_analysis:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST)
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST)
     conda:
         "envs/rsf_R_env.yaml"
     threads:
