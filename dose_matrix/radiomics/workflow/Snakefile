@@ -222,7 +222,7 @@ rule baseline_analysis:
         expand(ANALYZES_DIR + "coxph_plots/regularization_path_{model}.png", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_results/cv_{model}.csv", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_results/best_params_{model}.csv", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_results/metrics_{model}.csv", model = BASELINE_MODELS_LASSO)
     threads:
         get_ncpus() - 1
     run:
@@ -231,7 +231,7 @@ rule baseline_analysis:
 rule multiple_scores_baseline_models:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "coxph_results/best_params_{model}.csv", model = BASELINE_MODELS_LASSO)
     output: 
         ANALYZES_DIR + "multiple_scores_baseline_models.log",
@@ -261,7 +261,7 @@ rule cox_lasso_radiomics:
 rule multiple_scores_cox_lasso_radiomics:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "coxph_results/best_params_{model}.csv", model = COX_RADIOMICS_LASSO)
     output: 
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics.log",
