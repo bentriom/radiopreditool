@@ -44,6 +44,7 @@ def survival_date(event_col, date_event_col, row):
 # Create dataset based on availaible dosiomics, clinical variables and survival data
 def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col):
     logger = setup_logger("dataset", analyzes_dir + "dataset.log")
+    os.makedirs(analyzes_dir + "datasets", exist_ok = True)
     df_radiomics = pd.read_csv(file_radiomics)
     df_radiomics["has_radiomics"] = 1
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
@@ -59,7 +60,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_fccss[surv_duration_col] = df_fccss[["survival_date", "datetime_date_diag"]].apply(lambda x: (x["survival_date"] - x["datetime_date_diag"]).total_seconds() / (365.25 * 24 * 3600), axis = 1)
     cols_radiomics = df_radiomics.columns.to_list()
     cols_radiomics.remove("ctr"), cols_radiomics.remove("numcent")
-    # Create dataset
+    # Create dataset by merging fccss and radiomics
     cols_y = [event_col, surv_duration_col]
     col_treated_by_rt = "radiotherapie_1K"
     df_dataset = df_fccss[["ctr", "numcent"] + clinical_variables + cols_y]

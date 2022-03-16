@@ -2,6 +2,8 @@
 import io, sys
 import pandas as pd
 import numpy as np
+from functools import partial
+from multiprocessing import Pool
 from scipy.stats.distributions import chi2
 import matplotlib
 matplotlib.use('Agg')
@@ -68,13 +70,14 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{model_name}.png", dpi = 480, bbox_inches = 'tight')
         plt.close()
         # Refit with best alpha
+        pd.DataFrame({'alpha': alpha_lr, 'l1_ratio': l1_ratio}).to_csv(analyzes_dir + f"coxph_results/best_params_{model_name}.csv", index = False)
         best_coxnet = CoxnetSurvivalAnalysis(alphas = [alpha_lr], l1_ratio = l1_ratio, fit_baseline_model = True)
         best_coxnet.fit(X_train, surv_y_train)
         return best_coxnet
 
 # Run a complete Cox analysis with cross-validation
 def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
-                   penalty = "ridge", seed = None, test_size = 0.3, model_name = "", log_name = ""):
+                   penalty = "lasso", seed = None, test_size = 0.3, model_name = "", log_name = ""):
     logger = logging.getLogger(log_name)
     logger.info(covariates)
     df_trainset = pd.read_csv(file_trainset)
@@ -161,9 +164,9 @@ def coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_
     logger.info(f"Test: {results_test[0]} & {results_test[1]} & {results_test[2]} & {results_test[3]}") 
     df_results = pd.DataFrame({"Train": results_train, "Test": results_test}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
     df_results.to_csv(analyzes_dir + f"coxph_results/metrics_{model_name}.csv", index = True)
-    return results_test
+    return best_coxph
 
-# Run baseline models
+# Run baseline models analysis: cross-validation, plots and scores over testset
 def baseline_models_analysis(file_trainset, file_testset, event_col, analyzes_dir, only_plots = False):
     log_name = "baseline_models"
     logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
@@ -177,19 +180,13 @@ def baseline_models_analysis(file_trainset, file_testset, event_col, analyzes_di
     model_name = "1320_mean"
     covariates = ["1320_original_firstorder_Mean"] + clinical_vars
     logger.info("Model heart mean dose (1320)")
-    if only_plots:
-        redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name)
-    else:
-        coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, model_name = model_name, log_name = log_name)
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, penalty = None, model_name = model_name, log_name = log_name)
     
     # Coxph doses volumes indicators of heart (1320)
     model_name = "1320_dosesvol"
     covariates = [feature for feature in df_trainset.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
     logger.info("Model heart doses volumes (1320)")
-    if only_plots:
-        redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name)
-    else:
-        coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
+    coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
                    penalty = None, model_name = model_name, log_name = log_name)
     
     # Coxph doses volumes indicators of heart Lasso (1320)
@@ -202,7 +199,52 @@ def baseline_models_analysis(file_trainset, file_testset, event_col, analyzes_di
         coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
                        penalty = "lasso", model_name = model_name, log_name = log_name)
 
-# Lasso models on dosiomics
+# Score of baseline models over several testsets
+def multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir):
+    log_name = "multiple_scores_baseline_models"
+    logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
+    logger.info(f"Number of CPUs: {get_ncpus()}")
+    duration_col = "survival_time_years"
+    df_trainset0 = pd.read_csv(analyzes_dir + "datasets/trainset_0.csv.gz")
+    clinical_vars = get_clinical_features(df_trainset0, event_col, duration_col)
+    sets_arguments = [(analyzes_dir + f"datasets/trainset_{i}.csv.gz", analyzes_dir + f"datasets/testset_{i}.csv.gz") for i in range(nb_estim)]
+    os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
+
+    # Coxph mean dose of heart (1320)
+    model_name = "1320_mean"
+    covariates = ["1320_original_firstorder_Mean"] + clinical_vars
+    logger.info("Model heart mean dose (1320)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = None, model_name = model_name), sets_arguments)
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph doses volumes indicators of heart (1320)
+    model_name = "1320_dosesvol"
+    covariates = [feature for feature in df_trainset0.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
+    logger.info("Model heart doses volumes (1320)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = None, model_name = model_name), sets_arguments)
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+    
+    # Coxph doses volumes indicators of heart Lasso (1320)
+    model_name = "1320_dosesvol_lasso"
+    covariates = [feature for feature in df_trainset0.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
+    logger.info("Model heart doses volumes lasso (1320)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+# Run Lasso models on dosiomics: cross-validation, plots and metrics over testset
 def cox_lasso_radiomics(file_trainset, file_features_hclust_corr, file_testset, event_col, analyzes_dir, only_plots = False):
     log_name = "cox_lasso_radiomics"
     logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
@@ -252,4 +294,60 @@ def cox_lasso_radiomics(file_trainset, file_features_hclust_corr, file_testset, 
     else:
         coxph_analysis(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
                        penalty = "lasso", model_name = model_name, log_name = log_name)
+
+# Score of baseline models over several testsets
+def multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, event_col, analyzes_dir):
+    log_name = "multiple_scores_cox_lasso_radiomics"
+    logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
+    duration_col = "survival_time_years"
+    df_trainset0 = pd.read_csv(analyzes_dir + "datasets/trainset_0.csv.gz")
+    features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
+    clinical_vars = get_clinical_features(df_trainset0, event_col, duration_col)
+    sets_arguments = [(analyzes_dir + f"datasets/trainset_{i}.csv.gz", analyzes_dir + f"datasets/testset_{i}.csv.gz") for i in range(nb_estim)]
+    os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
+    
+    # Coxph radiomics heart 32X full trainset lasso
+    print("que se passe t il")
+    model_name = "32X_radiomics_lasso"
+    covariates = [feature for feature in df_trainset0.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 32X (full trainset lasso)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+    
+    # Coxph radiomics heart 32X hclust corr features trainset lasso
+    model_name = "32X_radiomics_features_hclust_lasso"
+    covariates = [feature for feature in features_hclust_corr if re.match("^32[0-9]_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 32X (hclust corr feature elimination trainset lasso)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+    
+    # Coxph radiomics heart 1320 full trainset lasso
+    model_name = "1320_radiomics_lasso"
+    covariates = [feature for feature in df_trainset0.columns if re.match("^1320_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 1320 (full trainset lasso)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph radiomics heart 1320 hclust corr features trainset lasso
+    model_name = "1320_radiomics_features_hclust_lasso"
+    covariates = [feature for feature in features_hclust_corr if re.match("^1320_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 1320 (hclust corr feature elimination trainset lasso)")
+    with Pool(get_ncpus()) as p:
+        results = p.starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col, 
+                                                    analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(results)    
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
 

@@ -44,10 +44,6 @@ def get_probs_bs(cph_object, X, bs_time, ibs_timeline):
 # Estimate the maximum alpha, debuting with the one that maximizes the score,
 # that is not rejected by likelihood ratio test
 def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio, log_name = ""):
-    # covariates = [col for col in df_coxph_train if col not in [event_col, duration_col]]
-    # X_train, y_train = df_coxph_train.loc[:,covariates], df_coxph_train.loc[:,[duration_col, event_col]] 
-    # y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
-    # surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
     logger = logging.getLogger(log_name)
     alpha_max_cv = df_cv_res.iloc[0]["alpha"]
     nbr_features_max_cv = df_cv_res.iloc[0]["non_zero_coefs"]
@@ -66,10 +62,6 @@ def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_rat
         loglik_alpha = coxph.log_likelihood_
         loglik_ratio = -2*(loglik_alpha - loglik_ref)
         pvalue = chi2.sf(loglik_ratio, 1)
-        # coxnet = CoxnetSurvivalAnalysis(alphas = [new_alpha], l1_ratio = l1_ratio)
-        # coxnet.fit(X_train, surv_y_train)
-        # print(f"alpha: {new_alpha}, non zero coefs: {sum(np.abs(coxph.params_) > 0)} or {row['non_zero_coefs']}")
-        # print(f"loglik coxnet: {sum(coxnet.predict(X_train))}")
         ncoefs_candidate = df_alpha_candidates.loc[row['alpha'],'non_zero_coefs']
         logger.info(f"{new_alpha} ({ncoefs_new_alpha}) vs {row['alpha']} ({ncoefs_candidate}): {pvalue}")
         if pvalue < 0.05:
@@ -167,7 +159,10 @@ def redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, du
     y_test[event_col].replace({1.0: True, 0.0: False}, inplace = True)
     surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
     surv_y_test = Surv.from_dataframe(event_col, duration_col, y_test)
-    l1_ratio = 1.0 
+    # Best params for Cox Lasso
+    df_best_params = pd.read_csv(analyzes_dir + f"coxph_results/best_params_{model_name}.csv")
+    best_alpha = df_best_params.iloc[0]["alpha"]
+    l1_ratio = df_best_params.iloc[0]["l1_ratio"]
     # Plot regularization path
     coxnet = CoxnetSurvivalAnalysis(n_alphas = 40, l1_ratio = l1_ratio, tol = 1e-5)
     coxnet.fit(X_train, surv_y_train)
@@ -176,8 +171,6 @@ def redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, du
     plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{model_name}.png", dpi = 480, bbox_inches = 'tight')
     # Plot cross-validation results
     df_cv_results = pd.read_csv(analyzes_dir + f"coxph_results/cv_{model_name}.csv")
-    alpha_max_cv = df_cv_results.iloc[0]["alpha"]
-    best_alpha = max_alpha_lr_test(df_cv_results, df_model_train, event_col, duration_col, l1_ratio)
     plot_cv_results(df_cv_results, best_alpha)
     plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{model_name}.png", dpi = 480, bbox_inches = 'tight')
     plt.close()
@@ -187,4 +180,48 @@ def redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, du
     plot_non_zero_coefs(best_coxnet.coef_, pretty_labels(covariates), model_name)
     plt.savefig(analyzes_dir + f"coxph_plots/coefs_{model_name}.png", dpi = 480, bbox_inches = 'tight')
     plt.close()
+
+# Get the metrics of the model by refitting the best model
+def refit_best_cox(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
+                   penalty = "lasso", model_name = "", l1_ratio = 1.0):
+    # Prepare train and test set
+    df_trainset = pd.read_csv(file_trainset)
+    df_testset = pd.read_csv(file_testset)
+    df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()
+    df_model_test = df_testset[covariates + [event_col, duration_col]].dropna()
+    norm_scaler = StandardScaler()
+    df_model_train.loc[:, covariates] = norm_scaler.fit_transform(df_model_train.loc[:, covariates])
+    df_model_test.loc[:, covariates] = norm_scaler.transform(df_model_test.loc[:, covariates])
+    X_train, y_train = df_model_train.loc[:,covariates], df_model_train.loc[:,[duration_col, event_col]] 
+    X_test, y_test = df_model_test.loc[:,covariates], df_model_test.loc[:,[duration_col, event_col]] 
+    y_train[event_col].replace({1.0: True, 0.0: False}, inplace = True)
+    y_test[event_col].replace({1.0: True, 0.0: False}, inplace = True)
+    surv_y_train = Surv.from_dataframe(event_col, duration_col, y_train)
+    surv_y_test = Surv.from_dataframe(event_col, duration_col, y_test)
+    # Best CoxPH model
+    if penalty == None:
+        best_coxph = CoxPHFitter(penalizer = 0.0, alpha = 0.05)
+        best_coxph.fit(df_model_train, duration_col, event_col, step_size = 0.5)
+    elif penalty in ["lasso", "ridge"]:
+        # Best params for Cox Lasso
+        df_best_params = pd.read_csv(analyzes_dir + f"coxph_results/best_params_{model_name}.csv")
+        best_alpha = df_best_params.iloc[0]["alpha"]
+        l1_ratio = df_best_params.iloc[0]["l1_ratio"]
+        best_coxph = CoxnetSurvivalAnalysis(alphas = [best_alpha], l1_ratio = l1_ratio, fit_baseline_model = True)
+        best_coxph.fit(X_train, surv_y_train)
+    # Predictions of risk score / survival probabilities over testset
+    risk_scores_test = get_risk_scores(best_coxph, X_test)
+    ibs_timeline = np.arange(1, 61, step = 1)
+    final_time = ibs_timeline[-1]
+    prob_surv_test, ibs_preds_test = get_probs_bs(best_coxph, X_test, final_time, ibs_timeline)
+    # Metrics
+    # Harell's C-index
+    coxph_cindex_test = concordance_index_censored(y_test[event_col], y_test[duration_col], risk_scores_test)
+    # Uno's C-index
+    coxph_cindex_uno_test = concordance_index_ipcw(surv_y_train, surv_y_test, risk_scores_test)
+    # Brier score
+    times_brier_test, brier_score_test = brier_score(surv_y_train, surv_y_test, prob_surv_test, final_time)
+    ibs_score_test = integrated_brier_score(surv_y_train, surv_y_test, ibs_preds_test, ibs_timeline)
+    results_test = [coxph_cindex_test[0], coxph_cindex_uno_test[0], brier_score_test[0], ibs_score_test]
+    return results_test
 
