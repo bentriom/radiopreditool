@@ -70,7 +70,7 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{model_name}.png", dpi = 480, bbox_inches = 'tight')
         plt.close()
         # Refit with best alpha
-        pd.DataFrame({'alpha': alpha_lr, 'l1_ratio': l1_ratio}).to_csv(analyzes_dir + f"coxph_results/best_params_{model_name}.csv", index = False)
+        pd.DataFrame({'alpha': [alpha_lr], 'l1_ratio': [l1_ratio]}).to_csv(analyzes_dir + f"coxph_results/best_params_{model_name}.csv", index = False)
         best_coxnet = CoxnetSurvivalAnalysis(alphas = [alpha_lr], l1_ratio = l1_ratio, fit_baseline_model = True)
         best_coxnet.fit(X_train, surv_y_train)
         return best_coxnet
