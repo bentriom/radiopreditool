@@ -118,6 +118,39 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
     c(unlist(row), mean(ibs.folds), mean(cindex.folds), mean(cindex.ipcw.folds), param.error)
 }
 
+# Refit best RSF
+refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name = "") {
+    # Prepare sets
+    df_model_train <- read.csv(file_trainset, header = TRUE)[,c(event_col, duration_col, covariates)]
+    df_model_test <- read.csv(file_testset, header = TRUE)[,c(event_col, duration_col, covariates)]
+    df_model_train <- na.omit(df_model_train)
+    df_model_test <- na.omit(df_model_test)
+    # Fit RSF
+    formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
+    params.best <- read.csv(paste(analyzes_dir, "rsf_results/cv_", model_name, ".csv", sep = ""))[1,]
+    rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
+    # Predictions / metrics
+    pred.times <- seq(1, 60, by = 1)
+    final.time <- tail(pred.times, 1)
+    rsf.pred.test <- predict(rsf.best, newdata = df_model_test)
+    rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
+    rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_test)$AppCindex[["Best rsf"]]
+    rsf.cindex.harrell.test <- 1-rcorr.cens(rsf.pred.test$predicted, S = Surv(df_model_test[[duration_col]], df_model_test[[event_col]]))[["C Index"]]
+    rsf.perror.test <- pec(object= list("test" = rsf.survprob.test), formula = formula_model, data = df_model_test, 
+                           times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+    rsf.bs.final.test <- tail(rsf.perror.test$AppErr$test, 1)
+    rsf.ibs.test <- crps(rsf.perror.test)[1]
+    results_test <- c(rsf.cindex.harrell.test, rsf.cindex.ipcw.test, rsf.bs.final.test, rsf.ibs.test)
+    results_test
+}
+
+refit.best.rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name = "") {
+    log_info(id_set)
+    file_trainset <- paste(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz", sep = "")
+    file_testset <- paste(analyzes_dir, "datasets/testset_", id_set, ".csv.gz", sep = "")
+    refit.best.rsf(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name = model_name)
+}
+
 # Cross-validation for RSF
 cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_col = "survival_time_years", 
                    nfolds = 5, pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
@@ -126,22 +159,6 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
     log_info(paste("Running CV with rfsrc using", getOption("rf.cores"), "workers")) 
     cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = 1)
     cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
-    # doMC
-    # registerDoMC(nworkers)
-    #  log_info(paste("Running doMC CV with", getDoParWorkers(), "workers"))
-    #  cv.params.df <- foreach (idx.row = 1:nbr.params, .combine = rbind) %dopar% {
-    #     get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
-    #  }
-    #  cv.params.df <- as.data.frame(cv.params.df)
-    # doParallel
-    # cluster <- parallel::makeCluster(nworkers)
-    # doParallel::registerDoParallel(cluster)
-    # log_info(paste("Running doParallel CV with", getDoParWorkers(), "workers"))
-    # cv.params.df <- foreach (idx.row = 1:nbr.params, .combine = rbind, .export = "get.param.cv.error", .packages = c("randomForestSRC", "pec", "logger", "survival")) %dopar% {
-    #     get.param.cv.error(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile)
-    # }
-    # cv.params.df <- as.data.frame(cv.params.df)
-    
     rownames(cv.params.df) <- NULL
     colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Harrel Cindex", "IPCW Cindex", "Error")
     cv.params.df[order(cv.params.df$Error),]
@@ -162,6 +179,7 @@ bootstrap.undersampling<-function(data,ntree) {
     bootstrap
 }
 
+# Plot of features importances for RSF
 new.plot.subsample.rfsrc <- function(x, alpha = .01,
                                      standardize = TRUE, normal = TRUE, jknife = TRUE,
                                      target, m.target = NULL, pmax = 75, main = "", 

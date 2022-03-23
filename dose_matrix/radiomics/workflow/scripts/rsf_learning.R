@@ -19,12 +19,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     # df_model_test[is.na(df_model_test)] <- -1
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
-    # Z normalisation
-    # means_train <- as.numeric(lapply(df_model_train[, covariates], mean))
-    # stds_train <- as.numeric(lapply(df_model_train[, covariates], sd))
-    # df_model_train[, covariates] <- scale(df_model_train[, covariates], center = means_train, scale = stds_train)
-    # df_model_test[, covariates] <- scale(df_model_test[, covariates], center = means_train, scale = stds_train)
-    log_info(paste("Covariates:", paste(covariates, collapse = ", ")))
+    log_info(paste("Covariates (", length(covariates),"):", paste(covariates, collapse = ", ")))
     log_info(paste("Trained:", nrow(df_model_train), "samples"))
     log_info(paste("Testset: ", nrow(df_model_test), " samples", sep = ""))
     log_info("NAs are omitted")
@@ -138,7 +133,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
     log_info("Model 32X")
     model_name <- paste("model_32X_", suffix_model, sep = "")
     cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
-    covariates_32X <- c(clinical_vars, cols_32X, "has_radiomics")
+    covariates_32X <- c(clinical_vars, cols_32X)
     rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
     plot_vimp(rsf.obj, analyzes_dir, model_name)
 
@@ -146,7 +141,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
     log_info("Model 1320")
     model_name <- paste("model_1320_", suffix_model, sep = "")
     cols_1320 <- grep("^X1320_", colnames(df_trainset), value = TRUE)
-    covariates_1320 <- c(clinical_vars, cols_1320, "has_radiomics")
+    covariates_1320 <- c(clinical_vars, cols_1320)
     rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
     plot_vimp(rsf.obj, analyzes_dir, model_name)
 }
