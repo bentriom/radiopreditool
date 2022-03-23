@@ -289,6 +289,22 @@ rule rsf_analysis:
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all"
  
+rule multiple_scores_rsf:
+    input:
+        ANALYZES_DIR + "features_hclust_corr.csv",
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO)
+    output: 
+        ANALYZES_DIR + "multiple_scores_rsf_all.log",
+        expand(ANALYZES_DIR + "coxph_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = COX_RADIOMICS_LASSO)
+    conda:
+        "envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {NB_ESTIM_SCORE_MODELS} all {EVENT_COL} {ANALYZES_DIR} all"
+ 
 rule rsf_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
@@ -306,4 +322,19 @@ rule rsf_features_hclust_corr_analysis:
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
 
-
+rule multiple_scores_rsf_features_hclust_corr:
+    input:
+        ANALYZES_DIR + "features_hclust_corr.csv",
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO)
+    output: 
+        ANALYZES_DIR + "multiple_scores_rsf_features_hclust_corr.log",
+        expand(ANALYZES_DIR + "coxph_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = COX_RADIOMICS_LASSO)
+    conda:
+        "envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
+ 
