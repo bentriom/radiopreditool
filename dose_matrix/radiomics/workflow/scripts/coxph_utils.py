@@ -17,6 +17,61 @@ from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
 from sksurv.metrics import concordance_index_censored, concordance_index_ipcw, integrated_brier_score, brier_score
 from lifelines import CoxPHFitter
 
+# Cross-validation for penalty estimation in regularized Cox
+def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, analyzes_dir, penalty, model_name, n_splits = 5, log_name = ""):
+    covariates = X_train.columns.values
+    stratified_cv = StratifiedKFold(n_splits = n_splits)
+    split_cv = stratified_cv.split(X_train, get_events(surv_y_train))
+    l1_ratio = 1.0
+    if penalty == "ridge":
+        coxph = CoxPHSurvivalAnalysis()
+        dict_params_coxph = {'alpha': [0.0001, 0.5, 1.0, 1.5, 2.0, 5.0]}
+        cv_coxph = GridSearchCV(estimator = coxph, param_grid = dict_params_coxph, cv = split_cv, n_jobs = get_ncpus())
+        cv_coxph.fit(X_train, surv_y_train)
+        cv_results = cv_coxph.cv_results_
+        cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
+        cv_mean = cv_results["mean_test_score"]
+        cv_std = cv_results["std_test_score"]
+        df_cv_res = pd.DataFrame({"alpha": cv_alphas, "mean_score": cv_mean, "std_score": cv_std})
+        df_cv_res.sort_values("mean_score", ascending = False, inplace = True)
+        df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{model_name}.csv", index = False)
+        return cv_coxph.best_estimator_
+    elif penalty == "lasso":
+        coxnet = CoxnetSurvivalAnalysis(n_alphas = 40, l1_ratio = l1_ratio, tol = 1e-5)
+        coxnet.fit(X_train, surv_y_train)
+        # Plot coefs
+        coefficients_lasso = pd.DataFrame(coxnet.coef_, index = pretty_labels(covariates), columns = coxnet.alphas_)
+        plot_coefficients(coefficients_lasso, n_highlight = min(7, len(covariates)))
+        plt.savefig(analyzes_dir + f"coxph_plots/regularization_path_{model_name}.png", dpi = 480, bbox_inches = 'tight')
+        plt.close()
+        # Gridsearch CV
+        list_alphas = coxnet.alphas_
+        dict_params_coxnet = {'alphas': [[a] for a in list_alphas]}
+        coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = l1_ratio, tol = 1e-6)
+        cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
+        cv_coxnet.fit(X_train, surv_y_train)
+        cv_results = cv_coxnet.cv_results_
+        cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
+        cv_mean = cv_results["mean_test_score"]
+        cv_std = cv_results["std_test_score"]
+        # Add number of non zeros coefs
+        series_nbr_features = (coefficients_lasso.transpose().abs() > 0).sum(axis = 1)
+        df_cv_res = pd.DataFrame({"alpha": cv_alphas, "mean_score": cv_mean, "std_score": cv_std})
+        df_cv_res.insert(0, "non_zero_coefs", series_nbr_features[df_cv_res["alpha"]].values)
+        df_cv_res.sort_values("mean_score", ascending = False, inplace = True)
+        df_cv_res.to_csv(analyzes_dir + f"coxph_results/cv_{model_name}.csv", index = False)
+        # Successive likelihood ratio tests
+        alpha_lr = max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_ratio, log_name = log_name)
+        # Plot CV
+        plot_cv_results(df_cv_res, alpha_lr)
+        plt.savefig(analyzes_dir + f"coxph_plots/mean_error_alphas_{model_name}.png", dpi = 480, bbox_inches = 'tight')
+        plt.close()
+        # Refit with best alpha
+        pd.DataFrame({'alpha': [alpha_lr], 'l1_ratio': [l1_ratio]}).to_csv(analyzes_dir + f"coxph_results/best_params_{model_name}.csv", index = False)
+        best_coxnet = CoxnetSurvivalAnalysis(alphas = [alpha_lr], l1_ratio = l1_ratio, fit_baseline_model = True)
+        best_coxnet.fit(X_train, surv_y_train)
+        return best_coxnet
+
 ## Helpers for compatibility between lifelines / sksurv
 
 def get_risk_scores(cph_object, X):
