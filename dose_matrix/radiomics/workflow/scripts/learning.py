@@ -296,3 +296,97 @@ def multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, eve
     df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = index_results)
     df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
 
+
+# Sequential
+def _seq_multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir):
+    log_name = "multiple_scores_baseline_models"
+    logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
+    logger.info(f"Number of CPUs: {get_ncpus()}")
+    duration_col = "survival_time_years"
+    df_trainset0 = pd.read_csv(analyzes_dir + "datasets/trainset_0.csv.gz")
+    clinical_vars = get_clinical_features(df_trainset0, event_col, duration_col)
+    sets_arguments = [(analyzes_dir + f"datasets/trainset_{i}.csv.gz", analyzes_dir + f"datasets/testset_{i}.csv.gz") for i in range(nb_estim)]
+    os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
+
+    # Coxph mean dose of heart (1320)
+    model_name = "1320_mean"
+    covariates = ["1320_original_firstorder_Mean"] + clinical_vars
+    logger.info("Model heart mean dose (1320)")
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = None, model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph doses volumes indicators of heart (1320)
+    model_name = "1320_dosesvol"
+    covariates = [feature for feature in df_trainset0.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
+    logger.info("Model heart doses volumes (1320)")
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = None, model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph doses volumes indicators of heart Lasso (1320)
+    model_name = "1320_dosesvol_lasso"
+    covariates = [feature for feature in df_trainset0.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
+    logger.info("Model heart doses volumes lasso (1320)")
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+def _seq_multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, event_col, analyzes_dir):
+    log_name = "multiple_scores_cox_lasso_radiomics"
+    logger = setup_logger(log_name, analyzes_dir + f"{log_name}.log")
+    duration_col = "survival_time_years"
+    df_trainset0 = pd.read_csv(analyzes_dir + "datasets/trainset_0.csv.gz")
+    features_hclust_corr = pd.read_csv(file_features_hclust_corr, header = None)[0].values
+    clinical_vars = get_clinical_features(df_trainset0, event_col, duration_col)
+    sets_arguments = [(analyzes_dir + f"datasets/trainset_{i}.csv.gz", analyzes_dir + f"datasets/testset_{i}.csv.gz") for i in range(nb_estim)]
+    os.makedirs(analyzes_dir + "coxph_results", exist_ok = True)
+
+    # Coxph radiomics heart 32X full trainset lasso
+    print("que se passe t il")
+    model_name = "32X_radiomics_lasso"
+    covariates = [feature for feature in df_trainset0.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 32X (full trainset lasso)")
+    #with Pool(get_ncpus()) as p:
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph radiomics heart 32X hclust corr features trainset lasso
+    model_name = "32X_radiomics_features_hclust_lasso"
+    covariates = [feature for feature in features_hclust_corr if re.match("^32[0-9]_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 32X (hclust corr feature elimination trainset lasso)")
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph radiomics heart 1320 full trainset lasso
+    model_name = "1320_radiomics_lasso"
+    covariates = [feature for feature in df_trainset0.columns if re.match("^1320_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 1320 (full trainset lasso)")
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
+    # Coxph radiomics heart 1320 hclust corr features trainset lasso
+    model_name = "1320_radiomics_features_hclust_lasso"
+    covariates = [feature for feature in features_hclust_corr if re.match("^1320_.*", feature)] + clinical_vars
+    logger.info("Model heart dosiomics 1320 (hclust corr feature elimination trainset lasso)")
+    results = starmap(partial(refit_best_cox, covariates = covariates, event_col = event_col, duration_col = duration_col,
+                                              analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name), sets_arguments)
+    results = np.asarray(list(results))
+    df_results = pd.DataFrame({"Mean": np.mean(results, axis = 0), "Std": np.std(results, axis = 0)}, index = ["C-index", "IPCW C-index", "BS at 60", "IBS"])
+    df_results.to_csv(analyzes_dir + f"coxph_results/{nb_estim}_runs_test_metrics_{model_name}.csv", index = True)
+
