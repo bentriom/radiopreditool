@@ -57,7 +57,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-    nb_estim <- args[1]
+    nb_estim <- as.numeric(args[1])
     file_features <- args[2]
     event_col <- args[3]
     analyzes_dir <- args[4]
