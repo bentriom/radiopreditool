@@ -14,7 +14,7 @@ LABELS_SUPER_T_VOI = config["LABELS_SUPER_T_VOI"] if "LABELS_SUPER_T_VOI" in con
 LABELS_T_VOI = config["LABELS_T_VOI"] if "LABELS_T_VOI" in config else [""]
 EVENT_COL = "Pathologie_cardiaque"
 DATE_EVENT_COL = "date_pathol_cardiaque"
-NB_ESTIM_SCORE_MODELS = 50
+NB_ESTIM_SCORE_MODELS = 10
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
@@ -303,7 +303,7 @@ rule multiple_scores_rsf:
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {NB_ESTIM_SCORE_MODELS} all {EVENT_COL} {ANALYZES_DIR} all"
+        f"Rscript workflow/scripts/multiple_scores_rsf.R {NB_ESTIM_SCORE_MODELS} all {EVENT_COL} {ANALYZES_DIR} all"
  
 rule rsf_features_hclust_corr_analysis:
     input:
@@ -336,5 +336,5 @@ rule multiple_scores_rsf_features_hclust_corr:
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
+        f"Rscript workflow/scripts/multiple_scores_rsf.R {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
  
