@@ -1,5 +1,5 @@
 
-import io, sys
+import io, sys, os
 import pandas as pd
 import numpy as np
 from scipy.stats.distributions import chi2
@@ -238,12 +238,14 @@ def redo_plot_lasso_model(file_trainset, file_testset, covariates, event_col, du
 
 # Get the metrics of the model by refitting the best model
 def refit_best_cox(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
-                   penalty = "lasso", model_name = "", l1_ratio = 1.0):
+                   penalty = "lasso", model_name = "", l1_ratio = 1.0, log_name = ""):
     # Prepare train and test set
+    logger = logging.getLogger(log_name)
     df_trainset = pd.read_csv(file_trainset)
     df_testset = pd.read_csv(file_testset)
     df_model_train = df_trainset[covariates + [event_col, duration_col]].dropna()
     df_model_test = df_testset[covariates + [event_col, duration_col]].dropna()
+    logger.info(f"{os.path.basename(file_trainset)}: begin, penalty {penalty}")
     norm_scaler = StandardScaler()
     df_model_train.loc[:, covariates] = norm_scaler.fit_transform(df_model_train.loc[:, covariates])
     df_model_test.loc[:, covariates] = norm_scaler.transform(df_model_test.loc[:, covariates])
@@ -264,11 +266,13 @@ def refit_best_cox(file_trainset, file_testset, covariates, event_col, duration_
         l1_ratio = df_best_params.iloc[0]["l1_ratio"]
         best_coxph = CoxnetSurvivalAnalysis(alphas = [best_alpha], l1_ratio = l1_ratio, fit_baseline_model = True)
         best_coxph.fit(X_train, surv_y_train)
+    logger.info(f"{os.path.basename(file_trainset)}: trained")
     # Predictions of risk score / survival probabilities over testset
     risk_scores_test = get_risk_scores(best_coxph, X_test)
     ibs_timeline = np.arange(1, 61, step = 1)
     final_time = ibs_timeline[-1]
     prob_surv_test, ibs_preds_test = get_probs_bs(best_coxph, X_test, final_time, ibs_timeline)
+    logger.info(f"{os.path.basename(file_trainset)}: predictions done")
     # Metrics
     # Harell's C-index
     coxph_cindex_test = concordance_index_censored(y_test[event_col], y_test[duration_col], risk_scores_test)
@@ -278,5 +282,13 @@ def refit_best_cox(file_trainset, file_testset, covariates, event_col, duration_
     times_brier_test, brier_score_test = brier_score(surv_y_train, surv_y_test, prob_surv_test, final_time)
     ibs_score_test = integrated_brier_score(surv_y_train, surv_y_test, ibs_preds_test, ibs_timeline)
     results_test = [coxph_cindex_test[0], coxph_cindex_uno_test[0], brier_score_test[0], ibs_score_test]
+    logger.info(f"{os.path.basename(file_trainset)}: metrics computed")
     return results_test
+
+def refit_best_cox_id(id_set, covariates, event_col, duration_col, analyzes_dir, 
+                      penalty = "lasso", model_name = "", l1_ratio = 1.0, log_name = ""):
+    file_trainset = analyzes_dir + f"datasets/trainset_{id_set}.csv.gz" 
+    file_testset = analyzes_dir + f"datasets/testset_{id_set}.csv.gz"
+    return refit_best_cox(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, 
+                          penalty = penalty, model_name = model_name, l1_ratio = l1_ratio, log_name = log_name)
 
