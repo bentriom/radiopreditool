@@ -71,7 +71,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     # Eliminating patients with negative survival
     mask_negative_times = df_dataset[surv_duration_col] < 0
     logger.info(f"Eliminating {sum(mask_negative_times)} patients with negative survival times")
-    df_dataset = df_dataset.loc[mask_negative_times, ]
+    df_dataset = df_dataset.loc[~mask_negative_times, ]
     # Fill columns about radiotherapie
     df_dataset.loc[pd.isnull(df_dataset["has_radiomics"]), "has_radiomics"] = 0
     features_radiomics = get_all_radiomics_features(df_dataset)
