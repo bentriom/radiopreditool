@@ -29,13 +29,13 @@ from sklearn.decomposition import PCA
 def survival_date(event_col, date_event_col, row):
     if row["numcent"] == 199103047:
         return datetime.strptime("03/11/2019", "%d/%m/%Y")
-    if row[event_col] == 1:
+    elif row[event_col] == 1:
         return datetime.strptime(row[date_event_col], "%d/%m/%Y")
-    if row["deces"] == 1:
-        if pd.isna(row["date_deces"]):
-            return datetime.strptime(row["date_sortie"], "%d/%m/%Y")
-        else:
+    elif row["deces"] == 1:
+        if not pd.isnull(row["date_deces"]):
             return datetime.strptime(row["date_deces"], "%d/%m/%Y")
+        else:
+            return datetime.strptime(row["date_sortie"], "%d/%m/%Y")
     else:
         cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
         min_date = datetime.strptime("31/12/2016", "%d/%m/%Y")
@@ -51,6 +51,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     logger.info(f"df_radiomics: {df_radiomics.shape}")
     logger.info(f"df_fccss: {df_fccss.shape}")
     # Create survival time col
+    logger.info("Creating survival columns")
     cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
     cols_survival = ["numcent", event_col, "deces", date_event_col, "date_deces"] + cols_date 
     df_survival = df_fccss[cols_survival]
@@ -67,6 +68,10 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     if col_treated_by_rt not in clinical_variables:
         df_dataset.insert(len(df_dataset.columns), col_treated_by_rt, df_fccss[col_treated_by_rt])
     df_dataset = df_dataset.merge(df_radiomics, how = "left", on = ["ctr", "numcent"])
+    # Eliminating patients with negative survival
+    mask_negative_times = df_dataset[surv_duration_col] < 0
+    logger.info(f"Eliminating {sum(mask_negative_times)} patients with negative survival times")
+    df_dataset = df_dataset.loc[mask_negative_times, ]
     # Fill columns about radiotherapie
     df_dataset.loc[pd.isnull(df_dataset["has_radiomics"]), "has_radiomics"] = 0
     features_radiomics = get_all_radiomics_features(df_dataset)
