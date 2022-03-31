@@ -121,7 +121,8 @@ def max_alpha_lr_test(df_cv_res, df_coxph_train, event_col, duration_col, l1_rat
         logger.info(f"{new_alpha} ({ncoefs_new_alpha}) vs {row['alpha']} ({ncoefs_candidate}): {pvalue}")
         if pvalue < 0.05:
             break
-        new_alpha, ncoefs_new_alpha = row["alpha"], df_alpha_candidates.loc[new_alpha,'non_zero_coefs']
+        new_alpha  = row["alpha"]
+        ncoefs_new_alpha = df_alpha_candidates.loc[new_alpha,'non_zero_coefs']
     return new_alpha
 
 ## Plots
