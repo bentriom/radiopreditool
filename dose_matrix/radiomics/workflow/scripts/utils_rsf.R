@@ -6,35 +6,7 @@ library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
 library("logger", quietly = TRUE)
 
-# Get clinical variables from all features
-get.clinical_features <- function(columns, event_col, duration_col) {
-    regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
-    idx_non_clinical_vars <- grep(regex_non_clinical, columns)
-    return (columns[-idx_non_clinical_vars])
-}
-
-# Pretty label names
-pretty.label <- function(label) {
-    pattern = "X([0-9]{3,4})_[a-z]+_[a-z]+_(\\w+)"
-    if (str_detect(label, pattern)) {
-        matches = str_match(label, pattern)
-        paste(matches[2], matches[3])
-    } else { label }
-}
-
-pretty.labels <- function(labels) {
-    sapply(labels, pretty.label)
-}
-
-# Automatically create a survival formula
-get.surv.formula <- function(event_col, covariates, duration_col = "survival_time_years") {
-    str.surv_formula <- paste("Surv(", duration_col, ",", event_col, ") ~ ", sep = '')
-    for (var in covariates) {
-        str.surv_formula <- paste(str.surv_formula, var, " + ", sep = '')
-    }
-    str.surv_formula <- substr(str.surv_formula, 1, nchar(str.surv_formula) - 2)
-    as.formula(str.surv_formula)
-}
+source("workflow/scripts/utils_radiopreditool.R")
 
 # Brier score computation
 predictSurvProbOOB <- function(object, times, ...){
@@ -44,11 +16,6 @@ predictSurvProbOOB <- function(object, times, ...){
     if (NROW(p) != dim(ptemp)[1] || NCOL(p) != length(times))
         stop(paste("\nPrediction matrix has wrong dimensions:\nRequested newdata x times: ",NROW(newdata)," x ",length(times),"\nProvided prediction matrix: ",NROW(p)," x ",NCOL(p),"\n\n",sep=""))
     p
-}
-
-# Get the proportion of events in data
-event_prop<-function(fccss.data, event_col) {
-    return(sum(fccss.data[[event_col]] == 1) / nrow(fccss.data))
 }
 
 # Create a data frame with the hyperparameters to test in CV
@@ -165,7 +132,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_co
 }
 
 # Under-sampling
-bootstrap.undersampling<-function(data,ntree) {
+bootstrap.undersampling <- function(data,ntree) {
     nsamples <- dim(data)[1]
     index.data.event <- which(data[[event_col]]==1)
     index.data.censored <- which(data[[event_col]]==0)
