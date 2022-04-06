@@ -11,6 +11,39 @@ library("reshape2", quietly = TRUE)
 
 source("workflow/scripts/utils_radiopreditool.R")
 
+select_best_lambda <- function(cox_object, cv.params) {
+    lambda.ref <- cox_object$lambda.min
+    deviance.params <- data.frame(penalty = cox_object$lambda, deviance = deviance(cox_object$glmnet.fit))
+    cv.params.merge <- merge(cv.params, deviance.params, by = "penalty")
+    rownames(cv.params.merge) <- cv.params.merge$penalty
+    cv.params.unique <- cv.params.merge[order(-cv.params.merge$non_zero_coefs, cv.params.merge$penalty), ]
+    cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs) & cv.params.unique$penalty > lambda.ref, ]
+    deviance.ref <- cv.params.merge[as.character(lambda.ref), "deviance"]
+    nonzeros.ref <- cv.params.merge[as.character(lambda.ref), "non_zero_coefs"]
+    lambda.new <- lambda.ref
+    log_info("Best lambda selection")
+    log_info(paste("lambda ref:", lambda.ref, nonzeros.ref))
+    for (i in 1:nrow(cv.params.unique)) {
+        deviance.new <- cv.params.unique[i, "deviance"]
+        nonzeros.new <- cv.params.unique[i, "non_zero_coefs"]
+        loglik.ratio <- deviance.new - deviance.ref
+        df <- nonzeros.ref - nonzeros.new
+        pvalue <- 1 - pchisq(loglik.ratio, df)
+        log_info(paste("- compared to", cv.params.unique[i, "penalty"], nonzeros.new))
+        log_info(paste("- loglik:", loglik.ratio))
+        log_info(paste("- pvalue:", pvalue))
+        if (pvalue < 0.05) break
+        lambda.new <- cv.params.unique[i, "penalty"]
+    }
+    lambda.new
+}
+
+model_cox.id <- function(id, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
+    df_trainset <- read.csv(file_trainset, header = TRUE)
+    df_testset <- read.csv(file_testset, header = TRUE)
+    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, cox_lasso_logfile, penalty = penalty, do_plot = FALSE)
+}
+
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso", do_plot = TRUE) {
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
@@ -28,8 +61,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     surv_y_test <- Surv(df_model_test[[duration_col]], df_model_test[[event_col]])
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
-    log_info(paste0("Trained:", nrow(df_model_train), "samples"))
-    log_info(paste0("Testset: ", nrow(df_model_test), " samples"))
+    log_info(paste("Trained:", nrow(df_model_train), "samples"))
+    log_info(paste("Testset: ", nrow(df_model_test), " samples"))
     log_info("NAs are omitted")
     pred.times <- seq(1, 60, by = 1)
     final.time <- tail(pred.times, 1)
@@ -38,15 +71,18 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         cv.coxlasso <- coxph(formula_model, data = df_model_train, x = TRUE, y = TRUE)
         coxlasso.survprob.train <- predictSurvProb(cv.coxlasso, newdata = data.table::as.data.table(df_model_train), times = pred.times)
         coxlasso.survprob.test <- predictSurvProb(cv.coxlasso, newdata = data.table::as.data.table(df_model_test), times = pred.times)
-        coxlasso.predict.train <- predict(cv.coxlasso, type = "risk")
-        coxlasso.predict.test <- predict(cv.coxlasso, newdata = data.table::as.data.table(df_model_test), type = "risk")
+        coxlasso.predict.train <- predict(cv.coxlasso, type = "survival")
+        coxlasso.predict.train <- matrix(coxlasso.predict.train, length(coxlasso.predict.train), 1)
+        coxlasso.predict.test <- predict(cv.coxlasso, newdata = data.table::as.data.table(df_model_test), type = "survival")
+        coxlasso.predict.test <- matrix(coxlasso.predict.test, length(coxlasso.predict.test), 1)
     } else if (penalty == "lasso") {
         cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
         cv.params <- data.frame(non_zero_coefs = as.numeric(cv.coxlasso$nzero), penalty = cv.coxlasso$lambda, mean_score = cv.coxlasso$cvm, std_score = as.numeric(cv.coxlasso$cvsd))
         cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
         write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
-        log_info("Best lambda:")
-        log_info(cv.coxlasso$lambda.min)
+        best.lambda = select_best_lambda(cv.coxlasso, cv.params)
+        write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
+        log_info(paste("Best lambda:", best.lambda))
         coxlasso.survfit.train <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_train, s = "lambda.min")
         coxlasso.survfit.test <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_test, s = "lambda.min")
         coxlasso.survprob.train <- t(summary(coxlasso.survfit.train, times = pred.times)$surv)
@@ -81,45 +117,32 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                       round(coxlasso.bs.final.train, digits = 3), round(coxlasso.ibs.train, digits = 3))
     results_test <- c(round(coxlasso.cindex.harrell.test, digits = 3), round(coxlasso.cindex.ipcw.test, digits = 3), 
                       round(coxlasso.bs.final.test, digits = 3), round(coxlasso.ibs.test, digits = 3))
-    log_info(paste0("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
-    log_info(paste0("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
+    log_info(paste("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
+    log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
-    best.lambda = cv.coxlasso$lambda.min
-    write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
     if (do_plot) plot_cox(cv.coxlasso, analyzes_dir, model_name)
-    cv.coxlasso
+    results_test
 }
 
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
-    # Coefficients of best Cox Lasso
-    best.coefs.cox <-  `if`(class(cox_object) == "cv.glmnet", coef(cox_object, s = "lambda.min")[,1], coef(cox_object))
-    nonnull.best.coefs <- best.coefs.cox[abs(best.coefs.cox) > 0]
-    df.coefs = data.frame(labels = names(best.coefs.cox), coefs = best.coefs.cox)
-    ggplot(subset(df.coefs, labels %in% names(nonnull.best.coefs)), aes(x = labels, y = coefs)) + geom_bar(stat = "identity") + coord_flip() 
+    # Coefficients of best Cox
+    if (class(cox_object) == "cv.glmnet") {
+        best.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
+        best.lambda <- best.params[1, "penalty"]
+    }
+    best.coefs.cox <- `if`(class(cox_object) == "cv.glmnet", coef(cox_object, s = best.lambda)[,1], coef(cox_object))
+    names.nonnull.coefs <- pretty.labels(names(best.coefs.cox[abs(best.coefs.cox) > 0]))
+    df.coefs = data.frame(labels = pretty.labels(names(best.coefs.cox)), coefs = best.coefs.cox)
+    ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + geom_bar(stat = "identity") + coord_flip() 
     ggsave(paste0(analyzes_dir, "coxph_R_plots/coefs_", model_name, ".png"), device = "png", dpi = 480)
     # Regularization path + mean error for Cox Lasso
     if (class(cox_object) == "cv.glmnet") {
-        # Regularization path
-        mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
-        rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
-        df.mat.coefs <- melt(mat.coefs)
-        colnames(df.mat.coefs) <- c("lambda", "varname", "coef")
-        first.lambda <- rownames(mat.coefs)[nrow(mat.coefs)]
-        ggplot(df.mat.coefs, aes(x = lambda, y = coef, color = varname)) + geom_line() + 
-        xlab("Penalty (log10)") + ylab("Coefficient") + theme(legend.position = "none") +
-        geom_text(data = subset(df.mat.coefs, lambda == first.lambda & varname %in% names(nonnull.best.coefs)), 
-                  aes(x = lambda, y = coef, label = pretty.labels(varname)), size = 3, hjust = 1) +
-        coord_cartesian(clip = 'off') +
-        theme(plot.margin = unit(c(1,1,1,1), "lines"), axis.title.y = element_text(margin = margin(0,2,0,0, "cm"))) + 
-        scale_x_log10()
-        ggsave(paste0(analyzes_dir, "coxph_R_plots/regularization_path_", model_name, ".png"), device = "png", dpi = 480)
         # Mean errors of cross-validation
-        best.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
         cv.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"))
-        cv.params.unique <- cv.params[!duplicated(cv.params$non_zero_coefs), ]
-        cv.params.unique <- cv.params.unique[order(cv.params.unique$penalty), ]
+        cv.params.unique <- cv.params[order(-cv.params$non_zero_coefs, cv.params$penalty), ]
+        cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
         mask_even = which((1:nrow(cv.params.unique)) %% 2 == 0)
         ggplot(cv.params, aes(x = penalty, y = mean_score)) +
         geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), fill = "blue", alpha = 0.5) +
@@ -132,6 +155,23 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         scale_x_log10() +
         labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
         ggsave(paste0(analyzes_dir, "coxph_R_plots/cv_mean_error_", model_name, ".png"), device = "png", dpi = 480)
+        # Regularization path
+        mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
+        rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
+        df.mat.coefs <- melt(mat.coefs)
+        colnames(df.mat.coefs) <- c("lambda", "varname", "coef")
+        df.mat.coefs[, "varname"] <- pretty.labels(df.mat.coefs[["varname"]])
+        first.lambda <- rownames(mat.coefs)[nrow(mat.coefs)]
+        ggplot(df.mat.coefs, aes(x = lambda, y = coef, color = varname)) + geom_line() + 
+        xlab("Penalty (log10)") + ylab("Coefficient") + theme(legend.position = "none") +
+        geom_text(data = subset(df.mat.coefs, lambda == first.lambda & varname %in% names.nonnull.coefs), 
+                  aes(x = lambda, y = coef, label = pretty.labels(varname)), size = 3, hjust = 1) +
+        coord_cartesian(clip = 'off') +
+        theme(plot.margin = unit(c(1,1,1,1), "lines"), axis.title.y = element_text(margin = margin(0,2,0,0, "cm"))) + 
+        geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
+        geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
+        scale_x_log10()
+        ggsave(paste0(analyzes_dir, "coxph_R_plots/regularization_path_", model_name, ".png"), device = "png", dpi = 480)
     }
 }
 

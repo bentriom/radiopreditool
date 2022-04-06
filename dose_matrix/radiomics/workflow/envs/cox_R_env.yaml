@@ -1,4 +1,4 @@
-name: rsf_R
+name: cox_R
 channels:
   - bioconda
   - conda-forge
@@ -8,10 +8,10 @@ dependencies:
   - r-essentials
   - r-base
   - r-caret
-  - r-randomforestsrc
   - r-pec
   - r-hmisc
   - r-logger
-  - r-doparallel
-  - r-foreach
+  - r-glmnet
+  - r-survival
+  - r-tidyverse
 
