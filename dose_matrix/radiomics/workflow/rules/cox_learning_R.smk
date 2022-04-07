@@ -40,7 +40,7 @@ rule multiple_scores_baseline_analysis_R:
     conda:
         "envs/cox_R_env.yaml"
     run:
-        f"Rscript workflow/scripts/multiple_scores_cox.R baseline_models {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
+        f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_baseline_models {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
 
 rule cox_lasso_radiomics_R:
     input:
@@ -48,7 +48,8 @@ rule cox_lasso_radiomics_R:
         ANALYZES_DIR + "datasets/testset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
-        ANALYZES_DIR + "cox_lasso_radiomics_R.log",
+        ANALYZES_DIR + "cox_lasso_radiomics_R_all.log",
+        ANALYZES_DIR + "cox_lasso_radiomics_R_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_plots/cv_mean_error_{model}.png", model = COX_RADIOMICS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO),
@@ -61,7 +62,7 @@ rule cox_lasso_radiomics_R:
         "envs/cox_R_env.yaml"
     run:
         f"Rscript workflow/scripts/cox_learning.R cox_lasso_radiomics_all {ANALYZES_DIR} {EVENT_COL} survival_time_years"
-        f"Rscript workflow/scripts/cox_learning.R cox_lasso_radiomics_features_hclust_corr {ANALYZES_DIR} {EVENT_COL} survival_time_years {ANALYZES_DIR}/features_hclust_corr.csv"
+        f"Rscript workflow/scripts/cox_learning.R cox_lasso_radiomics_features_hclust_corr {ANALYZES_DIR} {EVENT_COL} survival_time_years {ANALYZES_DIR}features_hclust_corr.csv"
 
 rule multiple_scores_cox_lasso_radiomics_R:
     input:
@@ -70,13 +71,14 @@ rule multiple_scores_cox_lasso_radiomics_R:
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = COX_RADIOMICS_LASSO)
     output: 
-        ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R.log",
+        ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_all.log",
+        ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = COX_RADIOMICS_LASSO)
     threads:
         get_ncpus() - 1
     conda:
         "envs/cox_R_env.yaml"
     run:
-        f"Rscript workflow/scripts/multiple_scores_cox.R cox_lasso_radiomics_all {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
-        f"Rscript workflow/scripts/multiple_scores_cox.R cox_lasso_radiomics_features_hclust_corr {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years {ANALYZES_DIR}/features_hclust_corr.csv"
+        f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_cox_lasso_radiomics_all {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
+        f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_cox_lasso_radiomics_features_hclust_corr {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years {ANALYZES_DIR}features_hclust_corr.csv"
 

@@ -58,17 +58,18 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
-    logfile <- paste0(analyzes_dir, "multiple_scores_cox_lasso_radiomics_R.log")
+    logfile <- paste0(analyzes_dir, "multiple_scores_cox_lasso_radiomics_R_",suffix_model,".log")
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info("Multiple scores cox lasso radiomics learning R")
     # Dataset
     df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
-    features <- `if`(file_features == "all", colnames(df_trainset), as.character(read.csv(file_features)[,1]))
+    features <- `if`(file_features == "all", colnames(df_trainset0), as.character(read.csv(file_features)[,1]))
     # Add "X" for R colname compatibility
     features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste("X", x, sep = ""), x) }))
     df_trainset0 <- df_trainset0[,features]
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
+    index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
 
     # Coxph Lasso radiomics 32X
     model_name = paste0("32X_radiomics_lasso_", suffix_model)
@@ -100,19 +101,19 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
     run_type <- args[1]
-    nb_estim <- args[2]
+    nb_estim <- as.numeric(args[2])
     analyzes_dir <- args[3]
     event_col <- args[4]
     duration_col <- args[5]
     log_threshold(INFO)
     if (run_type == "multiple_scores_baseline_models") {
-        baseline_models_learning(nb_estim, event_col, analyzes_dir, duration_col)
+        multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir, duration_col)
     } else if (run_type == "multiple_scores_cox_lasso_radiomics_all") {
         file_features <- "all"
-        cox_radiomics_learning(nb_estim, file_features, event_col, analyzes_dir, duration_col, "all")
+        multiple_scores_cox_radiomics(nb_estim, file_features, event_col, analyzes_dir, duration_col, "all")
     } else if (run_type == "multiple_scores_cox_lasso_radiomics_features_hclust_corr") {
         file_features <- args[6]
-        cox_radiomics_learning(nb_estim, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr")
+        multiple_scores_cox_radiomics(nb_estim, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr")
     } else {
         print("Run type unrecognized.")
     }

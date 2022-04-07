@@ -1,4 +1,5 @@
 
+suppressPackageStartupMessages({
 library("caret", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("glmnet", quietly = TRUE)
@@ -8,6 +9,7 @@ library("logger", quietly = TRUE)
 library("parallel", quietly = TRUE)
 library("ggplot2", quietly = TRUE)
 library("reshape2", quietly = TRUE)
+})
 
 source("workflow/scripts/utils_radiopreditool.R")
 
@@ -38,10 +40,10 @@ select_best_lambda <- function(cox_object, cv.params) {
     lambda.new
 }
 
-model_cox.id <- function(id, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
-    df_trainset <- read.csv(file_trainset, header = TRUE)
-    df_testset <- read.csv(file_testset, header = TRUE)
-    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, cox_lasso_logfile, penalty = penalty, do_plot = FALSE)
+model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
+    df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
+    df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
+    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE)
 }
 
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso", do_plot = TRUE) {

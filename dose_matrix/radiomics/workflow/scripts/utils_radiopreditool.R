@@ -1,5 +1,5 @@
 
-library("stringr", quietly = TRUE)
+suppressPackageStartupMessages(library("stringr", quietly = TRUE))
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {

@@ -113,8 +113,8 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
 
 refit.best.rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name = "") {
     log_info(id_set)
-    file_trainset <- paste(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz", sep = "")
-    file_testset <- paste(analyzes_dir, "datasets/testset_", id_set, ".csv.gz", sep = "")
+    file_trainset <- paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz")
+    file_testset <- paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz")
     refit.best.rsf(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name = model_name)
 }
 

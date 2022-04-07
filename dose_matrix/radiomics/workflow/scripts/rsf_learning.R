@@ -19,9 +19,9 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     # df_model_test[is.na(df_model_test)] <- -1
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
-    log_info(paste("Covariates (", length(covariates),"):", paste(covariates, collapse = ", ")))
-    log_info(paste("Trained:", nrow(df_model_train), "samples"))
-    log_info(paste("Testset: ", nrow(df_model_test), " samples", sep = ""))
+    log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
+    log_info(paste0("Trained:", nrow(df_model_train), "samples"))
+    log_info(paste0("Testset: ", nrow(df_model_test), " samples"))
     log_info("NAs are omitted")
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     pred.times <- seq(1, 60, by = 1)
@@ -32,7 +32,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
     # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
     cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
-    write.csv(cv.params, file = paste(analyzes_dir, "rsf_results/cv_", model_name, ".csv", sep = ""), row.names = FALSE)
+    write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
@@ -56,15 +56,15 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.err.oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
     rsf.err.train <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted)
     rsf.err.test <- get.cindex(rsf.pred.test$yvar[[duration_col]], rsf.pred.test$yvar[[event_col]], rsf.pred.test$predicted)
-    log_info(paste("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
-    log_info(paste("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
-    log_info(paste("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
-    log_info(paste("rfsrc C-index on trainset: ", 1-rsf.err.train))
-    log_info(paste("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
-    log_info(paste("rfsrc C-index on testset: ", 1-rsf.err.test))
-    log_info(paste("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
-    log_info(paste("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
-    log_info(paste("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
+    log_info(paste0("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
+    log_info(paste0("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
+    log_info(paste0("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
+    log_info(paste0("rfsrc C-index on trainset: ", 1-rsf.err.train))
+    log_info(paste0("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
+    log_info(paste0("rfsrc C-index on testset: ", 1-rsf.err.test))
+    log_info(paste0("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
+    log_info(paste0("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
+    log_info(paste0("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
     # IBS
     rsf.perror.train <- pec(object= list("train" = rsf.survprob.train, "oob" = rsf.survprob.oob), formula = formula_model, data = df_model_train, 
                             times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
@@ -76,44 +76,44 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.ibs.train <- crps(rsf.perror.train)[1]
     rsf.ibs.oob <- crps(rsf.perror.train)[2]
     rsf.ibs.test <- crps(rsf.perror.test)[1]
-    log_info(paste("BS at 60 on trainset: ", rsf.bs.final.train))
-    log_info(paste("BS OOB at 60 on trainset: ", rsf.bs.final.oob))
-    log_info(paste("BS at 60 on testset: ", rsf.bs.final.test))
-    log_info(paste("IBS on trainset: ", rsf.ibs.train))
-    log_info(paste("IBS OOB on trainset: ", rsf.ibs.oob))
-    log_info(paste("IBS on testset: ", rsf.ibs.test))
+    log_info(paste0("BS at 60 on trainset: ", rsf.bs.final.train))
+    log_info(paste0("BS OOB at 60 on trainset: ", rsf.bs.final.oob))
+    log_info(paste0("BS at 60 on testset: ", rsf.bs.final.test))
+    log_info(paste0("IBS on trainset: ", rsf.ibs.train))
+    log_info(paste0("IBS OOB on trainset: ", rsf.ibs.oob))
+    log_info(paste0("IBS on testset: ", rsf.ibs.test))
     results_train <- c(round(rsf.cindex.harrell.train, digits = 3), round(rsf.cindex.ipcw.train, digits = 3), 
                       round(rsf.bs.final.train, digits = 3), round(rsf.ibs.train, digits = 3))
     results_test <- c(round(rsf.cindex.harrell.test, digits = 3), round(rsf.cindex.ipcw.test, digits = 3), 
                       round(rsf.bs.final.test, digits = 3), round(rsf.ibs.test, digits = 3))
-    log_info(paste("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
-    log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
+    log_info(paste0("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
+    log_info(paste0("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
-    write.csv(df_results, file = paste(analyzes_dir, "rsf_results/metrics_", model_name, ".csv", sep = ""), row.names = TRUE)
+    write.csv(df_results, file = paste0(analyzes_dir, "rsf_results/metrics_", model_name, ".csv"), row.names = TRUE)
     rsf.best
 }
 
 plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
     new_labels <- pretty.labels(rsf.obj$xvar.names)
     subs.rsf.obj <- subsample(rsf.obj, B = 100)
-    png(paste(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".png", sep = ""), width = 1250, height = 1600, res = 70)
+    png(paste0(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".png"), width = 1250, height = 1600, res = 70)
     par(oma = c(0.5, 10, 0.5, 0.5))
     par(cex.axis = 2.0, cex.lab = 2.0, cex.main = 2.0, mar = c(6.0,17,1,1), mgp = c(4, 1, 0))
     pmax = 30
     p = length(new_labels)
-    xlab <- `if`(p < pmax, paste("Variable Importance (x 100) -", p, "features"), paste("Variable Importance (x 100) -", pmax, "best features"))
+    xlab <- `if`(p < pmax, paste0("Variable Importance (x 100) -", p, "features"), paste0("Variable Importance (x 100) -", pmax, "best features"))
     new.plot.subsample.rfsrc(subs.rsf.obj, xlab = xlab, cex = 1.25, ylab = new_labels, pmax = pmax)
     dev.off()
 }
 
 rsf_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
-    dir.create(paste(analyzes_dir, "rsf_plots/", sep = ""), showWarnings = FALSE)
-    dir.create(paste(analyzes_dir, "rsf_results/", sep = ""), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "rsf_plots/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
     options(rf.cores = nworkers, mc.cores = nworkers)
-    rsf_logfile <- paste(analyzes_dir, "rsf_", suffix_model, ".log", sep = "")
+    rsf_logfile <- paste0(analyzes_dir, "rsf_", suffix_model, ".log")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info("Random Survival Forest learning")
@@ -123,15 +123,15 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
     # Select subset of features due to feature elimination
     features <- `if`(file_features == "all", colnames(df_trainset), as.character(read.csv(file_features)[,1]))
     # Add "X" for R colname compatibility
-    features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste("X", x, sep = ""), x) }))
+    features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste0("X", x), x) }))
     df_trainset <- df_trainset[,features]
     df_testset <- df_testset[,features]
     clinical_vars <- get.clinical_features(colnames(df_trainset), event_col, duration_col)
-    log_info(paste("Trainset file:", file_trainset, "with", nrow(df_trainset), "samples"))
+    log_info(paste0("Trainset file:", file_trainset, "with", nrow(df_trainset), "samples"))
 
     # Model 32X radiomics covariates
     log_info("Model 32X")
-    model_name <- paste("model_32X_", suffix_model, sep = "")
+    model_name <- paste0("model_32X_", suffix_model)
     cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE)
     covariates_32X <- c(clinical_vars, cols_32X)
     rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
@@ -139,7 +139,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
 
     # Model 1320 radiomics covariates
     log_info("Model 1320")
-    model_name <- paste("model_1320_", suffix_model, sep = "")
+    model_name <- paste0("model_1320_", suffix_model)
     cols_1320 <- grep("^X1320_", colnames(df_trainset), value = TRUE)
     covariates_1320 <- c(clinical_vars, cols_1320)
     rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
