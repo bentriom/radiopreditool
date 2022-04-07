@@ -14,7 +14,7 @@ rule rsf_analysis:
         expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_ALL),
         expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_ALL)
     conda:
-        "envs/rsf_R_env.yaml"
+        "../envs/rsf_R_env.yaml"
     threads:
         get_ncpus() - 1
     shell:
@@ -30,7 +30,7 @@ rule multiple_scores_rsf:
         ANALYZES_DIR + "multiple_scores_rsf_all.log",
         expand(ANALYZES_DIR + "rsf_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = RSF_RADIOMICS_ALL)
     conda:
-        "envs/rsf_R_env.yaml"
+        "../envs/rsf_R_env.yaml"
     threads:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     shell:
@@ -47,7 +47,7 @@ rule rsf_features_hclust_corr_analysis:
         expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST)
     conda:
-        "envs/rsf_R_env.yaml"
+        "../envs/rsf_R_env.yaml"
     threads:
         get_ncpus() - 1
     shell:
@@ -63,7 +63,7 @@ rule multiple_scores_rsf_features_hclust_corr:
         ANALYZES_DIR + "multiple_scores_rsf_features_hclust_corr.log",
         expand(ANALYZES_DIR + "rsf_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST)
     conda:
-        "envs/rsf_R_env.yaml"
+        "../envs/rsf_R_env.yaml"
     threads:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     shell:

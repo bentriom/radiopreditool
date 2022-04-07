@@ -23,7 +23,7 @@ rule baseline_analysis_R:
     threads:
         1
     conda:
-        "envs/cox_R_env.yaml"
+        "../envs/cox_R_env.yaml"
     shell:
         f"Rscript workflow/scripts/cox_learning.R baseline_models {ANALYZES_DIR} {EVENT_COL} survival_time_years"
 
@@ -38,7 +38,7 @@ rule multiple_scores_baseline_analysis_R:
     threads:
         get_ncpus() - 1
     conda:
-        "envs/cox_R_env.yaml"
+        "../envs/cox_R_env.yaml"
     shell:
         f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_baseline_models {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
 
@@ -59,7 +59,7 @@ rule cox_lasso_radiomics_R:
     threads:
         1
     conda:
-        "envs/cox_R_env.yaml"
+        "../envs/cox_R_env.yaml"
     shell:
         f"Rscript workflow/scripts/cox_learning.R cox_lasso_radiomics_all {ANALYZES_DIR} {EVENT_COL} survival_time_years"
         f"Rscript workflow/scripts/cox_learning.R cox_lasso_radiomics_features_hclust_corr {ANALYZES_DIR} {EVENT_COL} survival_time_years {ANALYZES_DIR}features_hclust_corr.csv"
@@ -77,7 +77,7 @@ rule multiple_scores_cox_lasso_radiomics_R:
     threads:
         get_ncpus() - 1
     conda:
-        "envs/cox_R_env.yaml"
+        "../envs/cox_R_env.yaml"
     shell:
         f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_cox_lasso_radiomics_all {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
         f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_cox_lasso_radiomics_features_hclust_corr {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years {ANALYZES_DIR}features_hclust_corr.csv"
