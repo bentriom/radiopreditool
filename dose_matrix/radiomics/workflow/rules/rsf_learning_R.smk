@@ -68,5 +68,4 @@ rule multiple_scores_rsf_features_hclust_corr:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     shell:
         f"Rscript workflow/scripts/multiple_scores_rsf.R {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
- """
 
