@@ -36,7 +36,7 @@ rule multiple_scores_baseline_analysis_R:
         ANALYZES_DIR + "multiple_scores_baseline_models_R.log",
         expand(ANALYZES_DIR + "coxph_R_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
     threads:
-        get_ncpus() - 1
+        min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -75,7 +75,7 @@ rule multiple_scores_cox_lasso_radiomics_R:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R_results/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics_{model}.csv", model = COX_RADIOMICS_LASSO)
     threads:
-        get_ncpus() - 1
+        min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
