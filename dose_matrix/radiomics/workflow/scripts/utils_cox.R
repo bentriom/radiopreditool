@@ -32,8 +32,12 @@ select_best_lambda <- function(cox_object, cv.params) {
         df <- nonzeros.ref - nonzeros.new
         pvalue <- 1 - pchisq(loglik.ratio, df)
         log_info(paste("- compared to", cv.params.unique[i, "penalty"], nonzeros.new))
-        log_info(paste("- loglik:", loglik.ratio))
-        log_info(paste("- pvalue:", pvalue))
+        if (is.na(pvalue) | is.null(pvalue)) {
+            log_warn(paste("- deviance ref:", deviance.ref))
+            log_warn(paste("- deviance new:", deviance.new))
+            log_warn(paste("- loglik:", loglik.ratio))
+            log_warn(paste("- pvalue:", pvalue))
+        }
         if (pvalue < 0.05) break
         lambda.new <- cv.params.unique[i, "penalty"]
     }
@@ -43,10 +47,11 @@ select_best_lambda <- function(cox_object, cv.params) {
 model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
-    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE)
+    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE, level = WARN)
 }
 
-model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso", do_plot = TRUE) {
+model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso", do_plot = TRUE, level = INFO) {
+    log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
     df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
@@ -125,6 +130,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
     if (do_plot) plot_cox(cv.coxlasso, analyzes_dir, model_name)
+    log_threshold(INFO)
     results_test
 }
 
