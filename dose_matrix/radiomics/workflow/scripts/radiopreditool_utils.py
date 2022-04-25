@@ -59,7 +59,7 @@ def get_super_t(label_t):
         return 1000
 
 def col_super_t(df_dosi):
-    df_dosi['SUPER_T'] = df_dosi['T'].apply(get_super_t)
+    df_dosi['SUPER_T'] = df_dosi['T'].astype(int).apply(get_super_t)
 
 def get_clinical_features(df_dataset, event_col, duration_col):
     regex = "^(([0-9]{3,4}_)|(dv_)|" + f"({event_col})|({duration_col})|(ctr)|(numcent)|(has_radiomics))"
