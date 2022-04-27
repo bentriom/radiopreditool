@@ -18,13 +18,18 @@ select_best_lambda <- function(cox_object, cv.params) {
     deviance.params <- data.frame(penalty = cox_object$lambda, deviance = deviance(cox_object$glmnet.fit))
     cv.params.merge <- merge(cv.params, deviance.params, by = "penalty")
     rownames(cv.params.merge) <- cv.params.merge$penalty
-    cv.params.unique <- cv.params.merge[order(-cv.params.merge$non_zero_coefs, cv.params.merge$penalty), ]
-    cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs) & cv.params.unique$penalty > lambda.ref, ]
     deviance.ref <- cv.params.merge[as.character(lambda.ref), "deviance"]
     nonzeros.ref <- cv.params.merge[as.character(lambda.ref), "non_zero_coefs"]
-    lambda.new <- lambda.ref
+    cv.params.unique <- cv.params.merge[order(-cv.params.merge$non_zero_coefs, cv.params.merge$penalty), ]
+    cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
+    cv.params.unique <- cv.params.unique[(cv.params.unique$penalty > lambda.ref) &
+                                         (cv.params.unique$non_zeros_coefs < nonzeros.ref), ]
     log_info("Best lambda selection")
     log_info(paste("lambda ref:", lambda.ref, nonzeros.ref))
+    write.csv(cv.params, file = "test_cv_params.csv")
+    write.csv(cv.params.unique, file = "test_cv_params_unique.csv")
+    lambda.new <- lambda.ref
+    if (nrow(cv.params.unique) < 1) return (lambda.ref)
     for (i in 1:nrow(cv.params.unique)) {
         deviance.new <- cv.params.unique[i, "deviance"]
         nonzeros.new <- cv.params.unique[i, "non_zero_coefs"]
@@ -33,6 +38,9 @@ select_best_lambda <- function(cox_object, cv.params) {
         pvalue <- 1 - pchisq(loglik.ratio, df)
         log_info(paste("- compared to", cv.params.unique[i, "penalty"], nonzeros.new))
         if (is.na(pvalue) | is.null(pvalue)) {
+            log_warn(paste("- lambda ref, nzeros:", lambda.ref, nonzeros.ref))
+            log_warn(paste("- lambda new to test, nzeros:", cv.params.unique[i, 'penalty'], nonzeros.new))
+            log_warn(paste("- df:", df))
             log_warn(paste("- deviance ref:", deviance.ref))
             log_warn(paste("- deviance new:", deviance.new))
             log_warn(paste("- loglik:", loglik.ratio))
@@ -47,10 +55,12 @@ select_best_lambda <- function(cox_object, cv.params) {
 model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
-    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE, level = WARN)
+    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+              model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE, save_results = FALSE, level = WARN)
 }
 
-model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso", do_plot = TRUE, level = INFO) {
+model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, 
+                      coxlasso_logfile, penalty = "lasso", do_plot = TRUE, save_results = TRUE, level = INFO) {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
@@ -86,9 +96,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
         cv.params <- data.frame(non_zero_coefs = as.numeric(cv.coxlasso$nzero), penalty = cv.coxlasso$lambda, mean_score = cv.coxlasso$cvm, std_score = as.numeric(cv.coxlasso$cvsd))
         cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
-        write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
+        if (save_results) write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
         best.lambda = select_best_lambda(cv.coxlasso, cv.params)
-        write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
+        if (save_results) write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
         log_info(paste("Best lambda:", best.lambda))
         coxlasso.survfit.train <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_train, s = "lambda.min")
         coxlasso.survfit.test <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_test, s = "lambda.min")
@@ -128,7 +138,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
-    write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
+    if (save_results) write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
     if (do_plot) plot_cox(cv.coxlasso, analyzes_dir, model_name)
     log_threshold(INFO)
     results_test

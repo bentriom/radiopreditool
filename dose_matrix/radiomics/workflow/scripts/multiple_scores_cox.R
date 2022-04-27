@@ -7,7 +7,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
+    nworkers <- `if`(is.na(ntasks), parallel::detectCores()-1, ntasks)
     logfile <- paste0(analyzes_dir, "multiple_scores_baseline_models_R.log")
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
@@ -51,13 +51,15 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     rownames(df_results) <- index_results
     filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
+
+    log_info("Multiple scores baseline models learning R: Done")
 }
 
 multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
     dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
+    nworkers <- `if`(is.na(ntasks), parallel::detectCores()-1, ntasks)
     logfile <- paste0(analyzes_dir, "multiple_scores_cox_lasso_radiomics_R_",suffix_model,".log")
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
@@ -94,6 +96,8 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     rownames(df_results) <- index_results
     filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
+
+    log_info("Multiple scores cox lasso radiomics learning R: Done")
 }
 
 
