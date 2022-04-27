@@ -16,6 +16,7 @@ dependencies:
   - simpleitk
   - lifelines
   - scikit-learn
+  - fastcluster
   - pip:
     - pyradiomics
     - scikit-survival
