@@ -2,4 +2,7 @@ MODEL_NAME: pathol_cardiaque
 DOSES_DATASET_DIR: /home/moud/Documents/RadioPrediTool/code/database/dose_matrix_sample/GR/
 RESULTS_DIR: results/
 FCCSS_CLINICAL_VARIABLES: []
+EVENT_COL: "Pathologie_cardiaque"
+DATE_EVENT_COL: "date_pathol_cardiaque"
+NB_ESTIM_SCORE_MODELS: 10
 

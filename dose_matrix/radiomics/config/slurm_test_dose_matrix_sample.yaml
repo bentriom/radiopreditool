@@ -8,4 +8,7 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 LABELS_VOI_CSV_FILE: /workdir/bentrioum/database/radiopreditool/fccss/labels_organs_20160118.csv
 LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_VARIABLES: []
+EVENT_COL: "Pathologie_cardiaque"
+DATE_EVENT_COL: "date_pathol_cardiaque"
+NB_ESTIM_SCORE_MODELS: 10
 
