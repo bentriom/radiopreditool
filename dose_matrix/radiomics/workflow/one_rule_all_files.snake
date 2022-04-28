@@ -45,7 +45,7 @@ cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiom
 ## Utils
 def get_newdosi_files_from_wildcards(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
-def get_newdosi_files(newdosi_patient, list_newosi_files):
+def get_newdosi_files(newdosi_patient, list_newdosi_files):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if newdosi_patient in newdosi_file])
 
 onstart:
