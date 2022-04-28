@@ -52,6 +52,7 @@ def survival_date(event_col, date_event_col, row):
 # Create dataset based on availaible dosiomics, clinical variables and survival data
 def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col):
     logger = setup_logger("dataset", analyzes_dir + "dataset.log")
+    logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
     os.makedirs(analyzes_dir + "datasets", exist_ok = True)
     df_radiomics = pd.read_csv(file_radiomics)
     df_radiomics["has_radiomics"] = 1
@@ -96,6 +97,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
 def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
                   end_name_sets = "", test_size = 0.3, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
+    logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
     surv_duration_col = "survival_time_years"
     df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
     cols_y = [event_col, surv_duration_col]
