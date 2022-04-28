@@ -108,8 +108,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         coxlasso.predict.test <- predict(cv.coxlasso, newx = X_test, s = "lambda.min")
     }
     # C-index ipcw (censored free, marginal = KM)
-    coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = coxlasso.predict.train), formula_model, data = df_model_train)$AppCindex[["Best coxlasso"]]
-    coxlasso.cindex.ipcw.test <- pec::cindex(list("Best coxlasso" = coxlasso.predict.test), formula_model, data = df_model_test)$AppCindex[["Best coxlasso"]]
+    coxlasso.cindex.ipcw.train <- 1-pec::cindex(list("Best coxlasso" = coxlasso.predict.train), formula_model, data = df_model_train)$AppCindex[["Best coxlasso"]]
+    coxlasso.cindex.ipcw.test <- 1-pec::cindex(list("Best coxlasso" = coxlasso.predict.test), formula_model, data = df_model_test)$AppCindex[["Best coxlasso"]]
     # Harrell's C-index
     coxlasso.cindex.harrell.train <- 1-rcorr.cens(coxlasso.predict.train, S = surv_y_train)[["C Index"]]
     coxlasso.cindex.harrell.test <- 1-rcorr.cens(coxlasso.predict.test, S = surv_y_test)[["C Index"]]
@@ -130,10 +130,10 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste0("BS at 60 on testset: ", coxlasso.bs.final.test))
     log_info(paste0("IBS on trainset: ", coxlasso.ibs.train))
     log_info(paste0("IBS on testset: ", coxlasso.ibs.test))
-    results_train <- c(round(coxlasso.cindex.harrell.train, digits = 3), round(coxlasso.cindex.ipcw.train, digits = 3), 
-                      round(coxlasso.bs.final.train, digits = 3), round(coxlasso.ibs.train, digits = 3))
-    results_test <- c(round(coxlasso.cindex.harrell.test, digits = 3), round(coxlasso.cindex.ipcw.test, digits = 3), 
-                      round(coxlasso.bs.final.test, digits = 3), round(coxlasso.ibs.test, digits = 3))
+    results_train <- c(coxlasso.cindex.harrell.train, coxlasso.cindex.ipcw.train, 
+                       coxlasso.bs.final.train, coxlasso.ibs.train)
+    results_test <- c(coxlasso.cindex.harrell.test, coxlasso.cindex.ipcw.test,
+                      coxlasso.bs.final.test, coxlasso.ibs.test)
     log_info(paste("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
     log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
