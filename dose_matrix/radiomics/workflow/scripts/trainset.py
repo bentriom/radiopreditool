@@ -25,7 +25,15 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 
-## Create trainset
+## Create datasets
+
+# Fill missing values of the dataset
+def fill_missing(df_fccss):
+    # Patients who have pathol cardiaque >= grade 3, a date_pc but no date_pc_3
+    mask = pd.isnull(df_fccss["date_pathol_cardiaque_3"]) & (df_fccss["Pathologie_cardiaque_3"] == 1)
+    df_fccss.loc[mask, "date_pathol_cardiaque_3"] = df_fccss.loc[mask, "date_pathol_cardiaque"]
+
+# Compute survival times
 def survival_date(event_col, date_event_col, row):
     if row["numcent"] == 199103047:
         return datetime.strptime("03/11/2019", "%d/%m/%Y")
@@ -48,12 +56,13 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_radiomics = pd.read_csv(file_radiomics)
     df_radiomics["has_radiomics"] = 1
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
+    fill_missing(df_fccss)
     logger.info(f"df_radiomics: {df_radiomics.shape}")
     logger.info(f"df_fccss: {df_fccss.shape}")
     # Create survival time col
     logger.info("Creating survival columns")
     cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
-    cols_survival = ["numcent", event_col, "deces", date_event_col, "date_deces"] + cols_date 
+    cols_survival = ["numcent", event_col, "deces", date_event_col, "date_deces"] + cols_date
     df_survival = df_fccss[cols_survival]
     df_fccss["survival_date"] = df_survival.apply(lambda x: survival_date(event_col, date_event_col, x), axis = 1)
     df_fccss["datetime_date_diag"] = df_fccss["date_diag"].apply(lambda x: datetime.strptime(x, "%d/%m/%Y"))

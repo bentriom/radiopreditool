@@ -7,14 +7,15 @@ import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learn
 from radiopreditool_utils import setup_logger, get_ncpus
 
 MODEL_NAME = config["MODEL_NAME"]
+EVENT_COL = config["EVENT_COL"]
+DATE_EVENT_COL = config["DATE_EVENT_COL"]
+
 RADIOMICS_NAME = config["RADIOMICS_NAME"] if "RADIOMICS_NAME" in config else MODEL_NAME
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
 FCCSS_CLINICAL_VARIABLES = config["FCCSS_CLINICAL_VARIABLES"]
 LABELS_SUPER_T_VOI = config["LABELS_SUPER_T_VOI"] if "LABELS_SUPER_T_VOI" in config else [""]
 LABELS_T_VOI = config["LABELS_T_VOI"] if "LABELS_T_VOI" in config else [""]
-EVENT_COL = "Pathologie_cardiaque"
-DATE_EVENT_COL = "date_pathol_cardiaque"
-NB_ESTIM_SCORE_MODELS = 10
+NB_ESTIM_SCORE_MODELS = config["NB_ESTIM_SCORE_MODELS"] if "NB_ESTIM_SCORE_MODELS" in config else 10
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
