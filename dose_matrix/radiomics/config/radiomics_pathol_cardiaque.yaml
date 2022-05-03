@@ -1,9 +1,15 @@
 
 setting:
-    binWidth: 1
+    binWidth: 2
+    voxelArrayShift: 0
 
 featureClass:
     firstorder: ["Energy", "Entropy", "Minimum", "10Percentile", "Mean", "Median", "90Percentile", "Maximum", "InterquartileRange", "MeanAbsoluteDeviation", "RobustMeanAbsoluteDeviation", "RootMeanSquared", "Skewness", "Kurtosis", "Variance"]
     shape: ["VoxelVolume", "SurfaceVolumeRatio", "Sphericity"]
     dosesvolumes: []
+    glcm:
+    glrlm:
+    glszm:
+    ngtdm:
+    gldm:
 
