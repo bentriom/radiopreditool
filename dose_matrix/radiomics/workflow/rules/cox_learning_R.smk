@@ -3,8 +3,10 @@
 
 BASELINE_MODELS_COX = ["1320_mean", "1320_dosesvol"]
 BASELINE_MODELS_LASSO = ["1320_dosesvol_lasso"]
-COX_RADIOMICS_LASSO = ["32X_radiomics_lasso_all", "32X_radiomics_lasso_features_hclust_corr", \
-                       "1320_radiomics_lasso_all", "1320_radiomics_lasso_features_hclust_corr"]
+COX_RADIOMICS_LASSO = ["32X_radiomics_firstorder_lasso_all", "32X_radiomics_firstorder_lasso_features_hclust_corr", \
+                       "32X_radiomics_full_lasso_all", "32X_radiomics_full_lasso_features_hclust_corr", \
+                       "1320_radiomics_firstorder_lasso_all", "1320_radiomics_firstorder_lasso_features_hclust_corr", \
+                       "1320_radiomics_full_lasso_all", "1320_radiomics_full_lasso_features_hclust_corr"]
 
 rule baseline_analysis_R:
     input:

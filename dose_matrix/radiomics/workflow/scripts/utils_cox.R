@@ -77,6 +77,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     X_test <- as.matrix(df_model_test[covariates])
     surv_y_test <- Surv(df_model_test[[duration_col]], df_model_test[[event_col]])
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
+    log_info(paste("Model name:", model_name))
     log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
     log_info(paste("Trained:", nrow(df_model_train), "samples"))
     log_info(paste("Testset: ", nrow(df_model_test), " samples"))

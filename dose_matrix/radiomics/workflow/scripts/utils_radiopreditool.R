@@ -5,7 +5,20 @@ suppressPackageStartupMessages(library("stringr", quietly = TRUE))
 get.clinical_features <- function(columns, event_col, duration_col) {
     regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
     idx_non_clinical_vars <- grep(regex_non_clinical, columns)
-    return (columns[-idx_non_clinical_vars])
+    if (length(idx_non_clinical_vars) > 0) {
+        return (columns[-idx_non_clinical_vars])
+    }
+    return (columns)
+}
+
+# Eliminate specific gray level image features
+filter.gl <- function(features) {
+    regex_removed <- "X[0-9]{3,4}_original_glcm_Sum(Average|Squares)"
+    idx_removed <- grep(regex_removed, features)
+    if (length(idx_removed) > 0) {
+        return (features[-idx_removed])
+    }
+    return (features)
 }
 
 # Pretty label names

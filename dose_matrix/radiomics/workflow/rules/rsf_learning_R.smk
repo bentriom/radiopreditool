@@ -1,8 +1,10 @@
 
 ## Random Survival Forest learning in R
 
-RSF_RADIOMICS_ALL = ["model_32X_all", "model_1320_all"]
-RSF_RADIOMICS_FE_HCLUST = ["model_32X_features_hclust_corr", "model_1320_features_hclust_corr"]
+RSF_RADIOMICS_ALL = ["32X_radiomics_firstorder_all", "1320_radiomics_firstorder_all", \
+                     "32X_radiomics_full_all", "1320_radiomics_full_all"]
+RSF_RADIOMICS_FE_HCLUST = ["32X_radiomics_firstorder_features_hclust_corr", "1320_radiomics_firstorder_features_hclust_corr", \
+                           "32X_radiomics_full_features_hclust_corr", "1320_radiomics_full_features_hclust_corr"]
 
 rule rsf_analysis:
     input:
