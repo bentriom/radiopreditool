@@ -29,10 +29,10 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
     index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
 
-    # Model 32X radiomics covariates
-    log_info("Model 32X")
-    model_name <- paste("model_32X_", suffix_model, sep = "")
-    cols_32X <- grep("^X32[0-9]{1}_", features, value = TRUE)
+    # Model 32X radiomics firstorder covariates
+    log_info("Model 32X radiomics firstorder")
+    model_name <- paste0("32X_radiomics_firstorder_", suffix_model)
+    cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", features, value = TRUE)
     covariates_32X <- c(clinical_vars, cols_32X)
     results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_32X, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers) 
     results <- as.data.frame(results)
@@ -41,10 +41,34 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
-    # Model 1320 radiomics covariates
-    log_info("Model 1320")
-    model_name <- paste("model_1320_", suffix_model, sep = "")
-    cols_1320 <- grep("^X1320_", features, value = TRUE)
+    # Model 1320 radiomics firstorder covariates
+    log_info("Model 1320 radiomics firstorder")
+    model_name <- paste0("1320_radiomics_firstorder_", suffix_model)
+    cols_1320 <- grep("^X1320_original_firstorder_", features, value = TRUE)
+    covariates_1320 <- c(clinical_vars, cols_1320)
+    results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_1320, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers)
+    results <- as.data.frame(results)
+    df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+    rownames(df_results) <- index_results
+    filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+    write.csv(df_results, file = filename_results, row.names = TRUE)
+
+    # Model 32X all radiomics covariates
+    log_info("Model 32X radiomics full")
+    model_name <- paste0("32X_radiomics_full_", suffix_model)
+    cols_32X <- filter.gl(grep("^X32[0-9]{1}_", features, value = TRUE))
+    covariates_32X <- c(clinical_vars, cols_32X)
+    results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_32X, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers) 
+    results <- as.data.frame(results)
+    df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+    rownames(df_results) <- index_results
+    filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+    write.csv(df_results, file = filename_results, row.names = TRUE)
+
+    # Model 1320 all radiomics covariates
+    log_info("Model 1320 radiomics full")
+    model_name <- paste0("1320_radiomics_full_", suffix_model)
+    cols_1320 <- filter.gl(grep("^X1320_", features, value = TRUE))
     covariates_1320 <- c(clinical_vars, cols_1320)
     results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_1320, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers)
     results <- as.data.frame(results)

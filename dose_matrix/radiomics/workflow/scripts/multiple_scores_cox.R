@@ -73,9 +73,9 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
     index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
 
-    # Coxph Lasso radiomics 32X
-    model_name = paste0("32X_radiomics_lasso_", suffix_model)
-    cols_32X <- grep("^X32[0-9]{1}_", colnames(df_trainset0), value = TRUE)
+    # Coxph Lasso radiomics firstorder 32X
+    model_name = paste0("32X_radiomics_firstorder_lasso_", suffix_model)
+    cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", colnames(df_trainset0), value = TRUE)
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics lasso (32X)")
     results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
@@ -85,9 +85,9 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
-    # Coxph Lasso radiomics 1320
-    model_name = paste0("1320_radiomics_lasso_", suffix_model)
-    cols_1320 <- grep("^X1320_", colnames(df_trainset0), value = TRUE)
+    # Coxph Lasso radiomics firstorder 1320
+    model_name = paste0("1320_radiomics_firstorder_lasso_", suffix_model)
+    cols_1320 <- grep("^X1320_original_firstorder_", colnames(df_trainset0), value = TRUE)
     covariates = c(cols_1320, clinical_vars)
     log_info("Multiple scores radiomics lasso (1320)")
     results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
@@ -97,6 +97,31 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
+    # Coxph Lasso all radiomics 32X
+    model_name = paste0("32X_radiomics_full_lasso_", suffix_model)
+    cols_32X <- filter.gl(grep("^X32[0-9]{1}_", colnames(df_trainset0), value = TRUE))
+    covariates = c(cols_32X, clinical_vars)
+    log_info("Multiple scores radiomics lasso (32X)")
+    results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
+    results <- as.data.frame(results)
+    df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+    rownames(df_results) <- index_results
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    write.csv(df_results, file = filename_results, row.names = TRUE)
+    
+    # Coxph Lasso all radiomics 1320
+    model_name = paste0("1320_radiomics_full_lasso_", suffix_model)
+    cols_1320 <- filter.gl(grep("^X1320_", colnames(df_trainset0), value = TRUE))
+    covariates = c(cols_1320, clinical_vars)
+    log_info("Multiple scores radiomics lasso (1320)")
+    results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
+    results <- as.data.frame(results)
+    df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+    rownames(df_results) <- index_results
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    write.csv(df_results, file = filename_results, row.names = TRUE)
+
+ 
     log_info("Multiple scores cox lasso radiomics learning R: Done")
 }
 
