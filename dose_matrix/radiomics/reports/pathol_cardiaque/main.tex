@@ -1,0 +1,237 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{xstring}
+\usepackage{float}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{Resultats Pathologie cardiaque}
+\author{mahmoudbentriou }
+\date{February 2022}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+We want to perform survival analysis using dosiomics and clinical data to predict heart diseases by the of the FCCSS data. Survival time is calculated in years.
+
+\section{Material and Methods}
+
+\subsection{Data}
+
+We consider the FCCSS cohort of 7670 patients. 4197 patients have been treated by RT. Among them, the dose distribution matrices are available for 3943 patients. Doses matrices have 2mm spacing.
+
+\subsection{Dosiomics feature extraction}
+
+The dataset is composed of 5181 files, where each file represents a treatment by RT. A patient may correspond to several files, because several RT treatments were prescribed. In this case, dose distribution matrices are summed if the related treatments were executed within a time window of 6 months, beginning with the first RT treatment [arbitrary for now]. Snakemake [cite] was used to make the analyses consistent and replicable.
+
+Dosiomics of the patients were extracted using pyradiomics [cite]. They are formed of first-order statistics and some volume shapes features over subparts of the heart, and the global heart [and thyroid ?]. It leads to a dataset creation, where a row represents a patient, and columns are predictors. The predictors are composed of clinical data (has received RT, chemotherapy agents types [and other..?]), and the dosiomics.
+The resulting dataset is divided into two groups: the train dataset (70\%), and the test dataset (30\%), which are the same for all presented models. The proportion of non-censored data is preserved for the two groups (about 6\%).
+
+\paragraph{Elimination of highly correlated features}
+
+We consider two kind of trainsets. Both contain the same patients. The first one (full trainset - AllTrain) contains all the previously described predictors. 
+The second one (preprocessed trainset - FETrain) is the result of a feature elimination procedure over the dosiomics. We perform hierarchical clustering over the dosiomics, with 1 - Kendall's tau as a distance, and complete linkage function, in order to eliminate highly correlated features. We keep the clusters formed until distance 0.15, which guarantees that each cluster has features whose Kendall's tau correlation is higher than 0.85. We choose a feature from each cluster by Cox univariate analysis (lowest p-value).
+
+\subsection{Models}
+
+\paragraph{PCA visualisation}
+
+We perform PCA visualisation over the whole dataset. First, only significative dosiomics features are kept (p-values < 0.01 corrected with Benjamini-Hochberg procedure). Second, we consider different classes for each patient: no pathology, cardiovascular pathology declared within 0 - 5 years, 5 - 10 years, 10 - 15 years, 15 - 20 years, after 20 years.
+
+\paragraph{Cox analysis}
+
+First, we perfomed a classical Cox analysis without regularization. We perform a Cox survival analysis with a Lasso regularization. The penalty is estimated over 100 values by 3-fold cross-validation over the trainset.
+
+\paragraph{Random Survival Forest}
+
+Random Survival Forest is performed over the trainset. Hyperparameters (number of trees - ntree, minimum number of samples in terminal nodes - nodesize, number of tested splits at each node - nsplits) are estimated with 3-fold cross-validation.
+
+\subsection{Metrics}
+
+We use several metrics to check the predictive power of our models. First, we compute Harell's C-index and its inverse-probability-of-censoring weights (IPCW) correction, which is important in our case, because of the large proportion of censored data. Censoring distribution is estimated with Kaplan-Meier. 
+Second, we compute the Brier score at 60 years (above 99\% quantile of survival times)
+
+\section{Results}
+
+%3 categories of models:
+
+\begin{itemize}
+    %\item "pathol cardiaque": only the received doses are considered,
+    \item "pathol cardiaque chimio": doses and binary chimiotherapie variable,
+    \item "pathol cardiaque drugs": doses and ALKYL, ANTHRA, ANTIM, VINCA, ANTIB, DIVERS 
+\end{itemize}
+%\foreach \picturesdir in {{\analyzesdir/pathol_cardiaque},{\analyzesdir/pathol_cardiaque_chimio},{\analyzesdir/pathol_cardiaque_drugs}} {%
+%\foreach \picturesdir in {{../../slurm_results/analyzes/pathol_cardiaque},{../../slurm_results/analyzes/pathol_cardiaque_chimio},{../../slurm_results/analyzes/pathol_cardiaque_drugs}} {%
+
+\newcommand{\nbestim}{10}
+\newcommand{\analyzesdir}{../../slurm_results/analyzes}
+\foreach \model in {{pathol_cardiaque_chimio},{pathol_cardiaque_drugs},{pathol_cardiaque_grade3_chimio}} {%
+
+\StrSubstitute{\model}{_}{ }[\titlemodel]
+\subsection{\titlemodel}
+
+\begin{figure}[H]
+    \textbf{1320 mean (\titlemodel)}
+    \centering
+    \includegraphics[width=0.9\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_mean.png} \\
+    \caption{Coefficients of mean heart dose.}
+\end{figure}    
+
+
+\begin{figure}[H]
+\textbf{1320 doses volumes (\titlemodel)}
+    \centering
+    \begin{tabular}{c}
+    \includegraphics[width=0.9\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_dosesvol.png} \\
+    \end{tabular}
+    \caption{Coefficients of doses volumes.}
+\end{figure}    
+
+\begin{figure}[H]
+\textbf{1320 doses volumes lasso (\titlemodel)}
+    \centering
+    \begin{tabular}{ll}
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_dosesvol_lasso.png} &
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_dosesvol_lasso.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_dosesvol_lasso.png} & \\
+    \end{tabular}
+    \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Global heart doses volumes.}
+\end{figure}    
+
+\begin{figure}[H]
+\textbf{1320 radiomics lasso all (\titlemodel)}
+    \centering
+    \begin{tabular}{ll}
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_radiomics_lasso_all.png} &
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_radiomics_lasso_all.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_radiomics_lasso_all.png} & \\
+    \end{tabular}
+    \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Global heart dosiomics (AllTrain).}
+\end{figure}    
+
+\begin{figure}[H]
+\textbf{1320 radiomics lasso features hclust (\titlemodel)}
+    \centering
+    \begin{tabular}{ll}
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_radiomics_lasso_features_hclust_corr.png} &
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_radiomics_lasso_features_hclust_corr.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_radiomics_lasso_features_hclust_corr.png} & \\
+    \end{tabular}
+    \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Global heart dosiomics (FETrain).}
+\end{figure}
+
+\begin{figure}[H]
+\textbf{32X radiomics lasso all (\titlemodel)}
+    \centering
+    \begin{tabular}{ll}
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_32X_radiomics_lasso_all.png} & 
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_32X_radiomics_lasso_all.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_32X_radiomics_lasso_all.png} & \\
+    \end{tabular}
+    \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Subparts of heart dosiomics (AllTrain)}
+\end{figure}
+
+\begin{figure}[H]
+\textbf{32X radiomics lasso features hclust (\titlemodel)}
+    \centering
+    \begin{tabular}{ll}
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_32X_radiomics_lasso_features_hclust_corr.png} & 
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_32X_radiomics_lasso_features_hclust_corr.png} \\ 
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_32X_radiomics_lasso_features_hclust_corr.png} & \\
+    \end{tabular}
+    \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Subparts of heart dosiomics (FETrain)}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{tabular}{cc}
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_1320_all.png}
+    &  
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_1320_features_hclust_corr.png} \\
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_32X_all.png}
+    &
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_32X_features_hclust_corr.png} \\
+    \end{tabular}
+    \caption{Estimated feature importances of Random Survival Forestsls using VIMP method.\\
+    Top: global heart dosiomics (left: AllTrain, right: FETrain). \\
+    Bottom: Subparts of heart dosiomics (left: AllTrain, right: FETrain)}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \small
+    \input{tables/results_train_\model.tex}
+    \caption{Metrics results over the train set.}
+    \label{tab:my_label}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \small
+    \input{tables/results_test_\model.tex}
+    \caption{Metrics results over the test set.}
+    \label{tab:my_label}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \small
+    \input{tables/results_multiple_scores_\nbestim_\model.tex}
+    \caption{Metrics results over the test set for \nbestim runs.}
+    \label{tab:my_label}
+\end{table}
+}
+
+\clearpage
+
+\subsection{Only multiple runs results over the test set}
+
+\foreach \model in {{pathol_cardiaque_chimio},{pathol_cardiaque_drugs},{pathol_cardiaque_grade3_chimio}} {%
+
+\StrSubstitute{\model}{_}{ }[\titlemodel]
+\begin{table}[h]
+    \centering
+    \small
+    \textbf{\titlemodel}
+    \input{tables/results_multiple_scores_\nbestim_\model.tex}
+    \caption{Metrics results over the test set for \nbestim runs.}
+    \label{tab:my_label}
+\end{table}
+}
+
+\clearpage
+
+\section{Notations}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|c|}
+        \hline
+        Label  & Organ         \\ \hline
+        321    & Right atrium  \\ \hline
+        322    & Left atrium   \\ \hline
+        323    & Right ventricle \\ \hline
+        324    & Left ventricle \\ \hline
+        320    & Unassigned heart voxels \\ \hline
+        1320   & Whole heart (320 to 324) \\ \hline
+    \end{tabular}
+    \caption{Caption}
+    \label{tab:my_label}
+\end{table}
+
+\section{Remarques}
+
+\begin{itemize}
+    \item Il faut comparer le train sur le meme dataset
+    \item Autre feature elimination ?
+    \item Export les survival time pour ajouter drugs chimio
+    \item Estimer courbe survie entre patients avec NA et sans patients
+    \item Cox univarié sur VoxelVolume
+\end{itemize}
+\end{document}
