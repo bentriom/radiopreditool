@@ -16,18 +16,7 @@ radiomics.getFeatureClasses()
 from radiomics import featureextractor
 import re, os, csv, logging
 from functools import reduce
-from radiopreditool_utils import get_ctr_numcent, pretty_dosesvol
-
-def create_image_mask_example():
-    array_image = np.zeros((32,32,32)) 
-    array_mask = np.zeros((32,32,32))
-    xx, yy, zz = np.meshgrid(np.arange(10,20), np.arange(10,20), np.arange(10,20))
-    x, y, z = xx.flatten(), yy.flatten(), zz.flatten()
-    array_image[x, y, z] = np.random.rand(10**3)
-    array_mask[x, y, z] = 1
-    image = sitk.GetImageFromArray(array_image)
-    mask = sitk.GetImageFromArray(array_mask)
-    return image, mask
+from radiopreditool_utils import get_ctr_numcent, pretty_dosesvol, create_image_mask_example
 
 def write_header(labels_super_t_voi, labels_t_voi, radiomics_dir, params_file):
     extractor = featureextractor.RadiomicsFeatureExtractor(params_file)

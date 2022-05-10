@@ -2,9 +2,27 @@
 import logging
 import numpy as np
 import pandas as pd
+import SimpleITK as sitk
 import os, re
 from multiprocessing import cpu_count
 from datetime import datetime
+
+# Create empty image
+def create_image_mask_example(zero_img = False, num_mask = 1):
+    array_image = np.zeros((32,32,32))
+    array_mask = np.zeros((32,32,32))
+    xx, yy, zz = np.meshgrid(np.arange(10,20), np.arange(10,20), np.arange(10,20))
+    x, y, z = xx.flatten(), yy.flatten(), zz.flatten()
+    if not zero_img:
+        array_image[x, y, z] = np.random.rand(10**3)
+    array_mask[x, y, z] = num_mask
+    image = sitk.GetImageFromArray(array_image)
+    image.SetSpacing((2.0,2.0,2.0))
+    image.SetOrigin((0.0,0.0,0.0))
+    mask = sitk.GetImageFromArray(array_mask)
+    mask.SetSpacing((2.0,2.0,2.0))
+    mask.SetOrigin((0.0,0.0,0.0))
+    return image, mask
 
 # Data fccss specific 
 def get_ctr_numcent(dosi_filename):    

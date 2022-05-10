@@ -8,7 +8,7 @@ rule create_dataset:
         ANALYZES_DIR + "datasets/dataset.csv.gz",
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
-        trainset.create_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+        trainset.create_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL, RADIOMICS_PARAMS_FILE)
 
 rule split_dataset:
     input:

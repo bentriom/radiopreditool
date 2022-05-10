@@ -19,6 +19,7 @@ sys.path.append("radiomics/workflow/scripts")
 
 import csv2nii, feature_extractor, check_dataset, trainset
 from radiopreditool_utils import *
+from radiomics import featureextractor
 from lifelines import CoxPHFitter
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -49,8 +50,21 @@ def survival_date(event_col, date_event_col, row):
         min_date = datetime.strptime("31/12/2016", "%d/%m/%Y")
         return max([datetime.strptime(row[col], "%d/%m/%Y") for col in cols_date if not pd.isna(row[col])] + [min_date])
 
+# Complete features for patients with no radiotherapy
+def fill_features_no_rt(df_dataset, col_treated_by_rt, params_file):
+    mask_no_rt = df_dataset[col_treated_by_rt] == 0
+    extractor = featureextractor.RadiomicsFeatureExtractor(params_file)
+    ex_image, ex_mask = create_image_mask_example(zero_img = True)
+    dict_features_values = extractor.execute(ex_image, ex_mask, label = 1)
+    # Get all the masks/labels used in the extraction
+    list_labels = get_all_labels(df_dataset)
+    features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]
+    for label in list_labels:
+        features = [pretty_dosesvol(f"{label}_{x}") for x in dict_features_values if not x.startswith("diagnostics_")]
+        df_dataset.loc[mask_no_rt, features] = features_values
+
 # Create dataset based on availaible dosiomics, clinical variables and survival data
-def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col):
+def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col, params_file):
     logger = setup_logger("dataset", analyzes_dir + "dataset.log")
     logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
     os.makedirs(analyzes_dir + "datasets", exist_ok = True)
@@ -83,11 +97,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     logger.info(f"Eliminating {sum(mask_negative_times)} patients with negative survival times")
     df_dataset = df_dataset.loc[~mask_negative_times, ]
     # Fill columns about radiotherapie
-    df_dataset.loc[pd.isnull(df_dataset["has_radiomics"]), "has_radiomics"] = 0
-    features_radiomics = get_all_radiomics_features(df_dataset)
-    features_dosesvol = get_all_dosesvol_features(df_dataset)
-    df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_radiomics] = 0
-    df_dataset.loc[df_dataset[col_treated_by_rt] == 0, features_dosesvol] = 0
+    fill_features_no_rt(df_dataset, col_treated_by_rt, params_file)
     logger.info(f"Full dataset: {df_dataset.shape}")
     logger.info(f"Full dataset without NA: {df_dataset.dropna().shape}")
     logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
