@@ -63,10 +63,13 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                       coxlasso_logfile, penalty = "lasso", do_plot = TRUE, save_results = TRUE, level = INFO) {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    ## Preprocessing sets
     df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
     df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
+    df_model_train <- df_model_train[!duplicated(as.list(df_model_train))]
+    df_model_test <- df_model_test[!duplicated(as.list(df_model_test))]
     # Z normalisation
     means_train <- as.numeric(lapply(df_model_train[covariates], mean))
     stds_train <- as.numeric(lapply(df_model_train[covariates], sd))
@@ -84,7 +87,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info("NAs are omitted")
     pred.times <- seq(1, 60, by = 1)
     final.time <- tail(pred.times, 1)
-    # Model and predictions
+    ## Model and predictions
     if (penalty == "none") {
         cv.coxlasso <- coxph(formula_model, data = df_model_train, x = TRUE, y = TRUE)
         coxlasso.survprob.train <- predictSurvProb(cv.coxlasso, newdata = data.table::as.data.table(df_model_train), times = pred.times)

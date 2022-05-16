@@ -11,14 +11,20 @@ library("parallel", quietly = TRUE)
 
 source("workflow/scripts/utils_rsf.R")
 
-model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) {
+model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
+                      ntrees = c(50, 100, 300, 1000), nodesizes = c(15, 50), nsplits = c(10, 700)) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
+    clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
+    formula_ipcw <- get.surv.formula(event_col, clinical_vars, duration_col = duration_col)
+    ## Preprocessing sets
     df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
     df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
     # df_model_train[is.na(df_model_train)] <- -1
     # df_model_test[is.na(df_model_test)] <- -1
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
+    df_model_train <- df_model_train[!duplicated(as.list(df_model_train))]
+    df_model_test <- df_model_test[!duplicated(as.list(df_model_test))]
     log_info(paste("Model name:", model_name))
     log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
     log_info(paste0("Trained:", nrow(df_model_train), "samples"))
@@ -27,9 +33,6 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
     pred.times <- seq(1, 60, by = 1)
     final.time <- tail(pred.times, 1)
-    ntrees <- c(50, 100, 300, 1000)
-    nodesizes <- c(15, 50)
-    nsplits <- c(10, 700)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
     # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
     cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
@@ -67,9 +70,18 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste0("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
     log_info(paste0("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
     # IBS
-    rsf.perror.train <- pec(object= list("train" = rsf.survprob.train, "oob" = rsf.survprob.oob), formula = formula_model, data = df_model_train, 
+    # Z normalisation for Breslow estimator of pec
+    # means_train <- as.numeric(lapply(df_model_train[covariates], mean))
+    # stds_train <- as.numeric(lapply(df_model_train[covariates], sd))
+    # df_model_train_norm <- data.frame(df_model_train)
+    # df_model_train_norm[, covariates] <- scale(df_model_train[covariates], center = means_train, scale = stds_train)
+    rsf.perror.train <- pec(object = list("train"=rsf.survprob.train, "oob"=rsf.survprob.oob), 
+                            formula = formula_model, data = df_model_train, 
+                            cens.model = "rfsrc", ipcw.args = params.best, 
                             times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
-    rsf.perror.test <- pec(object= list("test" = rsf.survprob.test), formula = formula_model, data = df_model_test, 
+    rsf.perror.test <- pec(object= list("test"=rsf.survprob.test), 
+                           formula = formula_model, data = df_model_test, 
+                           cens.model = "rfsrc", ipcw.args = params.best, 
                            times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
     rsf.bs.final.train <- tail(rsf.perror.train$AppErr$train, 1)
     rsf.bs.final.oob <- tail(rsf.perror.train$AppErr$oob, 1)
@@ -180,7 +192,7 @@ if (length(args) > 1) {
 
     log_threshold(INFO)
     rsf_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model)
-} else {
+} else{
     print("No arguments provided. Skipping.")
 }
 

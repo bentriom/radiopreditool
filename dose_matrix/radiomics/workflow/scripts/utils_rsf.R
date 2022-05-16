@@ -66,7 +66,9 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         cindex.ipcw.folds[i] <- cindex.ipcw.fold
         # IBS
         fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
-        perror = pec(object = fold.test.pred.bs, data = fold.test, formula = formula, 
+        perror = pec(object = fold.test.pred.bs, 
+                     data = fold.test, formula = formula, 
+                     cens.model = "rfsrc", ipcw.args = row, 
                      times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
         ibs.fold <- crps(perror, times = final.time.bs)[1]
         ibs.folds[i] <- ibs.fold
