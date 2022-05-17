@@ -12,7 +12,7 @@ library("parallel", quietly = TRUE)
 source("workflow/scripts/utils_rsf.R")
 
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
-                      ntrees = c(50, 100, 300, 1000), nodesizes = c(15, 50), nsplits = c(10, 700)) {
+                      ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
     clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
     formula_ipcw <- get.surv.formula(event_col, clinical_vars, duration_col = duration_col)
@@ -35,7 +35,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     final.time <- tail(pred.times, 1)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
     # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
-    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex.ipcw")
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex")
     write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
     # Best RSF
     params.best <- cv.params[1,]
