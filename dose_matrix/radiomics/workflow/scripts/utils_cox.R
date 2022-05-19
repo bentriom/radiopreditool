@@ -59,8 +59,9 @@ model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_d
               model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE, save_results = FALSE, level = WARN)
 }
 
-model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, 
-                      coxlasso_logfile, penalty = "lasso", do_plot = TRUE, save_results = TRUE, level = INFO) {
+model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
+                      analyzes_dir, model_name, coxlasso_logfile,
+                      penalty = "lasso", do_plot = TRUE, save_results = TRUE, level = INFO) {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     ## Preprocessing sets
@@ -122,10 +123,16 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste0("IPCW C-index on trainset: ", coxlasso.cindex.ipcw.train))
     log_info(paste0("IPCW C-index on testset: ", coxlasso.cindex.ipcw.test))
     # IBS
-    coxlasso.perror.train <- pec(object= list("train" = coxlasso.survprob.train), formula = formula_model, data = df_model_train, 
-                            times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
-    coxlasso.perror.test <- pec(object= list("test" = coxlasso.survprob.test), formula = formula_model, data = df_model_test, 
-                           times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+    coxlasso.perror.train <- pec(object= list("train" = coxlasso.survprob.train), 
+                                 formula = formula_model, data = df_model_train, 
+                                 cens.model = "rfsrc", 
+                                 times = pred.times, start = pred.times[0], 
+                                 exact = FALSE, reference = FALSE)
+    coxlasso.perror.test <- pec(object= list("test" = coxlasso.survprob.test), 
+                                formula = formula_model, data = df_model_test, 
+                                cens.model = "rfsrc", 
+                                times = pred.times, start = pred.times[0], 
+                                exact = FALSE, reference = FALSE)
     coxlasso.bs.final.train <- tail(coxlasso.perror.train$AppErr$train, 1)
     coxlasso.bs.final.test <- tail(coxlasso.perror.test$AppErr$test, 1)
     coxlasso.ibs.train <- crps(coxlasso.perror.train)[1]

@@ -1,26 +1,46 @@
 
 ## Random Survival Forest learning in R
 
-RSF_RADIOMICS_ALL = ["32X_radiomics_firstorder_all", "1320_radiomics_firstorder_all", \
-                     "32X_radiomics_full_all", "1320_radiomics_full_all"]
-RSF_RADIOMICS_FE_HCLUST = ["32X_radiomics_firstorder_features_hclust_corr", "1320_radiomics_firstorder_features_hclust_corr", \
-                           "32X_radiomics_full_features_hclust_corr", "1320_radiomics_full_features_hclust_corr"]
+RSF_RADIOMICS_32X_ALL = ["32X_radiomics_firstorder_all", "32X_radiomics_full_all"]
+RSF_RADIOMICS_1320_ALL = ["1320_radiomics_firstorder_all", "1320_radiomics_full_all"]
+RSF_RADIOMICS_ALL = RSF_RADIOMICS_32X_ALL + RSF_RADIOMICS_1320_ALL
+RSF_RADIOMICS_FE_HCLUST_32X = ["32X_radiomics_firstorder_features_hclust_corr", "32X_radiomics_full_features_hclust_corr"]
+RSF_RADIOMICS_FE_HCLUST_1320 = ["1320_radiomics_firstorder_features_hclust_corr", "1320_radiomics_full_features_hclust_corr"]
+RSF_RADIOMICS_FE_HCLUST = RSF_RADIOMICS_FE_HCLUST_32X + RSF_RADIOMICS_FE_HCLUST_1320
 
-rule rsf_analysis:
+# RSF no feature elimination
+
+rule rsf_subparts_heart_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
-        ANALYZES_DIR + "rsf_all.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_ALL),
-        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_ALL),
-        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_ALL)
+        ANALYZES_DIR + "rsf_all_32X.log",
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_32X_ALL),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_32X_ALL),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_32X_ALL)
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all 32X"
+
+rule rsf_whole_heart_analysis:
+    input:
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
+        ANALYZES_DIR + "datasets/testset.csv.gz"
+    output:
+        ANALYZES_DIR + "rsf_all_1320.log",
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_1320_ALL),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_1320_ALL),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_1320_ALL)
+    conda:
+        "../envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz all {EVENT_COL} {ANALYZES_DIR} all 1320"
  
 rule multiple_scores_rsf:
     input:
@@ -38,22 +58,41 @@ rule multiple_scores_rsf:
     shell:
         f"Rscript workflow/scripts/multiple_scores_rsf.R {NB_ESTIM_SCORE_MODELS} all {EVENT_COL} {ANALYZES_DIR} all"
  
-rule rsf_features_hclust_corr_analysis:
+# RSF feature elimination with hclustering / correlation
+
+rule rsf_subsparts_heart_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
-        ANALYZES_DIR + "rsf_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST),
-        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST),
-        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST)
+        ANALYZES_DIR + "rsf_features_hclust_corr_32X.log",
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST_32X),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_32X),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_32X)
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
         get_ncpus() - 1
     shell:
-        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr 32X"
+
+rule rsf_whole_heart_features_hclust_corr_analysis:
+    input:
+        ANALYZES_DIR + "datasets/trainset.csv.gz",
+        ANALYZES_DIR + "datasets/testset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv"
+    output:
+        ANALYZES_DIR + "rsf_features_hclust_corr_1320.log",
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST_1320),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_1320),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_1320)
+    conda:
+        "../envs/rsf_R_env.yaml"
+    threads:
+        get_ncpus() - 1
+    shell:
+        f"Rscript workflow/scripts/rsf_learning.R {ANALYZES_DIR}datasets/trainset.csv.gz {ANALYZES_DIR}datasets/testset.csv.gz {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr 1320"
 
 rule multiple_scores_rsf_features_hclust_corr:
     input:

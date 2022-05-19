@@ -8,7 +8,123 @@ library("logger", quietly = TRUE)
 
 source("workflow/scripts/utils_radiopreditool.R")
 
-# Brier score computation
+# Learning a model
+
+model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
+                      ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
+    log_appender(appender_file(rsf_logfile, append = TRUE))
+    clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
+    formula_ipcw <- get.surv.formula(event_col, clinical_vars, duration_col = duration_col)
+    ## Preprocessing sets
+    df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
+    df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
+    # df_model_train[is.na(df_model_train)] <- -1
+    # df_model_test[is.na(df_model_test)] <- -1
+    df_model_train <- na.omit(df_model_train)
+    df_model_test <- na.omit(df_model_test)
+    df_model_train <- df_model_train[!duplicated(as.list(df_model_train))]
+    df_model_test <- df_model_test[!duplicated(as.list(df_model_test))]
+    log_info(paste("Model name:", model_name))
+    log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
+    log_info(paste0("Trained:", nrow(df_model_train), "samples"))
+    log_info(paste0("Testset: ", nrow(df_model_test), " samples"))
+    log_info("NAs are omitted")
+    formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
+    pred.times <- seq(1, 60, by = 1)
+    final.time <- tail(pred.times, 1)
+    params.df <- create.params.df(ntrees, nodesizes, nsplits)
+    # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
+    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex")
+    write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
+    # Best RSF
+    params.best <- cv.params[1,]
+    log_info("Best params:")
+    log_info(toString(names(params.best)))
+    log_info(toString(params.best))
+    rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
+    # Predictions
+    rsf.survprob.train <- predictSurvProb(rsf.best, newdata = df_model_train, times = pred.times)
+    rsf.survprob.oob <- predictSurvProbOOB(rsf.best, times = pred.times)
+    rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
+    rsf.pred.test <- predict(rsf.best, newdata = df_model_test)
+    # C-index ipcw (censored free, marginal = KM)
+    rsf.cindex.ipcw.train <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_train)$AppCindex[["Best rsf"]]
+    rsf.cindex.ipcw.oob <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_train, method = "OutOfBagCindex")$AppCindex[["Best rsf"]]
+    rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_test)$AppCindex[["Best rsf"]]
+    # Harrell's C-index
+    rsf.cindex.harrell.train <- 1-rcorr.cens(rsf.best$predicted, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
+    rsf.cindex.harrell.oob <- 1-rcorr.cens(rsf.best$predicted.oob, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
+    rsf.cindex.harrell.test <- 1-rcorr.cens(rsf.pred.test$predicted, S = Surv(df_model_test[[duration_col]], df_model_test[[event_col]]))[["C Index"]]
+    # Cindex rfsrc
+    rsf.err.oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
+    rsf.err.train <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted)
+    rsf.err.test <- get.cindex(rsf.pred.test$yvar[[duration_col]], rsf.pred.test$yvar[[event_col]], rsf.pred.test$predicted)
+    log_info(paste0("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
+    log_info(paste0("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
+    log_info(paste0("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
+    log_info(paste0("rfsrc C-index on trainset: ", 1-rsf.err.train))
+    log_info(paste0("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
+    log_info(paste0("rfsrc C-index on testset: ", 1-rsf.err.test))
+    log_info(paste0("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
+    log_info(paste0("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
+    log_info(paste0("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
+    # IBS
+    # Z normalisation for Breslow estimator of pec
+    # means_train <- as.numeric(lapply(df_model_train[covariates], mean))
+    # stds_train <- as.numeric(lapply(df_model_train[covariates], sd))
+    # df_model_train_norm <- data.frame(df_model_train)
+    # df_model_train_norm[, covariates] <- scale(df_model_train[covariates], center = means_train, scale = stds_train)
+    rsf.perror.train <- pec(object = list("train"=rsf.survprob.train, "oob"=rsf.survprob.oob), 
+                            formula = formula_model, data = df_model_train, 
+                            cens.model = "rfsrc", 
+                            times = pred.times, start = pred.times[0], 
+                            exact = FALSE, reference = FALSE)
+    rsf.perror.test <- pec(object= list("test"=rsf.survprob.test), 
+                           formula = formula_model, data = df_model_test, 
+                           cens.model = "rfsrc", 
+                           times = pred.times, start = pred.times[0], 
+                           exact = FALSE, reference = FALSE)
+    rsf.bs.final.train <- tail(rsf.perror.train$AppErr$train, 1)
+    rsf.bs.final.oob <- tail(rsf.perror.train$AppErr$oob, 1)
+    rsf.bs.final.test <- tail(rsf.perror.test$AppErr$test, 1)
+    rsf.ibs.train <- crps(rsf.perror.train)[1]
+    rsf.ibs.oob <- crps(rsf.perror.train)[2]
+    rsf.ibs.test <- crps(rsf.perror.test)[1]
+    log_info(paste0("BS at 60 on trainset: ", rsf.bs.final.train))
+    log_info(paste0("BS OOB at 60 on trainset: ", rsf.bs.final.oob))
+    log_info(paste0("BS at 60 on testset: ", rsf.bs.final.test))
+    log_info(paste0("IBS on trainset: ", rsf.ibs.train))
+    log_info(paste0("IBS OOB on trainset: ", rsf.ibs.oob))
+    log_info(paste0("IBS on testset: ", rsf.ibs.test))
+    results_train <- c(rsf.cindex.harrell.train, rsf.cindex.ipcw.train, 
+                       rsf.bs.final.train, rsf.ibs.train)
+    results_test <- c(rsf.cindex.harrell.test, rsf.cindex.ipcw.test, 
+                      rsf.bs.final.test, rsf.ibs.test)
+    log_info(paste0("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
+    log_info(paste0("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
+    df_results <- data.frame(Train = results_train, Test = results_test)
+    rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+    write.csv(df_results, file = paste0(analyzes_dir, "rsf_results/metrics_", model_name, ".csv"), row.names = TRUE)
+    rsf.best
+}
+
+# Plot of features importances with VIMP method
+
+plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
+    new_labels <- pretty.labels(rsf.obj$xvar.names)
+    subs.rsf.obj <- subsample(rsf.obj, B = 100)
+    png(paste0(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".png"), width = 1250, height = 1600, res = 70)
+    par(oma = c(0.5, 10, 0.5, 0.5))
+    par(cex.axis = 2.0, cex.lab = 2.0, cex.main = 2.0, mar = c(6.0,17,1,1), mgp = c(4, 1, 0))
+    pmax = 30
+    p = length(new_labels)
+    xlab <- `if`(p < pmax, paste0("Variable Importance (x 100) -", p, "features"), paste0("Variable Importance (x 100) -", pmax, "best features"))
+    new.plot.subsample.rfsrc(subs.rsf.obj, xlab = xlab, cex = 1.25, ylab = new_labels, pmax = pmax)
+    dev.off()
+}
+
+# Brier score computation for OOB samples
+
 predictSurvProbOOB <- function(object, times, ...){
     ptemp <- predict(object, importance="none",...)$survival.oob
     pos <- prodlim::sindex(jump.times=object$time.interest,eval.times=times)
@@ -19,6 +135,7 @@ predictSurvProbOOB <- function(object, times, ...){
 }
 
 # Create a data frame with the hyperparameters to test in CV
+
 create.params.df <- function(ntrees, nodesizes, nsplits) {
     params.df <- data.frame(ntree=integer(), nodesize=integer(), nsplit=integer())
     for (ntree in ntrees) {
@@ -31,7 +148,23 @@ create.params.df <- function(ntrees, nodesizes, nsplits) {
     params.df
 }
 
-# Job for one parameter
+# Cross-validation for RSF
+
+cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, 
+                   duration_col = "survival_time_years", nfolds = 5, 
+                   pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
+    nbr.params <- nrow(params.df)
+    folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
+    log_info(paste("Running CV with rfsrc using", getOption("rf.cores"), "workers")) 
+    cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = 1)
+    cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
+    rownames(cv.params.df) <- NULL
+    colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Harrel Cindex", "IPCW Cindex", "Error")
+    cv.params.df[order(cv.params.df$Error),]
+}
+
+# The job for one parameter vector in cross-validation
+
 get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info(paste("Error CV:", error.metric))
@@ -68,8 +201,9 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
         perror = pec(object = fold.test.pred.bs, 
                      data = fold.test, formula = formula, 
-                     cens.model = "rfsrc", ipcw.args = row, 
-                     times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+                     cens.model = "rfsrc", 
+                     times = pred.times, start = pred.times[0], 
+                     exact = FALSE, reference = FALSE)
         ibs.fold <- crps(perror, times = final.time.bs)[1]
         ibs.folds[i] <- ibs.fold
     }
@@ -87,7 +221,8 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
     c(unlist(row), mean(ibs.folds), mean(cindex.folds), mean(cindex.ipcw.folds), param.error)
 }
 
-# Refit best RSF
+# Refit RSF with stored best parameters
+
 refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name = "") {
     # Prepare sets
     df_model_train <- read.csv(file_trainset, header = TRUE)[,c(event_col, duration_col, covariates)]
@@ -105,35 +240,29 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
     rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
     rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_test)$AppCindex[["Best rsf"]]
     rsf.cindex.harrell.test <- 1-rcorr.cens(rsf.pred.test$predicted, S = Surv(df_model_test[[duration_col]], df_model_test[[event_col]]))[["C Index"]]
-    rsf.perror.test <- pec(object= list("test" = rsf.survprob.test), formula = formula_model, data = df_model_test, 
-                           times = pred.times, start = pred.times[0], exact = FALSE, reference = FALSE)
+    rsf.perror.test <- pec(object= list("test" = rsf.survprob.test), 
+                           formula = formula_model, data = df_model_test, 
+                           cens.model = "rfsrc", 
+                           times = pred.times, start = pred.times[0], 
+                           exact = FALSE, reference = FALSE)
     rsf.bs.final.test <- tail(rsf.perror.test$AppErr$test, 1)
     rsf.ibs.test <- crps(rsf.perror.test)[1]
     results_test <- c(rsf.cindex.harrell.test, rsf.cindex.ipcw.test, rsf.bs.final.test, rsf.ibs.test)
     results_test
 }
 
-refit.best.rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name = "") {
+# Refit RSF with a database
+
+refit.best.rsf.id <- function(id_set, covariates, event_col, duration_col, 
+                              analyzes_dir, model_name = "") {
     log_info(id_set)
     file_trainset <- paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz")
     file_testset <- paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz")
     refit.best.rsf(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name = model_name)
 }
 
-# Cross-validation for RSF
-cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, duration_col = "survival_time_years", 
-                   nfolds = 5, pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
-    nbr.params <- nrow(params.df)
-    folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
-    log_info(paste("Running CV with rfsrc using", getOption("rf.cores"), "workers")) 
-    cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = 1)
-    cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
-    rownames(cv.params.df) <- NULL
-    colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Harrel Cindex", "IPCW Cindex", "Error")
-    cv.params.df[order(cv.params.df$Error),]
-}
-
 # Under-sampling
+
 bootstrap.undersampling <- function(data,ntree) {
     nsamples <- dim(data)[1]
     index.data.event <- which(data[[event_col]]==1)
@@ -149,6 +278,7 @@ bootstrap.undersampling <- function(data,ntree) {
 }
 
 # Plot of features importances for RSF
+
 new.plot.subsample.rfsrc <- function(x, alpha = .01,
                                      standardize = TRUE, normal = TRUE, jknife = TRUE,
                                      target, m.target = NULL, pmax = 75, main = "", 
