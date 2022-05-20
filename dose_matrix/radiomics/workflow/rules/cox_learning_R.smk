@@ -56,7 +56,6 @@ rule cox_lasso_radiomics_whole_heart_all_R:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
-        ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_1320_all.log",
         expand(ANALYZES_DIR + "coxph_R_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO_1320_ALL),
@@ -76,7 +75,6 @@ rule cox_lasso_radiomics_subparts_heart_all_R:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
-        ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_32X_all.log",
         expand(ANALYZES_DIR + "coxph_R_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO_32X_ALL),
@@ -98,6 +96,7 @@ rule cox_lasso_radiomics_whole_heart_features_hclust_corr_R:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_1320_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
@@ -117,6 +116,7 @@ rule cox_lasso_radiomics_subparts_heart_features_hclust_corr_R:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
+        ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_32X_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),

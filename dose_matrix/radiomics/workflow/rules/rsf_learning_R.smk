@@ -4,9 +4,9 @@
 RSF_RADIOMICS_32X_ALL = ["32X_radiomics_firstorder_all", "32X_radiomics_full_all"]
 RSF_RADIOMICS_1320_ALL = ["1320_radiomics_firstorder_all", "1320_radiomics_full_all"]
 RSF_RADIOMICS_ALL = RSF_RADIOMICS_32X_ALL + RSF_RADIOMICS_1320_ALL
-RSF_RADIOMICS_FE_HCLUST_32X = ["32X_radiomics_firstorder_features_hclust_corr", "32X_radiomics_full_features_hclust_corr"]
-RSF_RADIOMICS_FE_HCLUST_1320 = ["1320_radiomics_firstorder_features_hclust_corr", "1320_radiomics_full_features_hclust_corr"]
-RSF_RADIOMICS_FE_HCLUST = RSF_RADIOMICS_FE_HCLUST_32X + RSF_RADIOMICS_FE_HCLUST_1320
+RSF_RADIOMICS_32X_FE_HCLUST = ["32X_radiomics_firstorder_features_hclust_corr", "32X_radiomics_full_features_hclust_corr"]
+RSF_RADIOMICS_1320_FE_HCLUST = ["1320_radiomics_firstorder_features_hclust_corr", "1320_radiomics_full_features_hclust_corr"]
+RSF_RADIOMICS_FE_HCLUST = RSF_RADIOMICS_32X_FE_HCLUST + RSF_RADIOMICS_1320_FE_HCLUST
 
 # RSF no feature elimination
 
@@ -60,16 +60,16 @@ rule multiple_scores_rsf:
  
 # RSF feature elimination with hclustering / correlation
 
-rule rsf_subsparts_heart_features_hclust_corr_analysis:
+rule rsf_subparts_heart_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr_32X.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST_32X),
-        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_32X),
-        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_32X)
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_32X_FE_HCLUST)
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
@@ -84,9 +84,9 @@ rule rsf_whole_heart_features_hclust_corr_analysis:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr_1320.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_FE_HCLUST_1320),
-        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_1320),
-        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_FE_HCLUST_1320)
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_1320_FE_HCLUST)
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
