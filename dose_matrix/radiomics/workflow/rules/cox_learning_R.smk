@@ -7,6 +7,7 @@ COX_RADIOMICS_LASSO_32X = ["32X_radiomics_firstorder_lasso_all", "32X_radiomics_
                            "32X_radiomics_full_lasso_all", "32X_radiomics_full_lasso_features_hclust_corr"]
 COX_RADIOMICS_LASSO_1320 = ["1320_radiomics_firstorder_lasso_all", "1320_radiomics_firstorder_lasso_features_hclust_corr", \
                             "1320_radiomics_full_lasso_all", "1320_radiomics_full_lasso_features_hclust_corr"]
+COX_RADIOMICS_LASSO = COX_RADIOMICS_LASSO_32X + COX_RADIOMICS_LASSO_1320
 
 # Baseline models
 
