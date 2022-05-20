@@ -1,6 +1,7 @@
 
 options(show.error.locations = TRUE, error=traceback)
 
+suppressPackageStartupMessages({
 library("caret", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
@@ -8,6 +9,7 @@ library("pec", quietly = TRUE)
 library("Hmisc", quietly = TRUE)
 library("logger", quietly = TRUE)
 library("parallel", quietly = TRUE)
+})
 
 source("workflow/scripts/utils_rsf.R")
 
@@ -81,7 +83,7 @@ if (length(args) > 1) {
     event_col <- args[4]
     analyzes_dir <- args[5]
     suffix_model <- args[6]
-    type <- args[7]
+    subdivision_type <- args[7]
     duration_col <- `if`(length(args) == 8, args[8], "survival_time_years")
     log_threshold(INFO)
     rsf_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model, subdivision_type)

@@ -9,6 +9,7 @@ library("logger", quietly = TRUE)
 library("parallel", quietly = TRUE)
 library("ggplot2", quietly = TRUE)
 library("reshape2", quietly = TRUE)
+library("randomForestSRC", quietly = TRUE)
 })
 
 source("workflow/scripts/utils_radiopreditool.R")
