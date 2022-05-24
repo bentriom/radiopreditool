@@ -59,12 +59,14 @@ model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_d
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     log_info(id_set)
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-              model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE, save_results = FALSE, level = WARN)
+              model_name, coxlasso_logfile, penalty = penalty, 
+              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = WARN)
 }
 
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
                       analyzes_dir, model_name, coxlasso_logfile,
-                      penalty = "lasso", do_plot = TRUE, save_results = TRUE, level = INFO) {
+                      penalty = "lasso", do_plot = TRUE, 
+                      save_results = TRUE, load_results = FALSE, level = INFO) {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     ## Preprocessing sets
@@ -101,12 +103,17 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         coxlasso.predict.test <- predict(cv.coxlasso, newdata = data.table::as.data.table(df_model_test), type = "survival")
         coxlasso.predict.test <- matrix(coxlasso.predict.test, length(coxlasso.predict.test), 1)
     } else if (penalty == "lasso") {
-        cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
-        cv.params <- data.frame(non_zero_coefs = as.numeric(cv.coxlasso$nzero), penalty = cv.coxlasso$lambda, mean_score = cv.coxlasso$cvm, std_score = as.numeric(cv.coxlasso$cvsd))
-        cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
-        if (save_results) write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
-        best.lambda = select_best_lambda(cv.coxlasso, cv.params)
-        if (save_results) write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
+        if (load_results) { 
+            best.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))[1, "penalty"]
+            cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = best.lambda, nfolds = 5, type.measure = "C")
+        else {
+            cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
+            cv.params <- data.frame(non_zero_coefs = as.numeric(cv.coxlasso$nzero), penalty = cv.coxlasso$lambda, mean_score = cv.coxlasso$cvm, std_score = as.numeric(cv.coxlasso$cvsd))
+            cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
+            if (save_results) write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
+            best.lambda = select_best_lambda(cv.coxlasso, cv.params)
+            if (save_results) write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
+        }
         log_info(paste("Best lambda:", best.lambda))
         coxlasso.survfit.train <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_train, s = "lambda.min")
         coxlasso.survfit.test <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_test, s = "lambda.min")
