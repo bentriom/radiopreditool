@@ -146,7 +146,7 @@ rule multiple_scores_cox_lasso_radiomics_all_R:
     conda:
         "../envs/cox_R_env.yaml"
     shell:
-        f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_cox_lasso_radiomics_all {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years && "
+        f"Rscript workflow/scripts/multiple_scores_cox.R multiple_scores_cox_lasso_radiomics_all {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR} {EVENT_COL} survival_time_years"
 
 rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
     input:
