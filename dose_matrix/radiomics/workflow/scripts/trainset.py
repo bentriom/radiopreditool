@@ -22,7 +22,7 @@ from radiopreditool_utils import *
 from radiomics import featureextractor
 from lifelines import CoxPHFitter
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 
@@ -33,6 +33,28 @@ def fill_missing(df_fccss):
     # Patients who have pathol cardiaque >= grade 3, a date_pc but no date_pc_3
     mask = pd.isnull(df_fccss["date_pathol_cardiaque_3"]) & (df_fccss["Pathologie_cardiaque_3"] == 1)
     df_fccss.loc[mask, "date_pathol_cardiaque_3"] = df_fccss.loc[mask, "date_pathol_cardiaque"]
+    # Dummy variables for the first cancer (iccc)
+    enc = OneHotEncoder()
+    enc.fit(df_fccss["iccc"].values.reshape(-1,1))
+    dummy_iccc_cols = pd.Series(enc.get_feature_names_out()).str.replace("x0", "iccc").values
+    df_fccss[dummy_iccc_cols] = enc.transform(df_fccss["iccc"].values.reshape(-1,1)).toarray()
+    # Age at diagnosis of the first tumor
+    def age_at_diagnosis(patient):
+        date_diag = datetime.strptime(patient.loc["date_diag"], "%d/%m/%Y")
+        birthdate = datetime.strptime(patient.loc["date_nais"], "%d/%m/%Y")
+        age = date_diag.year - birthdate.year - ((date_diag.month, date_diag.day) < (birthdate.month, birthdate.day))
+        return age
+    def categ_age_at_diagnosis(age):
+        if 0 <= age <= 5:
+            return 0
+        if 5 < age <= 10:
+            return 1
+        if 10 < age <= 15:
+            return 2
+        if age > 15:
+            return 3
+    df_fccss.loc[:, "age_at_diagnosis"] = df_fccss[["date_diag", "date_nais"]].apply(age_at_diagnosis, axis=1)
+    df_fccss.loc[:, "categ_age_at_diagnosis"] = df_fccss["age_at_diagnosis"].apply(categ_age_at_diagnosis)   
 
 # Compute survival times
 def survival_date(event_col, date_event_col, row):
