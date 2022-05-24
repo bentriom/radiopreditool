@@ -56,6 +56,8 @@ select_best_lambda <- function(cox_object, cv.params) {
 model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
+    log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    log_info(id_set)
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
               model_name, coxlasso_logfile, penalty = penalty, do_plot = FALSE, save_results = FALSE, level = WARN)
 }
