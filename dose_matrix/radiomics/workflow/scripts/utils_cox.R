@@ -103,10 +103,10 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         coxlasso.predict.test <- predict(cv.coxlasso, newdata = data.table::as.data.table(df_model_test), type = "survival")
         coxlasso.predict.test <- matrix(coxlasso.predict.test, length(coxlasso.predict.test), 1)
     } else if (penalty == "lasso") {
-        if (load_results) { 
+        if (load_results) {
             best.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))[1, "penalty"]
             cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = best.lambda, nfolds = 5, type.measure = "C")
-        else {
+        } else {
             cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
             cv.params <- data.frame(non_zero_coefs = as.numeric(cv.coxlasso$nzero), penalty = cv.coxlasso$lambda, mean_score = cv.coxlasso$cvm, std_score = as.numeric(cv.coxlasso$cvsd))
             cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
