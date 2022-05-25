@@ -105,7 +105,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     } else if (penalty == "lasso") {
         if (load_results) {
             best.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))[1, "penalty"]
-            cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = best.lambda, nfolds = 5, type.measure = "C")
+            cv.coxlasso <- glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = best.lambda, type.measure = "C")
         } else {
             cv.coxlasso <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
             cv.params <- data.frame(non_zero_coefs = as.numeric(cv.coxlasso$nzero), penalty = cv.coxlasso$lambda, mean_score = cv.coxlasso$cvm, std_score = as.numeric(cv.coxlasso$cvsd))
@@ -115,12 +115,12 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             if (save_results) write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
         }
         log_info(paste("Best lambda:", best.lambda))
-        coxlasso.survfit.train <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_train, s = "lambda.min")
-        coxlasso.survfit.test <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_test, s = "lambda.min")
+        coxlasso.survfit.train <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_train, s = best.lambda)
+        coxlasso.survfit.test <- survfit(cv.coxlasso, x = X_train, y = surv_y_train, newx = X_test, s = best.lambda)
         coxlasso.survprob.train <- t(summary(coxlasso.survfit.train, times = pred.times)$surv)
         coxlasso.survprob.test <- t(summary(coxlasso.survfit.test, times = pred.times)$surv)
-        coxlasso.predict.train <- predict(cv.coxlasso, newx = X_train, s = "lambda.min")
-        coxlasso.predict.test <- predict(cv.coxlasso, newx = X_test, s = "lambda.min")
+        coxlasso.predict.train <- predict(cv.coxlasso, newx = X_train, s = best.lambda)
+        coxlasso.predict.test <- predict(cv.coxlasso, newx = X_test, s = best.lambda)
     }
     # C-index ipcw (censored free, marginal = KM)
     coxlasso.cindex.ipcw.train <- 1-pec::cindex(list("Best coxlasso" = coxlasso.predict.train), formula_model, data = df_model_train)$AppCindex[["Best coxlasso"]]
