@@ -58,7 +58,7 @@ rule cox_lasso_radiomics_whole_heart_all_R:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
     output:
-        ANALYZES_DIR + "cox_lasso_radiomics_R_all_1320.log",
+        ANALYZES_DIR + "cox_lasso_radiomics_R_1320_all.log",
         expand(ANALYZES_DIR + "coxph_R_plots/coefs_{model}.png", model = COX_RADIOMICS_LASSO_1320_ALL),
         expand(ANALYZES_DIR + "coxph_R_plots/cv_mean_error_{model}.png", model = COX_RADIOMICS_LASSO_1320_ALL),
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO_1320_ALL),
