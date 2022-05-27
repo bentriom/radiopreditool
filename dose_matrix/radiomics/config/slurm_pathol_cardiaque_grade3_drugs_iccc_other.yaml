@@ -1,0 +1,33 @@
+MODEL_NAME: pathol_cardiaque_grade3_drugs_iccc_other
+RADIOMICS_NAME: 30X_32X_1320_1702
+DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
+DOSES_DATASET_SUBDIRS:
+    - CURIE
+    - GR
+    - TOULOUSE
+    - REIMS
+    - NICE
+RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
+RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque.yaml
+# 309 - 310: lung
+# 320 - 324: heart
+# 370 - 380: cerveau
+# 413 - 420: breast 
+# 702 - 704: thyroid
+LABELS_SUPER_T_VOI: [1320, 1702]
+LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
+FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011021_chemdrugs.csv.gz
+FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis", "ALKYL", "ANTHRA", 
+                           'iccc_00.0', 'iccc_01.a', 'iccc_02.a', 'iccc_02.b', 'iccc_02.c',
+                           'iccc_02.d', 'iccc_02.e', 'iccc_03.a', 'iccc_03.b', 'iccc_03.c',
+                           'iccc_03.d', 'iccc_03.e', 'iccc_03.f', 'iccc_04.a', 'iccc_04.b',
+                           'iccc_05.a', 'iccc_06.a', 'iccc_06.b', 'iccc_07.a', 'iccc_07.b',
+                           'iccc_08.a', 'iccc_08.b', 'iccc_08.c', 'iccc_08.d', 'iccc_08.e',
+                           'iccc_09.a', 'iccc_09.b', 'iccc_09.c', 'iccc_09.d', 'iccc_09.e',
+                           'iccc_10.a', 'iccc_10.b', 'iccc_10.c', 'iccc_10.d', 'iccc_10.e',
+                           'iccc_11.a', 'iccc_11.b', 'iccc_11.c', 'iccc_11.d', 'iccc_11.e',
+                           'iccc_11.f', 'iccc_12.a', 'iccc_12.b']
+EVENT_COL: "Pathologie_cardiaque_3"
+DATE_EVENT_COL: "date_pathol_cardiaque_3"
+NB_ESTIM_SCORE_MODELS: 10
+
