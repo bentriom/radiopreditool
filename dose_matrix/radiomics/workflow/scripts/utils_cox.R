@@ -70,24 +70,26 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     ## Preprocessing sets
-    df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
-    df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
+    filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
+                    unlist(lapply(df_trainset[covariates], 
+                                  function(col) { length(unique(col)) > 1 } ))
+    filtered_covariates <- names(filter_train)[filter_train]
+    df_model_train <- df_trainset[,c(event_col, duration_col, filtered_covariates)]
+    df_model_test <- df_testset[,c(event_col, duration_col, filtered_covariates)]
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
-    df_model_train <- df_model_train[!duplicated(as.list(df_model_train))]
-    df_model_test <- df_model_test[!duplicated(as.list(df_model_test))]
     # Z normalisation
-    means_train <- as.numeric(lapply(df_model_train[covariates], mean))
-    stds_train <- as.numeric(lapply(df_model_train[covariates], sd))
-    df_model_train[, covariates] <- scale(df_model_train[covariates], center = means_train, scale = stds_train)
-    df_model_test[, covariates] <- scale(df_model_test[covariates], center = means_train, scale = stds_train)    
-    X_train <- as.matrix(df_model_train[covariates])
+    means_train <- as.numeric(lapply(df_model_train[filtered_covariates], mean))
+    stds_train <- as.numeric(lapply(df_model_train[filtered_covariates], sd))
+    df_model_train[, filtered_covariates] <- scale(df_model_train[filtered_covariates], center = means_train, scale = stds_train)
+    df_model_test[, filtered_covariates] <- scale(df_model_test[filtered_covariates], center = means_train, scale = stds_train)    
+    X_train <- as.matrix(df_model_train[filtered_covariates])
     surv_y_train <- Surv(df_model_train[[duration_col]], df_model_train[[event_col]])
-    X_test <- as.matrix(df_model_test[covariates])
+    X_test <- as.matrix(df_model_test[filtered_covariates])
     surv_y_test <- Surv(df_model_test[[duration_col]], df_model_test[[event_col]])
-    formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
+    formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     log_info(paste("Model name:", model_name))
-    log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
+    log_info(paste0("Covariates (", length(filtered_covariates),"):", paste0(filtered_covariates, collapse = ", ")))
     log_info(paste("Trained:", nrow(df_model_train), "samples"))
     log_info(paste("Testset: ", nrow(df_model_test), " samples"))
     log_info("NAs are omitted")

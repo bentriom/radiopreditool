@@ -16,20 +16,20 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
     formula_ipcw <- get.surv.formula(event_col, clinical_vars, duration_col = duration_col)
     ## Preprocessing sets
-    df_model_train <- df_trainset[,c(event_col, duration_col, covariates)]
-    df_model_test <- df_testset[,c(event_col, duration_col, covariates)]
-    # df_model_train[is.na(df_model_train)] <- -1
-    # df_model_test[is.na(df_model_test)] <- -1
+    filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
+                    unlist(lapply(df_trainset[covariates], 
+                                  function(col) { length(unique(col)) > 1 } ))
+    filtered_covariates <- names(filter_train)[filter_train]
+    df_model_train <- df_trainset[,c(event_col, duration_col, filtered_covariates)]
+    df_model_test <- df_testset[,c(event_col, duration_col, filtered_covariates)]
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
-    df_model_train <- df_model_train[!duplicated(as.list(df_model_train))]
-    df_model_test <- df_model_test[!duplicated(as.list(df_model_test))]
     log_info(paste("Model name:", model_name))
-    log_info(paste0("Covariates (", length(covariates),"):", paste0(covariates, collapse = ", ")))
+    log_info(paste0("Covariates (", length(filtered_covariates),"):", paste0(filtered_covariates, collapse = ", ")))
     log_info(paste0("Trained:", nrow(df_model_train), "samples"))
     log_info(paste0("Testset: ", nrow(df_model_test), " samples"))
     log_info("NAs are omitted")
-    formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
+    formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     pred.times <- seq(1, 60, by = 1)
     final.time <- tail(pred.times, 1)
     params.df <- create.params.df(ntrees, nodesizes, nsplits)
@@ -70,10 +70,10 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste0("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
     # IBS
     # Z normalisation for Breslow estimator of pec
-    # means_train <- as.numeric(lapply(df_model_train[covariates], mean))
-    # stds_train <- as.numeric(lapply(df_model_train[covariates], sd))
+    # means_train <- as.numeric(lapply(df_model_train[filtered_covariates], mean))
+    # stds_train <- as.numeric(lapply(df_model_train[filtered_covariates], sd))
     # df_model_train_norm <- data.frame(df_model_train)
-    # df_model_train_norm[, covariates] <- scale(df_model_train[covariates], center = means_train, scale = stds_train)
+    # df_model_train_norm[, filtered_covariates] <- scale(df_model_train[filtered_covariates], center = means_train, scale = stds_train)
     rsf.perror.train <- pec(object = list("train"=rsf.survprob.train, "oob"=rsf.survprob.oob), 
                             formula = formula_model, data = df_model_train, 
                             cens.model = "rfsrc", 
