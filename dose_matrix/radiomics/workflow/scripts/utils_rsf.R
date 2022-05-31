@@ -76,12 +76,12 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     # df_model_train_norm[, filtered_covariates] <- scale(df_model_train[filtered_covariates], center = means_train, scale = stds_train)
     rsf.perror.train <- pec(object = list("train"=rsf.survprob.train, "oob"=rsf.survprob.oob), 
                             formula = formula_model, data = df_model_train, 
-                            cens.model = "rfsrc", 
+                            cens.model = "marginal", 
                             times = pred.times, start = pred.times[0], 
                             exact = FALSE, reference = FALSE)
     rsf.perror.test <- pec(object= list("test"=rsf.survprob.test), 
                            formula = formula_model, data = df_model_test, 
-                           cens.model = "rfsrc", 
+                           cens.model = "marginal", 
                            times = pred.times, start = pred.times[0], 
                            exact = FALSE, reference = FALSE)
     rsf.bs.final.train <- tail(rsf.perror.train$AppErr$train, 1)
@@ -201,7 +201,7 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
         perror = pec(object = fold.test.pred.bs, 
                      data = fold.test, formula = formula, 
-                     cens.model = "rfsrc", 
+                     cens.model = "marginal", 
                      times = pred.times, start = pred.times[0], 
                      exact = FALSE, reference = FALSE)
         ibs.fold <- crps(perror, times = final.time.bs)[1]
@@ -242,7 +242,7 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
     rsf.cindex.harrell.test <- 1-rcorr.cens(rsf.pred.test$predicted, S = Surv(df_model_test[[duration_col]], df_model_test[[event_col]]))[["C Index"]]
     rsf.perror.test <- pec(object= list("test" = rsf.survprob.test), 
                            formula = formula_model, data = df_model_test, 
-                           cens.model = "rfsrc", 
+                           cens.model = "marginal", 
                            times = pred.times, start = pred.times[0], 
                            exact = FALSE, reference = FALSE)
     rsf.bs.final.test <- tail(rsf.perror.test$AppErr$test, 1)
