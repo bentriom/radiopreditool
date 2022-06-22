@@ -5,7 +5,7 @@ setting:
 
 featureClass:
     firstorder: ["Energy", "Entropy", "Minimum", "10Percentile", "Mean", "Median", "90Percentile", "Maximum", "InterquartileRange", "MeanAbsoluteDeviation", "RobustMeanAbsoluteDeviation", "RootMeanSquared", "Skewness", "Kurtosis", "Variance"]
-    shape: ["VoxelVolume", "SurfaceVolumeRatio", "Sphericity"]
+    # shape: ["VoxelVolume", "SurfaceVolumeRatio", "Sphericity"]
     dosesvolumes: []
     # No SumAverage because of the similarity of SumSquares
     # No ClusterShade because only 1 values
