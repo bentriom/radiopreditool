@@ -12,6 +12,7 @@ dependencies:
   - r-hmisc
   - r-logger
   - r-glmnet
+  - r-glmnetutils
   - r-survival
   - r-tidyverse
   - r-randomforestsrc

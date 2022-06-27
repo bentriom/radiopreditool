@@ -47,10 +47,15 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.survprob.oob <- predictSurvProbOOB(rsf.best, times = pred.times)
     rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
     rsf.pred.test <- predict(rsf.best, newdata = df_model_test)
-    # C-index ipcw (censored free, marginal = KM)
-    rsf.cindex.ipcw.train <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_train)$AppCindex[["Best rsf"]]
-    rsf.cindex.ipcw.oob <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_train, method = "OutOfBagCindex")$AppCindex[["Best rsf"]]
-    rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_test)$AppCindex[["Best rsf"]]
+    clinical_vars <- get.clinical_features(filtered_covariates, event_col, duration_col)
+    formula_ipcw <- get.surv.formula(event_col, clinical_vars)
+    # C-index ipcw (cox + ipcw on clinical vars)
+    rsf.cindex.ipcw.train <- pec::cindex(list("Best rsf" = rsf.best), formula = formula_ipcw, 
+                                         data = df_model_train, cens.model = "cox")$AppCindex[["Best rsf"]]
+    rsf.cindex.ipcw.oob <- pec::cindex(list("Best rsf" = rsf.best), formula = formula_ipcw, 
+                                       data = df_model_train, cens.model = "cox", method = "OutOfBagCindex")$AppCindex[["Best rsf"]]
+    rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula = formula_ipcw, 
+                                        data = df_model_test, cens.model = "cox")$AppCindex[["Best rsf"]]
     # Harrell's C-index
     rsf.cindex.harrell.train <- 1-rcorr.cens(rsf.best$predicted, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
     rsf.cindex.harrell.oob <- 1-rcorr.cens(rsf.best$predicted.oob, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
@@ -75,14 +80,14 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     # df_model_train_norm <- data.frame(df_model_train)
     # df_model_train_norm[, filtered_covariates] <- scale(df_model_train[filtered_covariates], center = means_train, scale = stds_train)
     rsf.perror.train <- pec(object = list("train"=rsf.survprob.train, "oob"=rsf.survprob.oob), 
-                            formula = formula_model, data = df_model_train, 
-                            cens.model = "marginal", 
-                            times = pred.times, start = pred.times[0], 
+                            formula = formula_ipcw, data = df_model_train, 
+                            cens.model = "cox", 
+                            times = pred.times, start = pred.times[1], 
                             exact = FALSE, reference = FALSE)
     rsf.perror.test <- pec(object= list("test"=rsf.survprob.test), 
-                           formula = formula_model, data = df_model_test, 
-                           cens.model = "marginal", 
-                           times = pred.times, start = pred.times[0], 
+                           formula = formula_ipcw, data = df_model_test, 
+                           cens.model = "cox", 
+                           times = pred.times, start = pred.times[1], 
                            exact = FALSE, reference = FALSE)
     rsf.bs.final.train <- tail(rsf.perror.train$AppErr$train, 1)
     rsf.bs.final.oob <- tail(rsf.perror.train$AppErr$oob, 1)
@@ -177,6 +182,8 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
     cindex.folds <- rep(0.0, nfolds)
     cindex.ipcw.folds <- rep(0.0, nfolds)
     ibs.folds <- rep(0.0, nfolds)
+    clinical_vars <- get.clinical_features(colnames(data), event_col, duration_col)
+    formula_ipcw <- get.surv.formula(event_col, clinical_vars)
     for (i in 1:nfolds) {
         fold.index <- which(folds == i)
         fold.test <- data[fold.index,]
@@ -195,14 +202,15 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
         cindex.fold <- 1 - get.cindex(fold.test[[duration_col]], fold.test[[event_col]], fold.test.pred$predicted)
         cindex.folds[i] <- cindex.fold
         # IPCW C-index
-        cindex.ipcw.fold <- pec::cindex(list("RSF test fold" = rsf.fold), formula, data = fold.test)$AppCindex[["RSF test fold"]]
+        cindex.ipcw.fold <- pec::cindex(list("RSF test fold" = rsf.fold), formula = formula_ipcw, 
+                                        cens.model = "cox", data = fold.test)$AppCindex[["RSF test fold"]]
         cindex.ipcw.folds[i] <- cindex.ipcw.fold
         # IBS
         fold.test.pred.bs <- predictSurvProb(rsf.fold, newdata = fold.test, times = pred.times)
         perror = pec(object = fold.test.pred.bs, 
-                     data = fold.test, formula = formula, 
-                     cens.model = "marginal", 
-                     times = pred.times, start = pred.times[0], 
+                     data = fold.test, formula = formula_ipcw, 
+                     cens.model = "cox", 
+                     times = pred.times, start = pred.times[1], 
                      exact = FALSE, reference = FALSE)
         ibs.fold <- crps(perror, times = final.time.bs)[1]
         ibs.folds[i] <- ibs.fold
@@ -243,7 +251,7 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
     rsf.perror.test <- pec(object= list("test" = rsf.survprob.test), 
                            formula = formula_model, data = df_model_test, 
                            cens.model = "marginal", 
-                           times = pred.times, start = pred.times[0], 
+                           times = pred.times, start = pred.times[1], 
                            exact = FALSE, reference = FALSE)
     rsf.bs.final.test <- tail(rsf.perror.test$AppErr$test, 1)
     rsf.ibs.test <- crps(rsf.perror.test)[1]

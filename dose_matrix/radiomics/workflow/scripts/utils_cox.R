@@ -53,14 +53,20 @@ select_best_lambda <- function(cox_object, cv.params) {
     lambda.new
 }
 
-model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
-    df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
-    df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
-    log_appender(appender_file(coxlasso_logfile, append = TRUE))
-    log_info(id_set)
-    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-              model_name, coxlasso_logfile, penalty = penalty, 
-              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO)
+preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col) {
+    ## Preprocessing sets
+    filter_train <- !duplicated(as.list(df_dataset[covariates])) & 
+                    unlist(lapply(df_dataset[covariates], 
+                                  function(col) { length(unique(col)) > 1 } ))
+    filtered_covariates <- names(filter_train)[filter_train]
+    df_model <- df_dataset[,c(event_col, duration_col, filtered_covariates)]
+    df_model <- na.omit(df_model)
+    # Z normalisation
+    means_train <- as.numeric(lapply(df_model[filtered_covariates], mean))
+    stds_train <- as.numeric(lapply(df_model[filtered_covariates], sd))
+    df_model[, filtered_covariates] <- scale(df_model[filtered_covariates], center = means_train, scale = stds_train)
+    formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
+    return (list("data" = df_model, "covariates" = filtered_covariates, "formula_model" = formula_model))    
 }
 
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
@@ -124,9 +130,13 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         coxlasso.predict.train <- predict(cv.coxlasso, newx = X_train, s = best.lambda)
         coxlasso.predict.test <- predict(cv.coxlasso, newx = X_test, s = best.lambda)
     }
+    clinical_vars <- get.clinical_features(filtered_covariates, event_col, duration_col)
+    formula_ipcw <- get.surv.formula(event_col, clinical_vars)
     # C-index ipcw (censored free, marginal = KM)
-    coxlasso.cindex.ipcw.train <- 1-pec::cindex(list("Best coxlasso" = coxlasso.predict.train), formula_model, data = df_model_train)$AppCindex[["Best coxlasso"]]
-    coxlasso.cindex.ipcw.test <- 1-pec::cindex(list("Best coxlasso" = coxlasso.predict.test), formula_model, data = df_model_test)$AppCindex[["Best coxlasso"]]
+    coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = coxlasso.predict.train), formula = formula_ipcw, 
+                                                data = df_model_train, cens.model = "cox")$AppCindex[["Best coxlasso"]]
+    coxlasso.cindex.ipcw.test <- pec::cindex(list("Best coxlasso" = coxlasso.predict.test), formula = formula_ipcw, 
+                                               data = df_model_test, cens.model = "cox")$AppCindex[["Best coxlasso"]]
     # Harrell's C-index
     coxlasso.cindex.harrell.train <- 1-rcorr.cens(coxlasso.predict.train, S = surv_y_train)[["C Index"]]
     coxlasso.cindex.harrell.test <- 1-rcorr.cens(coxlasso.predict.test, S = surv_y_test)[["C Index"]]
@@ -136,15 +146,15 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste0("IPCW C-index on testset: ", coxlasso.cindex.ipcw.test))
     # IBS
     coxlasso.perror.train <- pec(object= list("train" = coxlasso.survprob.train), 
-                                 formula = formula_model, data = df_model_train, 
-                                 cens.model = "marginal", 
-                                 times = pred.times, start = pred.times[0], 
-                                 exact = FALSE, reference = FALSE)
+                                 formula = formula_ipcw, data = df_model_train, 
+                                 cens.model = "cox",
+                                 times = pred.times, start = pred.times[1], 
+                                 exact = F, reference = F)
     coxlasso.perror.test <- pec(object= list("test" = coxlasso.survprob.test), 
-                                formula = formula_model, data = df_model_test, 
-                                cens.model = "marginal", 
-                                times = pred.times, start = pred.times[0], 
-                                exact = FALSE, reference = FALSE)
+                                formula = formula_ipcw, data = df_model_test, 
+                                cens.model = "cox", 
+                                times = pred.times, start = pred.times[1], 
+                                exact = F, reference = F)
     coxlasso.bs.final.train <- tail(coxlasso.perror.train$AppErr$train, 1)
     coxlasso.bs.final.test <- tail(coxlasso.perror.test$AppErr$test, 1)
     coxlasso.ibs.train <- crps(coxlasso.perror.train)[1]
@@ -166,6 +176,17 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(INFO)
     results_test
 }
+
+model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
+    df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
+    df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
+    log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    log_info(id_set)
+    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+              model_name, coxlasso_logfile, penalty = penalty, 
+              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO)
+}
+
 
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
     # Coefficients of best Cox
