@@ -48,6 +48,16 @@ get.surv.formula <- function(event_col, covariates, duration_col = "survival_tim
     as.formula(str.surv_formula)
 }
 
+get.ipcw.surv.formula <- function(event_col, covariates, duration_col = "survival_time_years") {
+    clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
+    regex_removed <- "^iccc_"
+    idx_removed <- grep(regex_removed, clinical_vars)
+    if (length(idx_removed) > 0)
+        get.surv.formula(event_col, clinical_vars[-idx_removed])
+    else
+        get.surv.formula(event_col, clinical_vars)
+}
+
 # Get the proportion of events in data
 event_prop <- function(fccss.data, event_col) {
     return(sum(fccss.data[[event_col]] == 1) / nrow(fccss.data))

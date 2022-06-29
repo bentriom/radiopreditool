@@ -13,8 +13,6 @@ source("workflow/scripts/utils_radiopreditool.R")
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
                       ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
-    clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
-    formula_ipcw <- get.surv.formula(event_col, clinical_vars, duration_col = duration_col)
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -47,8 +45,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.survprob.oob <- predictSurvProbOOB(rsf.best, times = pred.times)
     rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
     rsf.pred.test <- predict(rsf.best, newdata = df_model_test)
-    clinical_vars <- get.clinical_features(filtered_covariates, event_col, duration_col)
-    formula_ipcw <- get.surv.formula(event_col, clinical_vars)
+    formula_ipcw <- get.ipcw.surv.formula(event_col, filtered_covariates)
     # C-index ipcw (cox + ipcw on clinical vars)
     rsf.cindex.ipcw.train <- pec::cindex(list("Best rsf" = rsf.best), formula = formula_ipcw, 
                                          data = df_model_train, cens.model = "cox")$AppCindex[["Best rsf"]]
@@ -57,6 +54,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula = formula_ipcw, 
                                         data = df_model_test, cens.model = "cox")$AppCindex[["Best rsf"]]
     # Harrell's C-index
+    # 1 - rcorr.cens because the mortality (risk) is given instead of survival probability
     rsf.cindex.harrell.train <- 1-rcorr.cens(rsf.best$predicted, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
     rsf.cindex.harrell.oob <- 1-rcorr.cens(rsf.best$predicted.oob, S = Surv(df_model_train[[duration_col]], df_model_train[[event_col]]))[["C Index"]]
     rsf.cindex.harrell.test <- 1-rcorr.cens(rsf.pred.test$predicted, S = Surv(df_model_test[[duration_col]], df_model_test[[event_col]]))[["C Index"]]
@@ -182,8 +180,7 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
     cindex.folds <- rep(0.0, nfolds)
     cindex.ipcw.folds <- rep(0.0, nfolds)
     ibs.folds <- rep(0.0, nfolds)
-    clinical_vars <- get.clinical_features(colnames(data), event_col, duration_col)
-    formula_ipcw <- get.surv.formula(event_col, clinical_vars)
+    formula_ipcw <- get.ipcw.surv.formula(event_col, colnames(data))
     for (i in 1:nfolds) {
         fold.index <- which(folds == i)
         fold.test <- data[fold.index,]
