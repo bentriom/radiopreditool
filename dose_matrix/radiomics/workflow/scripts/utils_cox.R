@@ -7,6 +7,7 @@ library("pec", quietly = TRUE)
 library("Hmisc", quietly = TRUE)
 library("logger", quietly = TRUE)
 library("parallel", quietly = TRUE)
+library("doParallel", quietly = TRUE)
 library("ggplot2", quietly = TRUE)
 library("reshape2", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
@@ -75,12 +76,23 @@ coxlasso_data <- function(df, covariates, event_col, duration_col) {
     list("X" = X, "surv_y" = surv_y)
 }
 
+model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
+    df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
+    df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
+    log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    log_info(id_set)
+    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+              model_name, coxlasso_logfile, penalty = penalty, 
+              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO)
+}
+
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
                       analyzes_dir, model_name, coxlasso_logfile,
                       penalty = "lasso", do_plot = TRUE, 
                       save_results = TRUE, load_results = FALSE, level = INFO) {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    run_parallel <- load_results & !save_results
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -97,10 +109,13 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_test[, filtered_covariates] <- scale(df_model_test[filtered_covariates], center = means_train, scale = stds_train)    
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     log_info(paste("Model name:", model_name))
-    log_info(paste0("Covariates (", length(filtered_covariates),"):", paste0(filtered_covariates, collapse = ", ")))
-    log_info(paste("Trained:", nrow(df_model_train), "samples"))
-    log_info(paste("Testset: ", nrow(df_model_test), " samples"))
-    log_info("NAs are omitted")
+        log_info(paste0("Covariates (", length(filtered_covariates),"):"))
+    if (!run_parallel) {
+        log_info(paste0(filtered_covariates, collapse = ", "))
+        log_info("NAs are omitted")
+        log_info(paste("Trained:", nrow(df_model_train), "samples"))
+        log_info(paste("Testset: ", nrow(df_model_test), " samples"))
+    }
     pred.times <- seq(1, 60, by = 1)
     final.time <- tail(pred.times, 1)
     ## Model and predictions
@@ -119,14 +134,21 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     } else if (penalty == "lasso") {
         if (load_results) {
             best.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))[1, "penalty"]
-            coxmodel <- glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = best.lambda, type.measure = "C")
+            list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))[["lambda"]]
+            coxmodel <- glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = list.lambda, type.measure = "C")
         } else {
-            coxmodel <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, nfolds = 5, type.measure = "C")
+            coxmodel <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, 
+                                  nfolds = 5, parallel = T, type.measure = "C")
             cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$nzero), penalty = coxmodel$lambda, mean_score = coxmodel$cvm, std_score = as.numeric(coxmodel$cvsd))
             cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
             if (save_results) write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
             best.lambda = select_best_lambda(coxmodel, cv.params)
-            if (save_results) write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"), row.names = FALSE)
+            if (save_results) {
+                write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), row.names = F, 
+                          file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
+                write.csv(data.frame(lambda = coxmodel$lambda[coxmodel$lambda >= best.lambda]), row.names = F, 
+                          file = paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))
+            }
         }
         log_info(paste("Best lambda:", best.lambda))
         coxlasso.survfit.train <- survfit(coxmodel, x = X_train, y = surv_y_train, newx = X_train, s = best.lambda)
@@ -145,10 +167,6 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     # Harrell's C-index
     coxlasso.cindex.harrell.train <- rcorr.cens(coxlasso.survprob.train[,1], S = surv_y_train)[["C Index"]]
     coxlasso.cindex.harrell.test <- rcorr.cens(coxlasso.survprob.test[,1], S = surv_y_test)[["C Index"]]
-    log_info(paste0("Harrell's C-index on trainset: ", coxlasso.cindex.harrell.train))
-    log_info(paste0("Harrell's C-index on testset: ", coxlasso.cindex.harrell.test))
-    log_info(paste0("IPCW C-index on trainset: ", coxlasso.cindex.ipcw.train))
-    log_info(paste0("IPCW C-index on testset: ", coxlasso.cindex.ipcw.test))
     # IBS
     coxlasso.perror.train <- pec(object= list("train" = coxlasso.survprob.train), 
                                  formula = formula_ipcw, data = df_model_train, 
@@ -164,6 +182,11 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     coxlasso.bs.final.test <- tail(coxlasso.perror.test$AppErr$test, 1)
     coxlasso.ibs.train <- crps(coxlasso.perror.train)[1]
     coxlasso.ibs.test <- crps(coxlasso.perror.test)[1]
+    log_info(paste(as.character(formula_ipcw)[c(2,1,3)], collapse = " "))
+    log_info(paste0("Harrell's C-index on trainset: ", coxlasso.cindex.harrell.train))
+    log_info(paste0("Harrell's C-index on testset: ", coxlasso.cindex.harrell.test))
+    log_info(paste0("IPCW C-index on trainset: ", coxlasso.cindex.ipcw.train))
+    log_info(paste0("IPCW C-index on testset: ", coxlasso.cindex.ipcw.test))
     log_info(paste0("BS at 60 on trainset: ", coxlasso.bs.final.train))
     log_info(paste0("BS at 60 on testset: ", coxlasso.bs.final.test))
     log_info(paste0("IBS on trainset: ", coxlasso.ibs.train))
@@ -181,18 +204,6 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(INFO)
     results_test
 }
-
-model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
-    print(id_set)
-    df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
-    df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
-    log_appender(appender_file(coxlasso_logfile, append = TRUE))
-    log_info(id_set)
-    model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-              model_name, coxlasso_logfile, penalty = penalty, 
-              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO)
-}
-
 
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
     # Coefficients of best Cox

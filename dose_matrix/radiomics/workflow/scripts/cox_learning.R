@@ -33,6 +33,7 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "none")
     
     # Coxph doses volumes indicators of heart Lasso (1320)
+    registerDoParallel(5)
     model_name = "1320_dosesvol_lasso"
     cols_dosesvol <- grep("dv_\\w+_1320", colnames(df_trainset), value = TRUE)
     covariates = c(cols_dosesvol, clinical_vars)
@@ -61,6 +62,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
     log_info(paste("Trainset file:", file_trainset, "with", nrow(df_trainset), "samples"))
     log_info(paste("Testset file:", file_testset, "with", nrow(df_testset), "samples"))
 
+    registerDoParallel(5)
     if (subdivision_type == "32X") {
         # Coxph Lasso radiomics firstorder 32X
         model_name = paste0("32X_radiomics_firstorder_lasso_", suffix_model)
