@@ -77,7 +77,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     model_name = paste0("32X_radiomics_firstorder_lasso_", suffix_model)
     cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", colnames(df_trainset0), value = TRUE)
     covariates = c(cols_32X, clinical_vars)
-    log_info("Multiple scores radiomics firstordeer lasso (32X)")
+    log_info("Multiple scores radiomics firstorder lasso (32X)")
     results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
@@ -99,9 +99,9 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
 
     # Coxph Lasso all radiomics 32X
     model_name = paste0("32X_radiomics_full_lasso_", suffix_model)
-    cols_32X <- filter.gl(grep("^X32[0-9]{1}_", colnames(df_trainset0), value = TRUE))
+    cols_32X <- filter.gl(grep("^X32[0-9]{1}_original_", colnames(df_trainset0), value = TRUE))
     covariates = c(cols_32X, clinical_vars)
-    log_info("Multiple scores radiomics firstorder lasso (32X)")
+    log_info("Multiple scores radiomics full lasso (32X)")
     results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
@@ -111,9 +111,9 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     
     # Coxph Lasso all radiomics 1320
     model_name = paste0("1320_radiomics_full_lasso_", suffix_model)
-    cols_1320 <- filter.gl(grep("^X1320_", colnames(df_trainset0), value = TRUE))
+    cols_1320 <- filter.gl(grep("^X1320_original_", colnames(df_trainset0), value = TRUE))
     covariates = c(cols_1320, clinical_vars)
-    log_info("Multiple scores radiomics firstorder lasso (1320)")
+    log_info("Multiple scores radiomics full lasso (1320)")
     results <- mclapply(0:(nb_estim-1), function (i) { model_cox.id(i, covariates, event_col, duration_col, analyzes_dir, model_name, logfile, penalty = "lasso") }, mc.cores = nworkers) 
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 

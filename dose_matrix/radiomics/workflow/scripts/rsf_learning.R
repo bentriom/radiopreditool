@@ -48,13 +48,13 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
         # Model 32X radiomics full covariates
         log_info("Model 32X radiomics full")
         model_name <- paste0("32X_radiomics_full_", suffix_model)
-        cols_32X <- filter.gl(grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE))
+        cols_32X <- filter.gl(grep("^X32[0-9]{1}_original_", colnames(df_trainset), value = TRUE))
         covariates_32X <- c(clinical_vars, cols_32X)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
         plot_vimp(rsf.obj, analyzes_dir, model_name)
     } else if (subdivision_type == "1320") {
         # Model 1320 radiomics firstorder covariates
-        log_info("Model 1320 radiomics all")
+        log_info("Model 1320 radiomics firstorder")
         model_name <- paste0("1320_radiomics_firstorder_", suffix_model)
         cols_1320 <- grep("^X1320_original_firstorder_", colnames(df_trainset), value = TRUE)
         covariates_1320 <- c(clinical_vars, cols_1320)
@@ -64,7 +64,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
         # Model 1320 radiomics full covariates
         log_info("Model 1320 radiomics full")
         model_name <- paste0("1320_radiomics_full_", suffix_model)
-        cols_1320 <- filter.gl(grep("^X1320_", colnames(df_trainset), value = TRUE))
+        cols_1320 <- filter.gl(grep("^X1320_original_", colnames(df_trainset), value = TRUE))
         covariates_1320 <- c(clinical_vars, cols_1320)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
         plot_vimp(rsf.obj, analyzes_dir, model_name)

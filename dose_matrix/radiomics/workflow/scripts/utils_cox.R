@@ -70,6 +70,26 @@ preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col)
     return (list("data" = df_model, "covariates" = filtered_covariates, "formula_model" = formula_model))    
 }
 
+normalize_data <- function(df_train, df_test, covariates, event_col, duration_col) {
+    continuous_vars <- covariates
+    discrete_vars <- NULL
+    regex_non_continuous <- "^((Sexe)|(iccc)|(has_radiomics)|(categ_age_at_diagnosis)|(chimiotherapie)|(ALKYL)|(ANTHRA)|(radiotherapie_1K))"
+    idx_non_continuous <- grep(regex_non_continuous, covariates)
+    if (length(idx_non_continuous) > 0) {
+        continuous_vars <- covariates[-idx_non_continuous]
+        discrete_vars <- covariates[idx_non_continuous]
+    }
+    means_train <- as.numeric(lapply(df_train[continuous_vars], mean))
+    stds_train <- as.numeric(lapply(df_train[continuous_vars], sd))
+    df_train[, continuous_vars] <- scale(df_train[continuous_vars], center = means_train, scale = stds_train)
+    df_test[, continuous_vars] <- scale(df_test[continuous_vars], center = means_train, scale = stds_train)
+    if (!is.null(discrete_vars)) {
+        df_train[, discrete_vars] <- sapply(df_train[,discrete_vars], function (x) { `if`(length(unique(x)) > 1, (x-mean(unique(x)))/(max(x)-min(x)), 0) })
+        df_test[, discrete_vars] <- sapply(df_test[,discrete_vars], function (x) { `if`(length(unique(x)) > 1, (x-mean(unique(x)))/(max(x)-min(x)), 0) })
+    }
+    list("train" = df_train, "test" = df_test) 
+}
+
 coxlasso_data <- function(df, covariates, event_col, duration_col) {
     X <- as.matrix(df[covariates])
     surv_y <- Surv(df[[duration_col]], df[[event_col]])
@@ -103,10 +123,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
     # Z normalisation
-    means_train <- as.numeric(lapply(df_model_train[filtered_covariates], mean))
-    stds_train <- as.numeric(lapply(df_model_train[filtered_covariates], sd))
-    df_model_train[, filtered_covariates] <- scale(df_model_train[filtered_covariates], center = means_train, scale = stds_train)
-    df_model_test[, filtered_covariates] <- scale(df_model_test[filtered_covariates], center = means_train, scale = stds_train)    
+    norm_data <- normalize_data(df_model_train, df_model_test, filtered_covariates, event_col, duration_col)
+    df_model_train <- norm_data$train; df_model_test <- norm_data$test
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     log_info(paste("Model name:", model_name))
         log_info(paste0("Covariates (", length(filtered_covariates),"):"))

@@ -13,7 +13,7 @@ get.clinical_features <- function(columns, event_col, duration_col) {
 
 # Eliminate specific gray level image features
 filter.gl <- function(features) {
-    regex_removed <- "X[0-9]{3,4}_original_glcm_Sum(Average|Squares)"
+    regex_removed <- "^X[0-9]{3,4}_original_((glcm_Sum(Average|Squares))|(shape_))"
     idx_removed <- grep(regex_removed, features)
     if (length(idx_removed) > 0) {
         return (features[-idx_removed])
