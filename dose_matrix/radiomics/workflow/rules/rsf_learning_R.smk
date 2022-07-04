@@ -44,7 +44,6 @@ rule rsf_whole_heart_analysis:
         ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
         ANALYZES_DIR + "rsf_all_1320.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_1320_ALL),
         expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_1320_ALL),
         expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_1320_ALL),
         expand(ANALYZES_DIR + "rsf_results/fitted_models/{model}.rds", model = RSF_RADIOMICS_1320_ALL)
@@ -92,7 +91,6 @@ rule rsf_subparts_heart_features_hclust_corr_analysis:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr_32X.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/fitted_models/{model}.rds", model = RSF_RADIOMICS_32X_FE_HCLUST)
@@ -123,7 +121,6 @@ rule rsf_whole_heart_features_hclust_corr_analysis:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr_1320.log",
-        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/cv_{model}.csv", model = RSF_RADIOMICS_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/metrics_{model}.csv", model = RSF_RADIOMICS_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "rsf_results/fitted_models/{model}.rds", model = RSF_RADIOMICS_1320_FE_HCLUST)
@@ -162,4 +159,15 @@ rule multiple_scores_rsf_features_hclust_corr:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     shell:
         f"Rscript workflow/scripts/multiple_scores_rsf.R {NB_ESTIM_SCORE_MODELS} {ANALYZES_DIR}features_hclust_corr.csv {EVENT_COL} {ANALYZES_DIR} features_hclust_corr"
+
+rule rsf_vimp:
+    input:
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_32X_ALL),
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_1320_ALL),
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf_plots/rsf_vimp_{model}.png", model = RSF_RADIOMICS_1320_FE_HCLUST)
+    output:
+        f"{ANALYZES_DIR}rsf_vimp.log"
+    shell:
+        f"touch {ANALYZES_DIR}rsf_vimp.log"
 
