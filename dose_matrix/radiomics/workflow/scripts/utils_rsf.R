@@ -108,6 +108,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     write.csv(df_results, file = paste0(analyzes_dir, "rsf_results/metrics_", model_name, ".csv"), row.names = TRUE)
+    saveRDS(rsf.best, file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
     rsf.best
 }
 

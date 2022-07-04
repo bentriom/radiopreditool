@@ -17,6 +17,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
                          analyzes_dir, duration_col, suffix_model, subdivision_type) {
     dir.create(paste0(analyzes_dir, "rsf_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "rsf_results/fitted_models/"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
     options(rf.cores = nworkers, mc.cores = nworkers)

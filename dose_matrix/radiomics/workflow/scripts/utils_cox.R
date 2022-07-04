@@ -63,14 +63,15 @@ preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col)
     df_model <- df_dataset[,c(event_col, duration_col, filtered_covariates)]
     df_model <- na.omit(df_model)
     # Z normalisation
-    means_train <- as.numeric(lapply(df_model[filtered_covariates], mean))
-    stds_train <- as.numeric(lapply(df_model[filtered_covariates], sd))
-    df_model[, filtered_covariates] <- scale(df_model[filtered_covariates], center = means_train, scale = stds_train)
+    # means_train <- as.numeric(lapply(df_model[filtered_covariates], mean))
+    # stds_train <- as.numeric(lapply(df_model[filtered_covariates], sd))
+    # df_model[, filtered_covariates] <- scale(df_model[filtered_covariates], center = means_train, scale = stds_train)
+    df_model <- normalize_data(df_model, filtered_covariates, event_col, duration_col)$train
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
-    return (list("data" = df_model, "covariates" = filtered_covariates, "formula_model" = formula_model))    
+    return (list("data" = df_model, "covariates" = filtered_covariates, "formula_model" = formula_model)) 
 }
 
-normalize_data <- function(df_train, df_test, covariates, event_col, duration_col) {
+normalize_data <- function(df_train, covariates, event_col, duration_col, df_test = NULL) {
     continuous_vars <- covariates
     discrete_vars <- NULL
     regex_non_continuous <- "^((Sexe)|(iccc)|(has_radiomics)|(categ_age_at_diagnosis)|(chimiotherapie)|(ALKYL)|(ANTHRA)|(radiotherapie_1K))"
@@ -82,10 +83,15 @@ normalize_data <- function(df_train, df_test, covariates, event_col, duration_co
     means_train <- as.numeric(lapply(df_train[continuous_vars], mean))
     stds_train <- as.numeric(lapply(df_train[continuous_vars], sd))
     df_train[, continuous_vars] <- scale(df_train[continuous_vars], center = means_train, scale = stds_train)
-    df_test[, continuous_vars] <- scale(df_test[continuous_vars], center = means_train, scale = stds_train)
     if (!is.null(discrete_vars)) {
-        df_train[, discrete_vars] <- sapply(df_train[,discrete_vars], function (x) { `if`(length(unique(x)) > 1, (x-mean(unique(x)))/(max(x)-min(x)), 0) })
-        df_test[, discrete_vars] <- sapply(df_test[,discrete_vars], function (x) { `if`(length(unique(x)) > 1, (x-mean(unique(x)))/(max(x)-min(x)), 0) })
+        means_unique_train <- as.numeric(lapply(df_train[discrete_vars], function(x) { mean(unique(x)) } ))
+        scales_unique_train <- as.numeric(lapply(df_train[discrete_vars], function(x) { max(x) - min(x) } ))
+        df_train[, discrete_vars] <- scale(df_train[,discrete_vars], center = means_unique_train, scale = scales_unique_train)
+    }
+    if (!is.null(df_test)) {
+        df_test[, continuous_vars] <- scale(df_test[continuous_vars], center = means_train, scale = stds_train)
+        if (!is.null(discrete_vars))
+            df_test[, discrete_vars] <- scale(df_test[,discrete_vars], center = means_unique_train, scale = scales_unique_train)
     }
     list("train" = df_train, "test" = df_test) 
 }
@@ -123,7 +129,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
     # Z normalisation
-    norm_data <- normalize_data(df_model_train, df_model_test, filtered_covariates, event_col, duration_col)
+    norm_data <- normalize_data(df_model_train, filtered_covariates, event_col, duration_col, df_test = df_model_test)
     df_model_train <- norm_data$train; df_model_test <- norm_data$test
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     log_info(paste("Model name:", model_name))
@@ -217,8 +223,12 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
-    if (save_results) write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
-    if (do_plot) plot_cox(coxmodel, analyzes_dir, model_name)
+    if (save_results) {
+        write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
+        saveRDS(coxmodel, file = paste0(analyzes_dir, "coxph_R_results/fitted_models/", model_name, ".rds"))
+    }
+    if (do_plot) 
+        plot_cox(coxmodel, analyzes_dir, model_name)
     log_threshold(INFO)
     results_test
 }

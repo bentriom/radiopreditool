@@ -6,6 +6,7 @@ source("workflow/scripts/utils_cox.R")
 baseline_models_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col) {
     dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "coxph_R_results/fitted_models"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
     logfile <- paste0(analyzes_dir, "baseline_models_R.log")
@@ -44,6 +45,7 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
 cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model, subdivision_type) {
     dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "coxph_R_results/fitted_models"), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
     logfile <- paste0(analyzes_dir, "cox_lasso_radiomics_R_", subdivision_type, "_", suffix_model, ".log")
