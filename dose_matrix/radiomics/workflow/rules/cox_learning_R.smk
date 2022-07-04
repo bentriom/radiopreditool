@@ -28,7 +28,7 @@ rule baseline_analysis_R:
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_results/cv_{model}.csv", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_results/fitted_models/{model}.rds", model = BASELINE_MODELS_LASSO)
     threads:
         5
