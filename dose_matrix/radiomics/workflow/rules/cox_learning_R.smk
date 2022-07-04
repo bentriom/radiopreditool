@@ -29,6 +29,7 @@ rule baseline_analysis_R:
         expand(ANALYZES_DIR + "coxph_R_results/cv_{model}.csv", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "coxph_R_results/fitted_models/{model}.rds", model = BASELINE_MODELS_LASSO)
     threads:
         5
     conda:
@@ -64,7 +65,8 @@ rule cox_lasso_radiomics_whole_heart_all_R:
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO_1320_ALL),
         expand(ANALYZES_DIR + "coxph_R_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_1320_ALL)
+        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R_results/fitted_models/{model}.rds", model = COX_RADIOMICS_LASSO_1320_ALL)
     threads:
         5
     conda:
@@ -83,7 +85,8 @@ rule cox_lasso_radiomics_subparts_heart_all_R:
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO_32X_ALL),
         expand(ANALYZES_DIR + "coxph_R_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_32X_ALL)
+        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R_results/fitted_models/{model}.rds", model = COX_RADIOMICS_LASSO_32X_ALL)
     threads:
         5
     conda:
@@ -105,7 +108,8 @@ rule cox_lasso_radiomics_whole_heart_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R_results/fitted_models/{model}.rds", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST)
     threads:
         5
     conda:
@@ -125,7 +129,8 @@ rule cox_lasso_radiomics_subparts_heart_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R_plots/regularization_path_{model}.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R_results/cv_{model}.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R_results/best_params_{model}.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R_results/metrics_{model}.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R_results/fitted_models/{model}.rds", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST)
     threads:
         5
     conda:
