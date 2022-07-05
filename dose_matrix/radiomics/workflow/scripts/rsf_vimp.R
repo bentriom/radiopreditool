@@ -20,7 +20,7 @@ if (length(args) > 1) {
     analyzes_dir <- args[1]
     for (i in 2:length(args)) {
         model_name <- args[i]
-        rsf.best <- saveRDS(rsf.best, file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
+        rsf.best <- readRDS(rsf.best, file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
         plot_vimp(rsf.obj, analyzes_dir, model_name)
     }
 } else{
