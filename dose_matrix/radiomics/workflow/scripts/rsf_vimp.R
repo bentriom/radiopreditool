@@ -11,6 +11,8 @@ library("logger", quietly = TRUE)
 library("parallel", quietly = TRUE)
 })
 
+source("workflow/scripts/utils_rsf.R")
+
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
@@ -21,7 +23,7 @@ if (length(args) > 1) {
     for (i in 2:length(args)) {
         model_name <- args[i]
         rsf.best <- readRDS(file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
-        plot_vimp(rsf.obj, analyzes_dir, model_name)
+        plot_vimp(rsf.best, analyzes_dir, model_name)
     }
 } else{
     print("No arguments provided. Skipping.")
