@@ -55,6 +55,10 @@ select_best_lambda <- function(cox_object, cv.params) {
 }
 
 preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col) {
+    stopifnot({
+        !(event_col %in% covariates)
+        !(duration_col %in% covariates)
+    })
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_dataset[covariates])) & 
                     unlist(lapply(df_dataset[covariates], 
