@@ -144,8 +144,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         log_info(paste("Trained:", nrow(df_model_train), "samples"))
         log_info(paste("Testset: ", nrow(df_model_test), " samples"))
     }
-    pred.times <- seq(1, 60, by = 1)
-    final.time <- tail(pred.times, 1)
+    final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))
+    pred.times <- seq(1, final.time, by = 1)
+    idx_surv <- length(pred.times)
     ## Model and predictions
     coxlasso_data_train <- coxlasso_data(df_model_train, filtered_covariates, event_col, duration_col)
     X_train <- coxlasso_data_train$X; surv_y_train <- coxlasso_data_train$surv_y
@@ -188,13 +189,13 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     }
     formula_ipcw <- get.ipcw.surv.formula(event_col, filtered_covariates)
     # C-index ipcw (censored free, marginal = KM)
-    coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.train[,1])), formula = formula_ipcw, 
+    coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.train[,idx_surv])), formula = formula_ipcw, 
                                                 data = df_model_train, cens.model = "cox")$AppCindex[["Best coxlasso"]]
-    coxlasso.cindex.ipcw.test <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.test[,1])), formula = formula_ipcw, 
+    coxlasso.cindex.ipcw.test <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.test[,idx_surv])), formula = formula_ipcw, 
                                                data = df_model_test, cens.model = "cox")$AppCindex[["Best coxlasso"]]
     # Harrell's C-index
-    coxlasso.cindex.harrell.train <- rcorr.cens(coxlasso.survprob.train[,1], S = surv_y_train)[["C Index"]]
-    coxlasso.cindex.harrell.test <- rcorr.cens(coxlasso.survprob.test[,1], S = surv_y_test)[["C Index"]]
+    coxlasso.cindex.harrell.train <- rcorr.cens(coxlasso.survprob.train[,idx_surv], S = surv_y_train)[["C Index"]]
+    coxlasso.cindex.harrell.test <- rcorr.cens(coxlasso.survprob.test[,idx_surv], S = surv_y_test)[["C Index"]]
     # IBS
     coxlasso.perror.train <- pec(object= list("train" = coxlasso.survprob.train), 
                                  formula = formula_ipcw, data = df_model_train, 
