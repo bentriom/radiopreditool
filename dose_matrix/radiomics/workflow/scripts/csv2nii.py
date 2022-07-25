@@ -15,7 +15,6 @@ def process_array_image(doses_array):
 def drop_invalid_range(doses_array):
     D98 = np.nanpercentile(doses_array, 2)  
     D2 = np.nanpercentile(doses_array, 98)
-    print(f"d98: {D98} d2: {D2} max: {doses_array.max()}")
     doses_array[doses_array > D2] = D2
     doses_array[doses_array < D98] = D98
 

@@ -24,13 +24,16 @@ filter.gl <- function(features) {
 # Pretty label names
 pretty.label <- function(label) {
     pattern_dosiomics = "X([0-9]{3,4})_[a-z]+_[a-z]+_(\\w+)"
-    pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_([0-9]{3,4})"
+    pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_(1320)"
+    pattern_iccc = "iccc_([0-9]|nan)"
     if (str_detect(label, pattern_dosiomics)) {
         matches = str_match(label, pattern_dosiomics)
-        paste(matches[2], matches[3])
+        matches[3]
     } else if (str_detect(label, pattern_dosesvol)) {
         matches = str_match(label, pattern_dosesvol)
         paste(matches[4], matches[2])
+    } else if (str_detect(label, pattern_iccc)) {
+        pretty.iccc(label)
     } else { label }
 }
 
@@ -61,5 +64,66 @@ get.ipcw.surv.formula <- function(event_col, covariates, duration_col = "surviva
 # Get the proportion of events in data
 event_prop <- function(fccss.data, event_col) {
     return(sum(fccss.data[[event_col]] == 1) / nrow(fccss.data))
+}
+
+# Labels iccc
+pretty.iccc <- function(label_iccc) {
+    iccc_labels = list(
+                       'iccc_10.d'= 'Gonadal carcinomas',
+                       'iccc_11.b'= 'Thyroid carcinomas',
+#                       'iccc_06.a'= 'Nephroblastoma and other nonepithelial renal tumors',
+                       'iccc_06.a'= 'Nephroblastoma (06.a)',
+                       'iccc_08.a'= 'Osteosarcomas',
+#                       'iccc_04.a'= 'Neuroblastoma and ganglioneuroblastoma',
+                       'iccc_04.a'= 'Neuroblastoma/ganglioneuroblastoma',
+                       'iccc_09.a'= 'Rhabdomyosarcomas',
+                       'iccc_10.c'= 'Malignant gonadal germ cell tumors',
+#                       'iccc_02.b'= 'Non-Hodgkin lymphomas (except Burkitt lymphoma)',
+                       'iccc_02.b'= 'Non-Hodgkin lymphomas (02.b)',
+                       'iccc_02.e'= 'Unspecified lymphomas',
+                       'iccc_05.a'= 'Retinoblastoma',
+                       'iccc_03.b'= 'Astrocytomas',
+                       'iccc_09.e'= 'Unspecified soft tissue sarcomas',
+                       'iccc_11.d'= 'Malignant melanomas',
+#                       'iccc_09.b'= 'Fibrosarcomas, peripheral nerve sheath tumors, and other fibrous neoplasms',
+                       'iccc_09.b'= 'Soft-tissue tumors (09.b)',
+#                       'iccc_03.c'= 'Intracranial and intraspinal embryonal tumors',
+                       'iccc_03.c'= 'Intracranial/intraspinal embryonal tumors',
+                       'iccc_12.b'= 'Other unspecified malignant tumors',
+                       'iccc_09.d'= 'Other specified soft tissue sarcomas',
+#                       'iccc_10.a'= 'Intracranial and intraspinal germ cell tumors',
+                       'iccc_10.a'= 'Intracranial/intraspinal germ cell tumors',
+#                       'iccc_03.f'= 'Unspecified intracranial and intraspinal neoplasms',
+                       'iccc_03.f'= 'Unspecified intracranial/intraspinal neoplasms',
+                       'iccc_11.e'= 'Skin carcinomas',
+                       'iccc_08.c'= 'Ewing tumor and related sarcomas of bone',
+                       'iccc_06.b'= 'Renal carcinomas',
+                       'iccc_02.a'= 'Hodgkin lymphomas',
+#                       'iccc_03.a'= 'Ependymomas and choroid plexus tumor',
+                       'iccc_03.a'= 'Ependymomas/choroid plexus tumor',
+                       'iccc_03.e'= 'Other specified intracranial/intraspinal neoplasms',
+#                       'iccc_03.e'= 'Other specified intracranial and intraspinal neoplasms',
+                       'iccc_11.f'= 'Other and unspecified carcinomas',
+                       'iccc_11.a'= 'Adrenocortical carcinomas',
+                       'iccc_10.e'= 'Other and unspecified malignant gonadal tumors',
+                       'iccc_02.d'= 'Miscellaneous lymphoreticular neoplasms',
+                       'iccc_08.b'= 'Chondrosarcomas',
+                       'iccc_08.d'= 'Other specified malignant bone tumors',
+                       'iccc_03.d'= 'Other gliomas',
+#                       'iccc_10.b'= 'Malignant extracranial and extragonadal germ cell tumors',
+                       'iccc_10.b'= 'Malignant extracranial/extragonadal germ cell tumors',
+                       'iccc_07.b'= 'Hepatic carcinomas',
+                       'iccc_11.c'= 'Nasopharyngeal carcinomas',
+                       'iccc_07.a'= 'Hepatoblastoma',
+                       'iccc_04.b'= 'Other peripheral nervous cell tumors',
+                       'iccc_12.a'= 'Other specified malignant tumors',
+                       'iccc_02.c'= 'Burkitt lymphoma',
+                       'iccc_08.e'= 'Unspecified malignant bone tumors',
+                       'iccc_09.c'= 'Kaposi sarcoma',
+                       'iccc_01.a'= 'Lymphoid leukemias',
+                       'iccc_00.0'= 'Unknown',
+                       'iccc_nan'= 'Unknown'
+    )
+    iccc_labels[[label_iccc]]
 }
 

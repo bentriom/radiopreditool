@@ -7,6 +7,14 @@ import os, re
 from multiprocessing import cpu_count
 from datetime import datetime
 
+# Snakefile tools
+def addslash(subdir):
+    return (subdir if subdir == "" else subdir + "/")
+
+def get_patient_file(newdosi_file):
+    split_newdosi = newdosi_file.split("_")
+    return split_newdosi[0] + "_" + split_newdosi[1] + "_" + split_newdosi[2][0:-1]
+
 # Create empty image
 def create_image_mask_example(zero_img = False, num_mask = 1):
     array_image = np.zeros((32,32,32))

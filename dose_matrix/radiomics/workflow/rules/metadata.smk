@@ -24,3 +24,15 @@ rule report_checks:
     run:
         report_checks.print_report(METADATA_DIR)
 
+rule entropy_analysis:
+    input:
+        expand(NII_DIR + "{newdosi_patient}_ID2013A.nii.gz", newdosi_patient = list_newdosi_patients),
+        expand(NII_DIR + "{newdosi_patient}_mask_t.nii.gz", newdosi_patient = list_newdosi_patients),
+        expand(NII_DIR + "{newdosi_patient}_mask_super_t.nii.gz", newdosi_patient = list_newdosi_patients)
+    output:
+        METADATA_DIR + "entropy_newdosi.csv.gz"
+    threads:
+        get_ncpus() - 1
+    run:
+        entropy_analysis.compute_entropy(DOSES_DATASET_SUBDIRS, NII_DIR, METADATA_DIR)
+
