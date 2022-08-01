@@ -15,7 +15,7 @@ def get_doses_array(doses_nii_file, mask_nii_file, mask_label):
 
     return doses[mask == mask_label]
 
-def get_entropy(newdosi_patient, nii_dir, list_binwidth):
+def get_entropy(newdosi_patient, nii_dir, list_binwidth, list_rules):
     # If the images are empty
     ctr, numcent = os.path.basename(newdosi_patient).split('_')[1:3]
     if os.path.getsize(nii_dir + newdosi_patient + "_ID2013A.nii.gz") == 0:
@@ -28,7 +28,8 @@ def get_entropy(newdosi_patient, nii_dir, list_binwidth):
         bins = np.arange(0, np.max(doses) + binwidth, binwidth)
         hist_counts = np.histogram(doses, bins = bins)[0]
         list_entropy.append(entropy(hist_counts, base = 2))
-
+    for rule in list_rules:
+        list_entropy.append(len(np.histogram_bin_edges(doses, bins = rule)) - 1)
     return [ctr, numcent] + list_entropy
 
 def compute_entropy(doses_dataset_subdirs, nii_dir, metadata_dir):
@@ -37,9 +38,12 @@ def compute_entropy(doses_dataset_subdirs, nii_dir, metadata_dir):
                           for f in os.listdir(nii_dir + subdir) if ".nii.gz" in f]
     list_newdosi_patients = list(set(['_'.join(newdosi.split('_')[0:3]) for newdosi in list_newdosi_files]))
     list_binwidth = [0.1, 0.5, 1.0, 1.5, 2.5, 5.0]
+    list_rules = ["auto", "fd", "sturges", "doane"]
     with Pool(get_ncpus()) as p:
-        results = p.map(partial(get_entropy, nii_dir = nii_dir, list_binwidth = list_binwidth), \
+        results = p.map(partial(get_entropy, nii_dir = nii_dir, \
+                                list_binwidth = list_binwidth, list_rules = list_rules), \
                         list_newdosi_patients)
     cols_entropy = [f"entropy_binwidth_{binw}" for binw in list_binwidth]
-    pd.DataFrame(results, columns = ["ctr", "numcent"] + cols_entropy).to_csv(metadata_dir + "entropy_newdosi.csv.gz", index = None, encoding = 'utf-8')
+    cols_rules = [f"length_{rule}" for rule in list_rules]
+    pd.DataFrame(results, columns = ["ctr", "numcent"] + cols_entropy + cols_rules).to_csv(metadata_dir + "entropy_newdosi.csv.gz", index = None, encoding = 'utf-8')
 
