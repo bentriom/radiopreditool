@@ -10,9 +10,22 @@ source("workflow/scripts/utils_radiopreditool.R")
 
 # Learning a model
 
-model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
+model_rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) {
+    df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
+    df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
+    log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    log_info(id_set)
+    model_rsf(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
+              save_results = FALSE, load_results = TRUE, level = INFO)
+}
+
+model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
+                      analyzes_dir, model_name, rsf_logfile, 
+                      save_results = TRUE, load_results = FALSE, level = INFO,  
                       ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
+    log_threshold(level)
     log_appender(appender_file(rsf_logfile, append = TRUE))
+    run_parallel <- load_results & !save_results
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -23,17 +36,25 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
     log_info(paste("Model name:", model_name))
-    log_info(paste0("Covariates (", length(filtered_covariates),"):", paste0(filtered_covariates, collapse = ", ")))
-    log_info(paste0("Trained:", nrow(df_model_train), "samples"))
-    log_info(paste0("Testset: ", nrow(df_model_test), " samples"))
-    log_info("NAs are omitted")
+    log_info(paste0("Covariates (", length(filtered_covariates),"):"))
+    if (!run_parallel) {
+        log_info(paste0(filtered_covariates, collapse = ", "))
+        log_info(paste0("Trained:", nrow(df_model_train), "samples"))
+        log_info(paste0("Testset: ", nrow(df_model_test), " samples"))
+        log_info("NAs are omitted")
+    }
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))
     pred.times <- seq(1, final.time, by = 1)
-    params.df <- create.params.df(ntrees, nodesizes, nsplits)
-    # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
-    cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex")
-    write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
+    if (load_results) {
+        params.best <- read.csv(paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"))[1,]
+    } else {
+        params.df <- create.params.df(ntrees, nodesizes, nsplits)
+        # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
+        cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex")
+    }
+    if (save_results)
+        write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
     # Best RSF
     params.best <- cv.params[1,]
     log_info("Best params:")
@@ -107,9 +128,12 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_info(paste0("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
-    write.csv(df_results, file = paste0(analyzes_dir, "rsf_results/metrics_", model_name, ".csv"), row.names = TRUE)
-    saveRDS(rsf.best, file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
-    rsf.best
+    if (save_results) {
+        write.csv(df_results, file = paste0(analyzes_dir, "rsf_results/metrics_", model_name, ".csv"), row.names = TRUE)
+        saveRDS(rsf.best, file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
+    }
+    log_threshold(INFO)
+    results_test
 }
 
 # Plot of features importances with VIMP method
@@ -159,8 +183,15 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
                    pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
     nbr.params <- nrow(params.df)
     folds <- createFolds(factor(data[[event_col]]), k = nfolds, list = FALSE)
+    final.time <- pred.times[length(pred.times)]
+    minmax.times <- lapply(1:nfolds, function(i) { 
+                            fold.index = which(folds == i) 
+                            min(max(data[fold.index, duration_col]), max(data[-fold.index, duration_col]), final.time)
+                        })
+    final.time.folds <- floor(min(unlist(minmax.times)))
+    pred.times.folds <- pred.times[pred.times <= final.time.folds]
     log_info(paste("Running CV with rfsrc using", getOption("rf.cores"), "workers")) 
-    cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) }, mc.cores = 1)
+    cv.params.df <- mclapply(1:nbr.params, function (i) { get.param.cv.error(i, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times.folds, rsf_logfile) }, mc.cores = 1)
     cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
     rownames(cv.params.df) <- NULL
     colnames(cv.params.df) <- c(colnames(params.df), "IBS", "Harrel Cindex", "IPCW Cindex", "Error")
@@ -237,11 +268,11 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
     df_model_test <- na.omit(df_model_test)
     # Fit RSF
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
-    params.best <- read.csv(paste(analyzes_dir, "rsf_results/cv_", model_name, ".csv", sep = ""))[1,]
+    params.best <- read.csv(paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"))[1,]
     rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
     # Predictions / metrics
-    pred.times <- seq(1, 60, by = 1)
-    final.time <- tail(pred.times, 1)
+    final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))
+    pred.times <- seq(1, final.time, by = 1)
     rsf.pred.test <- predict(rsf.best, newdata = df_model_test)
     rsf.survprob.test <- predictSurvProb(rsf.best, newdata = df_model_test, times = pred.times)
     rsf.cindex.ipcw.test <- pec::cindex(list("Best rsf" = rsf.best), formula_model, data = df_model_test)$AppCindex[["Best rsf"]]

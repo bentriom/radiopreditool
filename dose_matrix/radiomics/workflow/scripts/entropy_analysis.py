@@ -6,7 +6,7 @@ import os
 from radiopreditool_utils import addslash, get_patient_file, get_ncpus
 from scipy.stats import entropy
 from functools import partial
-from multiprocessing import Pool
+from multiprocessing import Pool, Array
 
 def get_doses_array(doses_nii_file, mask_nii_file, mask_label):
     doses = sitk.GetArrayFromImage(sitk.ReadImage(doses_nii_file))
@@ -16,6 +16,13 @@ def get_doses_array(doses_nii_file, mask_nii_file, mask_label):
     return doses[mask == mask_label]
 
 def get_entropy(newdosi_patient, nii_dir, list_binwidth, list_rules):
+    # Counter
+    global counter_entropy
+    with counter_entropy.get_lock():
+        counter_entropy[0] += 1
+    if np.floor(counter_entropy[0] / counter_entropy[1] * 10) != \
+    np.floor((counter_entropy[0]-1) / counter_entropy[1] * 10):
+        print(f"{int(np.floor(counter_entropy[0] / counter_entropy[1] * 10))}0%")
     # If the images are empty
     ctr, numcent = os.path.basename(newdosi_patient).split('_')[1:3]
     if os.path.getsize(nii_dir + newdosi_patient + "_ID2013A.nii.gz") == 0:
@@ -39,7 +46,9 @@ def compute_entropy(doses_dataset_subdirs, nii_dir, metadata_dir):
     list_newdosi_patients = list(set(['_'.join(newdosi.split('_')[0:3]) for newdosi in list_newdosi_files]))
     list_binwidth = [0.1, 0.5, 1.0, 1.5, 2.5, 5.0]
     list_rules = ["auto", "fd", "sturges", "doane"]
-    with Pool(get_ncpus()) as p:
+    global counter_entropy
+    counter_entropy = Array('i', [0, len(list_newdosi_patients)])
+    with Pool(get_ncpus()-2) as p:
         results = p.map(partial(get_entropy, nii_dir = nii_dir, \
                                 list_binwidth = list_binwidth, list_rules = list_rules), \
                         list_newdosi_patients)
