@@ -36,7 +36,13 @@ def get_entropy(newdosi_patient, nii_dir, list_binwidth, list_rules):
         hist_counts = np.histogram(doses, bins = bins)[0]
         list_entropy.append(entropy(hist_counts, base = 2))
     for rule in list_rules:
-        list_entropy.append(len(np.histogram_bin_edges(doses, bins = rule)) - 1)
+        nbr_bins = len(np.histogram_bin_edges(doses, bins = rule)) - 1
+        list_entropy.append(nbr_bins)
+    for rule in list_rules:
+        nbr_bins = len(np.histogram_bin_edges(doses, bins = rule)) - 1
+        binwidth = np.max(doses) / nbr_bins
+        list_entropy.append(binwidth)
+
     return [ctr, numcent] + list_entropy
 
 def compute_entropy(doses_dataset_subdirs, nii_dir, metadata_dir):
@@ -53,6 +59,7 @@ def compute_entropy(doses_dataset_subdirs, nii_dir, metadata_dir):
                                 list_binwidth = list_binwidth, list_rules = list_rules), \
                         list_newdosi_patients)
     cols_entropy = [f"entropy_binwidth_{binw}" for binw in list_binwidth]
-    cols_rules = [f"length_{rule}" for rule in list_rules]
+    cols_rules = [f"length_{rule}" for rule in list_rules] + \
+                 [f"binwidth_{rule}" for rule in list_rules]
     pd.DataFrame(results, columns = ["ctr", "numcent"] + cols_entropy + cols_rules).to_csv(metadata_dir + "entropy_newdosi.csv.gz", index = None, encoding = 'utf-8')
 
