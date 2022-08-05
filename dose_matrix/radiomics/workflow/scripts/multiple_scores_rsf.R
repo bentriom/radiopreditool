@@ -1,20 +1,12 @@
 
 options(show.error.locations = TRUE, error=traceback)
 
-library("caret", quietly = TRUE)
-library("survival", quietly = TRUE)
-library("randomForestSRC", quietly = TRUE)
-library("pec", quietly = TRUE)
-library("Hmisc", quietly = TRUE)
-library("logger", quietly = TRUE)
-library("parallel", quietly = TRUE)
-
 source("workflow/scripts/utils_rsf.R")
 
 multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
     dir.create(paste(analyzes_dir, "rsf_results/", sep = ""), showWarnings = FALSE)
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
+    nworkers <- `if`(is.na(ntasks), parallel::detectCores()-1, ntasks)
     options(rf.cores = 1, mc.cores = 1)
     rsf_logfile <- paste(analyzes_dir, "multiple_scores_rsf_", suffix_model, ".log", sep = "")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
@@ -34,7 +26,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     model_name <- paste0("32X_radiomics_firstorder_", suffix_model)
     cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", features, value = TRUE)
     covariates_32X <- c(clinical_vars, cols_32X)
-    results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_32X, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers) 
+    results <- mclapply(0:(nb_estim-1), function (i) { model_rsf.id(i, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) }, mc.cores = nworkers) 
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
@@ -46,7 +38,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     model_name <- paste0("1320_radiomics_firstorder_", suffix_model)
     cols_1320 <- grep("^X1320_original_firstorder_", features, value = TRUE)
     covariates_1320 <- c(clinical_vars, cols_1320)
-    results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_1320, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers)
+    results <- mclapply(0:(nb_estim-1), function (i) { model_rsf.id(i, covariates_1320, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) }, mc.cores = nworkers)
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
@@ -58,7 +50,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     model_name <- paste0("32X_radiomics_full_", suffix_model)
     cols_32X <- filter.gl(grep("^X32[0-9]{1}_original_", features, value = TRUE))
     covariates_32X <- c(clinical_vars, cols_32X)
-    results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_32X, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers) 
+    results <- mclapply(0:(nb_estim-1), function (i) { model_rsf.id(i, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) }, mc.cores = nworkers) 
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
@@ -70,7 +62,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     model_name <- paste0("1320_radiomics_full_", suffix_model)
     cols_1320 <- filter.gl(grep("^X1320_original_", features, value = TRUE))
     covariates_1320 <- c(clinical_vars, cols_1320)
-    results <- mclapply(0:(nb_estim-1), function (i) { refit.best.rsf.id(i, covariates_1320, event_col, duration_col, analyzes_dir, model_name = model_name) }, mc.cores = nworkers)
+    results <- mclapply(0:(nb_estim-1), function (i) { model_rsf.id(i, covariates_1320, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) }, mc.cores = nworkers)
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results

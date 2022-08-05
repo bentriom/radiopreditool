@@ -5,6 +5,8 @@ library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
 library("pec", quietly = TRUE)
 library("logger", quietly = TRUE)
+library("Hmisc", quietly = TRUE)
+library("parallel", quietly = TRUE)
 
 source("workflow/scripts/utils_radiopreditool.R")
 
@@ -13,7 +15,7 @@ source("workflow/scripts/utils_radiopreditool.R")
 model_rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
-    log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info(id_set)
     model_rsf(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
               save_results = FALSE, load_results = TRUE, level = INFO)
@@ -53,10 +55,10 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
         # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
         cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex")
     }
-    if (save_results)
+    if (save_results) {
         write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
-    # Best RSF
-    params.best <- cv.params[1,]
+        params.best <- cv.params[1,]
+    }
     log_info("Best params:")
     log_info(toString(names(params.best)))
     log_info(toString(params.best))

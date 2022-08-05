@@ -272,12 +272,12 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
         df.mat.coefs <- melt(mat.coefs)
         colnames(df.mat.coefs) <- c("lambda", "varname", "coef")
-        df.mat.coefs[, "varname"] <- pretty.labels(df.mat.coefs[["varname"]])
+        df.mat.coefs[, "varname"] <- pretty.labels(as.character(df.mat.coefs[["varname"]]))
         first.lambda <- rownames(mat.coefs)[nrow(mat.coefs)]
         ggplot(df.mat.coefs, aes(x = lambda, y = coef, color = varname)) + geom_line() + 
         xlab("Penalty (log10)") + ylab("Coefficient") + theme(legend.position = "none") +
         geom_text(data = subset(df.mat.coefs, lambda == first.lambda & varname %in% names.nonnull.coefs), 
-                  aes(x = lambda, y = coef, label = pretty.labels(varname)), size = 3, hjust = 1) +
+                  aes(x = lambda, y = coef, label = pretty.labels(as.character(varname))), size = 3, hjust = 1) +
         coord_cartesian(clip = 'off') +
         theme(plot.margin = unit(c(1,1,1,1), "lines"), axis.title.y = element_text(margin = margin(0,2,0,0, "cm"))) + 
         geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
