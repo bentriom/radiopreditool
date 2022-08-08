@@ -20,6 +20,20 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste("X", x, sep = ""), x) }))
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
     index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+       
+    if (suffix_model == "all") { 
+        # Model 1320 doses volumes indicators covariates
+        log_info("Model 1320 heart doses volumes")
+        model_name <- "1320_dosesvol"
+        cols_dosesvol <- grep("dv_\\w+_1320", colnames(df_trainset), value = TRUE)
+        covariates_dv <- c(cols_dosesvol, clinical_vars)
+        results <- mclapply(0:(nb_estim-1), function (i) { model_rsf.id(i, covariates_dv, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) }, mc.cores = nworkers) 
+        results <- as.data.frame(results)
+        df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+        rownames(df_results) <- index_results
+        filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+        write.csv(df_results, file = filename_results, row.names = TRUE)
+    }
 
     # Model 32X radiomics firstorder covariates
     log_info("Model 32X radiomics firstorder")

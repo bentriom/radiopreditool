@@ -53,7 +53,17 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
         covariates_32X <- c(clinical_vars, cols_32X)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
         # plot_vimp(rsf.obj, analyzes_dir, model_name)
-    } else if (subdivision_type == "1320") {
+    } 
+    else if (subdivision_type == "1320") {
+        if (suffix_model == "all") {
+            # Model 1320 doses volumes indicators covariates
+            log_info("Model 1320 heart doses volumes")
+            model_name <- "1320_dosesvol"
+            cols_dosesvol <- grep("dv_\\w+_1320", colnames(df_trainset), value = TRUE)
+            covariates_dv <- c(cols_dosesvol, clinical_vars)
+            rsf.obj <- model_rsf(df_trainset, df_testset, covariates_dv, event_col, duration_col, analyzes_dir, model_name, rsf_logfile)
+        }
+
         # Model 1320 radiomics firstorder covariates
         log_info("Model 1320 radiomics firstorder")
         model_name <- paste0("1320_radiomics_firstorder_", suffix_model)
