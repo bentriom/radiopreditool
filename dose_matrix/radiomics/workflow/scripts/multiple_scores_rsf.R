@@ -25,7 +25,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
         # Model 1320 doses volumes indicators covariates
         log_info("Model 1320 heart doses volumes")
         model_name <- "1320_dosesvol"
-        cols_dosesvol <- grep("dv_\\w+_1320", colnames(df_trainset), value = TRUE)
+        cols_dosesvol <- grep("dv_\\w+_1320", features, value = TRUE)
         covariates_dv <- c(cols_dosesvol, clinical_vars)
         results <- mclapply(0:(nb_estim-1), function (i) { model_rsf.id(i, covariates_dv, event_col, duration_col, analyzes_dir, model_name, rsf_logfile) }, mc.cores = nworkers) 
         results <- as.data.frame(results)
