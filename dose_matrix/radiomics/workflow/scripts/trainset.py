@@ -85,8 +85,20 @@ def fill_features_no_rt(df_dataset, col_treated_by_rt, params_file):
         features = [pretty_dosesvol(f"{label}_{x}") for x in dict_features_values if not x.startswith("diagnostics_")]
         df_dataset.loc[mask_no_rt, features] = features_values
 
+# Filter patients according to some criteria
+def filter_patients(df_dataset, name_filter_dataset):
+    assert name_filter_dataset in ["", None, "positive_entropy"], f"name_filter_dataset: {name_filter_dataset} not supported."
+
+    if name_filter_dataset in ["", None]:
+        return df_dataset
+    if name_filter_dataset == "positive_entropy":
+        assert "1320_original_firstorder_Entropy" in df_dataset.columns
+        mask = (df_dataset["has_radiomics"] == 0) | \
+               (df_dataset["has_radiomics"] == 1) & (df_dataset["1320_original_firstorder_Entropy"] > 0)
+        return df_dataset.loc[mask, :]
+
 # Create dataset based on availaible dosiomics, clinical variables and survival data
-def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col, params_file):
+def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col, params_file, name_filter_dataset = None):
     logger = setup_logger("dataset", analyzes_dir + "dataset.log")
     logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
     os.makedirs(analyzes_dir + "datasets", exist_ok = True)
@@ -114,6 +126,8 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     if col_treated_by_rt not in clinical_variables:
         df_dataset.insert(len(df_dataset.columns), col_treated_by_rt, df_fccss[col_treated_by_rt])
     df_dataset = df_dataset.merge(df_radiomics, how = "left", on = ["ctr", "numcent"])
+    df_dataset.loc[:, "has_radiomics"] = df_dataset.loc[:, "has_radiomics"].replace(np.nan, 0)
+    df_dataset = filter_patients(df_dataset, name_filter_dataset)
     # Eliminating patients with negative survival
     mask_negative_times = df_dataset[surv_duration_col] < 0
     logger.info(f"Eliminating {sum(mask_negative_times)} patients with negative survival times")
