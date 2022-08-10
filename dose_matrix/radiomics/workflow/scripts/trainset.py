@@ -107,6 +107,8 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
     fill_missing(df_fccss)
     logger.info(f"df_radiomics: {df_radiomics.shape}")
+    mask_na = df_radiomics.isna().any(axis = 1)
+    logger.info(f"In radiomics, number of patients with NA: f{sum(mask_na)}")
     logger.info(f"df_fccss: {df_fccss.shape}")
     # Create survival time col
     logger.info("Creating survival columns")
