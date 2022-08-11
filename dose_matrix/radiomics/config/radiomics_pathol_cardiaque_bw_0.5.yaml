@@ -1,0 +1,38 @@
+
+setting:
+    binWidth: 0.5
+    voxelArrayShift: 0
+
+featureClass:
+    firstorder: ["Energy", "Entropy", "Minimum", "10Percentile", "Mean", "Median", "90Percentile", "Maximum", "InterquartileRange", "MeanAbsoluteDeviation", "RobustMeanAbsoluteDeviation", "RootMeanSquared", "Skewness", "Kurtosis", "Variance"]
+    # shape: ["VoxelVolume", "SurfaceVolumeRatio", "Sphericity"]
+    dosesvolumes: []
+    # No SumAverage because of the similarity of SumSquares
+    # No ClusterShade because only 1 values
+    # No Imc1 because of the similarity with Imc2
+    # No Idmn, Idn
+    glcm:
+      - 'Autocorrelation'
+      - 'JointAverage'
+      - 'ClusterProminence'
+      - 'ClusterTendency'
+      - 'Contrast'
+      - 'Correlation'
+      - 'DifferenceAverage'
+      - 'DifferenceEntropy'
+      - 'DifferenceVariance'
+      - 'JointEnergy'
+      - 'JointEntropy'
+      - 'Imc2'
+      - 'MCC'
+      - 'Idm'
+      - 'Id'
+      - 'InverseVariance'
+      - 'MaximumProbability'
+      - 'SumEntropy'
+      - 'SumSquares'
+    glrlm:
+    glszm:
+    ngtdm:
+    gldm:
+
