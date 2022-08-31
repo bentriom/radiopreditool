@@ -1,8 +1,6 @@
 
 import dash
-import dash_table
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc, dash_table, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import pandas as pd
@@ -13,9 +11,9 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 DATASET_DIR = "../database/fccss_01102021/"
 # Data
-df_events = pd.read_csv(DATASET_DIR + "events_fccss_igr_curie_011021.csv")
-df_labels = pd.read_csv(DATASET_DIR + "dictionnary_variables_fccss_igr_curie_01102021.csv")
-df_iccc = pd.read_csv(DATASET_DIR + "iccc.csv")
+df_events = pd.read_csv(DATASET_DIR + "events_fccss_igr_curie_011021.csv", low_memory = False)
+df_labels = pd.read_csv(DATASET_DIR + "dictionnary_variables_fccss_igr_curie_01102021.csv", low_memory = False)
+df_iccc = pd.read_csv(DATASET_DIR + "iccc.csv", low_memory = False)
 
 # About column events
 benign_events = [f"K2_loc{nbr_loc}" for nbr_loc in range(45,58)]
