@@ -37,9 +37,9 @@ predictSurvProb.glmnet.pec <- function(object, newdata, times) {
 pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, B = 200) {
     ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
     nworkers <- `if`(is.na(ntasks), parallel::detectCores()-1, ntasks)
-    nworkers <- 1
-    options(rf.cores = nworkers, mc.cores = nworkers)
+    options(rf.cores = 1, mc.cores = 1)
     dir.create(paste0(analyzes_dir, "pec_plots/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "pec_results/"), showWarnings = FALSE)
     df_dataset <- read.csv(file_dataset, header = T)
 
     # Feature elimination
@@ -112,9 +112,7 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     pec_M = floor(0.7 * nrow(infos$data))
     pec_B = B
     registerDoParallel(nworkers)
-    print("PEC")
-    print(paste("infos$data dim = ", dim(infos$data)))
-    print(pec_B)
+    print(paste("PEC, B =", pec_B))
     #system.time({
     fitpec <- pec(list("Cox mean dose" = coxmean, 
                        "Cox Lasso doses-volumes" = coxlassodv, 
@@ -127,11 +125,11 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
                   B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
     #})
     print("End pec")
-    saveRDS(fitpec, file = paste0(analyzes_dir, "fit_pec_", pec_B, ".rds"))
-
-    plot(fitpec, what = "BootCvErr", xlim = c(0, 60 * 365.25),
-         axis1.at = seq(0, 60 * 365.25, 5 * 365.25), axis1.label = seq(0, 60, 5))
-    png(paste0(analyzes_dir, "pec_plots/bootcv.png", dpi = 480))
+    saveRDS(fitpec, file = paste0(analyzes_dir, "pec_results/fit_pec_", pec_B, ".rds"))
+    png(paste0(analyzes_dir, "pec_plots/bootcv.png"), width = 800, height = 600)
+    plot(fitpec, what = "BootCvErr", xlim = c(0, 60),
+         axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
+    dev.off()
 }
 
 args = commandArgs(trailingOnly = TRUE)
