@@ -1,5 +1,5 @@
-MODEL_NAME: pathol_cardiaque_grade3_drugs_iccc_other
-RADIOMICS_NAME: 30X_32X_1320_1702_bw_0.5
+MODEL_NAME: pathol_cardiaque_drugs_iccc_other
+RADIOMICS_NAME: 30X_32X_1320_1702
 DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
 DOSES_DATASET_SUBDIRS:
     - CURIE
@@ -8,7 +8,7 @@ DOSES_DATASET_SUBDIRS:
     - REIMS
     - NICE
 RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
-RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque_bw_0.5.yaml
+RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics/radiomics_pathol_cardiaque.yaml
 # 309 - 310: lung
 # 320 - 324: heart
 # 370 - 380: cerveau
@@ -27,7 +27,7 @@ FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis", "ALKYL", "ANTHRA",
                            'iccc_10.a', 'iccc_10.b', 'iccc_10.c', 'iccc_10.d', 'iccc_10.e',
                            'iccc_11.a', 'iccc_11.b', 'iccc_11.c', 'iccc_11.d', 'iccc_11.e',
                            'iccc_11.f', 'iccc_12.a', 'iccc_12.b']
-EVENT_COL: "Pathologie_cardiaque_3_new"
-DATE_EVENT_COL: "date_pathol_cardiaque_3_new"
+EVENT_COL: "Pathologie_cardiaque"
+DATE_EVENT_COL: "date_pathol_cardiaque"
 NB_ESTIM_SCORE_MODELS: 10
 

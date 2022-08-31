@@ -1,4 +1,4 @@
-MODEL_NAME: pathol_cardiaque_grade3_chimio
+MODEL_NAME: pathol_cardiaque
 RADIOMICS_NAME: 30X_32X_1320_1702
 DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
 DOSES_DATASET_SUBDIRS:
@@ -8,7 +8,7 @@ DOSES_DATASET_SUBDIRS:
     - REIMS
     - NICE
 RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
-RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque.yaml
+RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics/radiomics_pathol_cardiaque.yaml
 # 309 - 310: lung
 # 320 - 324: heart
 # 370 - 380: cerveau
@@ -17,8 +17,8 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 LABELS_SUPER_T_VOI: [1320, 1702]
 LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011021_update_070622.csv.gz
-FCCSS_CLINICAL_VARIABLES: ["chimiotherapie"]
-EVENT_COL: "Pathologie_cardiaque_3_new"
-DATE_EVENT_COL: "date_pathol_cardiaque_3_new"
+FCCSS_CLINICAL_VARIABLES: []
+EVENT_COL: "Pathologie_cardiaque"
+DATE_EVENT_COL: "date_pathol_cardiaque"
 NB_ESTIM_SCORE_MODELS: 10
 

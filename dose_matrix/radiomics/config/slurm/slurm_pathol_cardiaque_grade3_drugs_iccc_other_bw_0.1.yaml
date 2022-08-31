@@ -8,7 +8,7 @@ DOSES_DATASET_SUBDIRS:
     - REIMS
     - NICE
 RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
-RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics_pathol_cardiaque_bw_0.1.yaml
+RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics/radiomics_pathol_cardiaque_bw_0.1.yaml
 # 309 - 310: lung
 # 320 - 324: heart
 # 370 - 380: cerveau

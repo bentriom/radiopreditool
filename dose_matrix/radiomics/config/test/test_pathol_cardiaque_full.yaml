@@ -5,7 +5,7 @@ DOSES_DATASET_SUBDIRS:
     - CURIE
     - GR
 RESULTS_DIR: results/
-RADIOMICS_PARAMS_FILE: config/radiomics_pathol_cardiaque.yaml
+RADIOMICS_PARAMS_FILE: config/radiomics/radiomics_pathol_cardiaque.yaml
 LABELS_SUPER_T_VOI: [1320]
 LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /home/moud/Documents/RadioPrediTool/code/database/fccss_01102021/base_fccss_igr_curie_011021_update_070622.csv.gz
