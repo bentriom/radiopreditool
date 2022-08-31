@@ -67,9 +67,6 @@ preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col)
     df_model <- df_dataset[,c(event_col, duration_col, filtered_covariates)]
     df_model <- na.omit(df_model)
     # Z normalisation
-    # means_train <- as.numeric(lapply(df_model[filtered_covariates], mean))
-    # stds_train <- as.numeric(lapply(df_model[filtered_covariates], sd))
-    # df_model[, filtered_covariates] <- scale(df_model[filtered_covariates], center = means_train, scale = stds_train)
     df_model <- normalize_data(df_model, filtered_covariates, event_col, duration_col)$train
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     return (list("data" = df_model, "covariates" = filtered_covariates, "formula_model" = formula_model)) 
