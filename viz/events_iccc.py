@@ -17,7 +17,7 @@ df_iccc = pd.read_csv(DATASET_DIR + "iccc.csv", low_memory = False)
 
 # About column events
 benign_events = [f"K2_loc{nbr_loc}" for nbr_loc in range(45,58)]
-non_cancer_events = ["Pathologie_auditive", "Pathologie_cardiaque", "Pathologie_cardiaque_3", "Pathologie_renale_chronique", "pathologie_cataracte", "pathologie_cerebrovasculaire", "pathologie_chir_cataracte", "pathologie_diabete"]
+non_cancer_events = ["Pathologie_auditive", "Pathologie_cardiaque", "Pathologie_cardiaque_3_new", "Pathologie_renale_chronique", "pathologie_cataracte", "pathologie_cerebrovasculaire", "pathologie_chir_cataracte", "pathologie_diabete"]
 non_benign_events = [f"K2_loc{nbr_loc}" for nbr_loc in range(1,45)]
 sorted_columns = non_benign_events + benign_events + non_cancer_events
 
