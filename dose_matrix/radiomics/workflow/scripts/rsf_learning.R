@@ -18,8 +18,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
     dir.create(paste0(analyzes_dir, "rsf_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "rsf_results/fitted_models/"), showWarnings = FALSE)
-    ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
+    nworkers <- get.nworkers()
     options(rf.cores = nworkers, mc.cores = nworkers)
     rsf_logfile <- paste0(analyzes_dir, "rsf_", suffix_model, "_", subdivision_type,".log")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }

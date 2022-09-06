@@ -35,8 +35,7 @@ predictSurvProb.glmnet.pec <- function(object, newdata, times) {
 }
 
 pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, B = 200) {
-    ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores()-1, ntasks)
+    nworkers <- get.nworkers()
     options(rf.cores = 1, mc.cores = 1)
     dir.create(paste0(analyzes_dir, "pec_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "pec_results/"), showWarnings = FALSE)
@@ -87,10 +86,6 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     formula_model_lassodv <<- get.surv.formula(event_col, covariates_lassodv, duration_col = duration_col)
     lassodv_best.lambda <<- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name_lassodv, ".csv"))[1, "penalty"]
     lassodv_list.lambda <<- read.csv(paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name_lassodv, ".csv"))[["lambda"]]
-    # coxlassodv <- coxnet.pec(formula_model_lassodv, data = infos$data, family = "cox", alpha = 1, 
-    #                          lambda = list.lambda, lambda.pred = best.lambda, type.measure = "C")
-    # coxlassodv_data_train <- coxlasso_data(infos$data, covariates_lassodv, event_col, duration_col)
-    # write.csv(coxlassodv_data_train$X, "test.csv")
     coxlassodv <- glmnet.pec(formula_model_lassodv, data = infos$data, family = "cox", 
                              alpha = 1, lambda = lassodv_list.lambda, best.lambda = lassodv_best.lambda, type.measure = "C")
     
@@ -100,9 +95,6 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     formula_model_lasso_32X <<- get.surv.formula(event_col, covariates_lasso_32X, duration_col = duration_col)
     lasso_32X_best.lambda <<- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name_lasso_32X, ".csv"))[1, "penalty"]
     lasso_32X_list.lambda <<- read.csv(paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name_lasso_32X, ".csv"))[["lambda"]]
-    # coxlasso_32X <- coxnet.pec(formula_model_lasso_32X, data = infos$data, family = "cox", alpha = 1, 
-    #                            lambda = list.lambda, lambda.pred = best.lambda, type.measure = "C")
-    # coxlasso_32X_data_train <- coxlasso_data(infos$data, covariates_lasso_32X, event_col, duration_col)
     coxlasso_32X <- glmnet.pec(formula_model_lasso_32X, data = infos$data, family = "cox", 
                                alpha = 1, lambda = lasso_32X_list.lambda, best.lambda = lasso_32X_best.lambda, type.measure = "C")
 
@@ -126,7 +118,7 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     #})
     print("End pec")
     saveRDS(fitpec, file = paste0(analyzes_dir, "pec_results/fit_pec_", pec_B, ".rds"))
-    png(paste0(analyzes_dir, "pec_plots/bootcv.png"), width = 800, height = 600)
+    png(paste0(analyzes_dir, "pec_plots/bootcv_", pec_B, ".png"), width = 800, height = 600)
     plot(fitpec, what = "BootCvErr", xlim = c(0, 60),
          axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
     dev.off()
@@ -137,11 +129,10 @@ if (length(args) > 1) {
     analyzes_dir <- args[1]
     event_col <- args[2]
     duration_col <- `if`(length(args) == 3, args[3], "survival_time_years")
-    file_dataset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
+    file_dataset = paste0(analyzes_dir, "datasets/dataset.csv.gz")
     log_threshold(INFO)
     pec_estimation(file_dataset, event_col, analyzes_dir, duration_col)
 } else {
     print("No arguments provided. Skipping.")
 }
-
 

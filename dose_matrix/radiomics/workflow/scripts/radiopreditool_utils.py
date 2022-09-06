@@ -152,6 +152,8 @@ def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation
 def get_ncpus():
     if "SLURM_CPUS_PER_TASK" in os.environ:
         return int(os.environ["SLURM_CPUS_PER_TASK"])
+    elif "LOCAL_SNAKEMAKE_NCPUS" in os.environ:
+        return int(os.environ["LOCAL_SNAKEMAKE_NCPUS"])
     else:
         return cpu_count()
 

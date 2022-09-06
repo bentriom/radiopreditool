@@ -16,8 +16,7 @@ source("workflow/scripts/utils_rsf.R")
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-    ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores(), ntasks)
+    nworkers <- get.nworkers()
     options(rf.cores = nworkers, mc.cores = nworkers)
     analyzes_dir <- args[1]
     for (i in 2:length(args)) {

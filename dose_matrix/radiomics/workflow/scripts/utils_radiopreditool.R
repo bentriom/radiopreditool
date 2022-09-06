@@ -1,5 +1,6 @@
 
 suppressPackageStartupMessages(library("stringr", quietly = TRUE))
+suppressPackageStartupMessages(library("parallel", quietly = TRUE))
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
@@ -20,6 +21,24 @@ filter.gl <- function(features) {
     }
     return (features)
 }
+
+# Get available ncpus
+get.ncpus <- function() {
+    slurm_ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+    local_ntasks <- as.numeric(Sys.getenv("LOCAL_SNAKEMAKE_NCPUS"))
+    if (is.na(slurm_ntasks)) {
+        if (is.na(local_ntasks)) {
+            ncpus <- parallel::detectCores()
+        } else {
+            ncpus <- local_ntasks
+        }
+    } else {
+        ncpus <- slurm_ntasks
+    }
+    ncpus
+}
+
+get.nworkers <- function() get.ncpus()-1
 
 # Pretty label names
 pretty.label <- function(label) {

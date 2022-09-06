@@ -28,8 +28,8 @@ select_best_lambda <- function(cox_object, cv.params) {
                                          (cv.params.unique$non_zeros_coefs < nonzeros.ref), ]
     log_info("Best lambda selection")
     log_info(paste("lambda ref:", lambda.ref, nonzeros.ref))
-    write.csv(cv.params, file = "test_cv_params.csv")
-    write.csv(cv.params.unique, file = "test_cv_params_unique.csv")
+    # write.csv(cv.params, file = "test_cv_params.csv")
+    # write.csv(cv.params.unique, file = "test_cv_params_unique.csv")
     lambda.new <- lambda.ref
     if (nrow(cv.params.unique) < 1) return (lambda.ref)
     for (i in 1:nrow(cv.params.unique)) {
@@ -107,16 +107,15 @@ model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_d
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
-    log_info(id_set)
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
               model_name, coxlasso_logfile, penalty = penalty, 
-              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO)
+              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO, id_set = id_set)
 }
 
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
                       analyzes_dir, model_name, coxlasso_logfile,
                       penalty = "lasso", do_plot = TRUE, 
-                      save_results = TRUE, load_results = FALSE, level = INFO) {
+                      save_results = TRUE, load_results = FALSE, level = INFO, id_set = "") {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
@@ -133,8 +132,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     norm_data <- normalize_data(df_model_train, filtered_covariates, event_col, duration_col, df_test = df_model_test)
     df_model_train <- norm_data$train; df_model_test <- norm_data$test
     formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
-    log_info(paste("Model name:", model_name))
-        log_info(paste0("Covariates (", length(filtered_covariates),"):"))
+    log_info(paste0("(", id_set, ") ", "Model name: ", model_name))
+    log_info(paste0("(", id_set, ") ", "Covariates (", length(filtered_covariates),"):"))
     if (!run_parallel) {
         log_info(paste0(filtered_covariates, collapse = ", "))
         log_info("NAs are omitted")
@@ -176,7 +175,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                           file = paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))
             }
         }
-        log_info(paste("Best lambda:", best.lambda))
+        if (!run_parallel)
+            log_info(paste("Best lambda:", best.lambda))
         coxlasso.survfit.train <- survfit(coxmodel, x = X_train, y = surv_y_train, newx = X_train, s = best.lambda)
         coxlasso.survfit.test <- survfit(coxmodel, x = X_train, y = surv_y_train, newx = X_test, s = best.lambda)
         coxlasso.survprob.train <- t(summary(coxlasso.survfit.train, times = pred.times)$surv)
@@ -208,21 +208,23 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     coxlasso.bs.final.test <- tail(coxlasso.perror.test$AppErr$test, 1)
     coxlasso.ibs.train <- crps(coxlasso.perror.train)[1]
     coxlasso.ibs.test <- crps(coxlasso.perror.test)[1]
-    log_info(paste(as.character(formula_ipcw)[c(2,1,3)], collapse = " "))
-    log_info(paste0("Harrell's C-index on trainset: ", coxlasso.cindex.harrell.train))
-    log_info(paste0("Harrell's C-index on testset: ", coxlasso.cindex.harrell.test))
-    log_info(paste0("IPCW C-index on trainset: ", coxlasso.cindex.ipcw.train))
-    log_info(paste0("IPCW C-index on testset: ", coxlasso.cindex.ipcw.test))
-    log_info(paste0("BS at 60 on trainset: ", coxlasso.bs.final.train))
-    log_info(paste0("BS at 60 on testset: ", coxlasso.bs.final.test))
-    log_info(paste0("IBS on trainset: ", coxlasso.ibs.train))
-    log_info(paste0("IBS on testset: ", coxlasso.ibs.test))
+    if (!run_parallel) {
+        log_info(paste(as.character(formula_ipcw)[c(2,1,3)], collapse = " "))
+        log_info(paste0("Harrell's C-index on trainset: ", coxlasso.cindex.harrell.train))
+        log_info(paste0("Harrell's C-index on testset: ", coxlasso.cindex.harrell.test))
+        log_info(paste0("IPCW C-index on trainset: ", coxlasso.cindex.ipcw.train))
+        log_info(paste0("IPCW C-index on testset: ", coxlasso.cindex.ipcw.test))
+        log_info(paste0("BS at 60 on trainset: ", coxlasso.bs.final.train))
+        log_info(paste0("BS at 60 on testset: ", coxlasso.bs.final.test))
+        log_info(paste0("IBS on trainset: ", coxlasso.ibs.train))
+        log_info(paste0("IBS on testset: ", coxlasso.ibs.test))
+    }
     results_train <- c(coxlasso.cindex.harrell.train, coxlasso.cindex.ipcw.train, 
                        coxlasso.bs.final.train, coxlasso.ibs.train)
     results_test <- c(coxlasso.cindex.harrell.test, coxlasso.cindex.ipcw.test,
                       coxlasso.bs.final.test, coxlasso.ibs.test)
-    log_info(paste("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
-    log_info(paste("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
+    log_info(paste0("(", id_set, ") ", "Train: ", results_train[1], " & ", results_train[2], " & ", results_train[3], " & ", results_train[4]))
+    log_info(paste0("(", id_set, ") ", "Test: ", results_test[1], " & ", results_test[2], " & ", results_test[3], " & ", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {

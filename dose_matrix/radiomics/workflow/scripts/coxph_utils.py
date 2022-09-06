@@ -26,7 +26,7 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
     if penalty == "ridge":
         coxph = CoxPHSurvivalAnalysis()
         dict_params_coxph = {'alpha': [0.0001, 0.5, 1.0, 1.5, 2.0, 5.0]}
-        cv_coxph = GridSearchCV(estimator = coxph, param_grid = dict_params_coxph, cv = split_cv, n_jobs = get_ncpus())
+        cv_coxph = GridSearchCV(estimator = coxph, param_grid = dict_params_coxph, cv = split_cv, n_jobs = get_ncpus()-1)
         cv_coxph.fit(X_train, surv_y_train)
         cv_results = cv_coxph.cv_results_
         cv_alphas = [param["alphas"][0] for param in cv_results["params"]]
@@ -48,7 +48,7 @@ def cv_fit_cox(X_train, surv_y_train, df_coxph_train, event_col, duration_col, a
         list_alphas = coxnet.alphas_
         dict_params_coxnet = {'alphas': [[a] for a in list_alphas]}
         coxnet_grid = CoxnetSurvivalAnalysis(l1_ratio = l1_ratio, tol = 1e-6)
-        cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus())
+        cv_coxnet = GridSearchCV(estimator = coxnet_grid, param_grid = dict_params_coxnet, cv = split_cv, refit = False, n_jobs = get_ncpus()-1)
         cv_coxnet.fit(X_train, surv_y_train)
         cv_results = cv_coxnet.cv_results_
         cv_alphas = [param["alphas"][0] for param in cv_results["params"]]

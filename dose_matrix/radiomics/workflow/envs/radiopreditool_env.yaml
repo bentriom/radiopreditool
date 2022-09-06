@@ -17,6 +17,7 @@ dependencies:
   - lifelines
   - scikit-learn
   - fastcluster
+  - python-kaleido
   - pip:
     - pyradiomics
     - scikit-survival

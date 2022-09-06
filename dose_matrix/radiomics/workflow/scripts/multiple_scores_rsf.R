@@ -5,8 +5,7 @@ source("workflow/scripts/utils_rsf.R")
 
 multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
     dir.create(paste(analyzes_dir, "rsf_results/", sep = ""), showWarnings = FALSE)
-    ntasks <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-    nworkers <- `if`(is.na(ntasks), parallel::detectCores()-1, ntasks)
+    nworkers <- get.nworkers()
     options(rf.cores = 1, mc.cores = 1)
     rsf_logfile <- paste(analyzes_dir, "multiple_scores_rsf_", suffix_model, ".log", sep = "")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }

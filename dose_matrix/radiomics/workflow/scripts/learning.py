@@ -159,7 +159,7 @@ def multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir, duration_
     model_name = "1320_mean"
     covariates = ["1320_original_firstorder_Mean"] + clinical_vars
     logger.info("Model heart mean dose (1320)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = None, model_name = model_name, log_name = log_name), range(nb_estim))
     results = np.asarray(results)    
@@ -170,7 +170,7 @@ def multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir, duration_
     model_name = "1320_dosesvol"
     covariates = [feature for feature in df_trainset0.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
     logger.info("Model heart doses volumes (1320)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = None, model_name = model_name, log_name = log_name), range(nb_estim))
     results = np.asarray(results)    
@@ -181,7 +181,7 @@ def multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir, duration_
     model_name = "1320_dosesvol_lasso"
     covariates = [feature for feature in df_trainset0.columns if re.match("dv_\w+_1320", feature)] + clinical_vars
     logger.info("Model heart doses volumes lasso (1320)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name, log_name = log_name), range(nb_estim))
     
@@ -255,7 +255,7 @@ def multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, eve
     model_name = "32X_radiomics_lasso"
     covariates = [feature for feature in df_trainset0.columns if re.match("^32[0-9]_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 32X (full trainset lasso)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name, log_name = log_name), range(nb_estim))
     results = np.asarray(results)    
@@ -266,7 +266,7 @@ def multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, eve
     model_name = "32X_radiomics_features_hclust_lasso"
     covariates = [feature for feature in features_hclust_corr if re.match("^32[0-9]_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 32X (hclust corr feature elimination trainset lasso)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name, log_name = log_name), range(nb_estim))
     results = np.asarray(results)    
@@ -277,7 +277,7 @@ def multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, eve
     model_name = "1320_radiomics_lasso"
     covariates = [feature for feature in df_trainset0.columns if re.match("^1320_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 1320 (full trainset lasso)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name, log_name = log_name), range(nb_estim))
     results = np.asarray(results)    
@@ -288,7 +288,7 @@ def multiple_scores_cox_lasso_radiomics(nb_estim, file_features_hclust_corr, eve
     model_name = "1320_radiomics_features_hclust_lasso"
     covariates = [feature for feature in features_hclust_corr if re.match("^1320_.*", feature)] + clinical_vars
     logger.info("Model heart dosiomics 1320 (hclust corr feature elimination trainset lasso)")
-    with Pool(get_ncpus()) as p:
+    with Pool(get_ncpus()-1) as p:
         results = p.map(partial(refit_best_cox_id, covariates = covariates, event_col = event_col, duration_col = duration_col, 
                                                     analyzes_dir = analyzes_dir, penalty = "lasso", model_name = model_name, log_name = log_name), range(nb_estim))
     results = np.asarray(results)    
