@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import os
 
 """
 for model in ["pathol_cardiaque", "pathol_cardiaque_chimio", "pathol_cardiaque_drugs"]:
@@ -32,13 +33,18 @@ def generate_line_multiple(df):
 
 #for model in ["pathol_cardiaque_chimio", "pathol_cardiaque_drugs", "pathol_cardiaque_grade3_chimio"]:
 #for model in ["pathol_cardiaque_drugs", "pathol_cardiaque_grade3_drugs", "pathol_cardiaque_drugs_iccc_other", "pathol_cardiaque_grade3_drugs_iccc_other"]:
-for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
-    coxph_results_dir = f"../../slurm_results/analyzes/{model}/coxph_R_results/"
-    rsf_results_dir = f"../../slurm_results/analyzes/{model}/rsf_results/"
+#for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
+for model in ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1_filter_entropy"]:
+    #coxph_results_dir = f"../../slurm_results/analyzes/{model}/coxph_R_results/"
+    #rsf_results_dir = f"../../slurm_results/analyzes/{model}/rsf_results/"
+    coxph_results_dir = f"/media/moud/LaCie/local_results/analyzes/{model}/coxph_R_results/"
+    rsf_results_dir = f"/media/moud/LaCie/local_results/analyzes/{model}/rsf_results/"
+    os.makedirs(f"tables/{model}", exist_ok = True)
 
     df_cox_mean = pd.read_csv(coxph_results_dir + "metrics_1320_mean.csv", index_col = 0)
     df_dosesvol = pd.read_csv(coxph_results_dir + "metrics_1320_dosesvol.csv", index_col = 0)
     df_dosesvol_lasso = pd.read_csv(coxph_results_dir + "metrics_1320_dosesvol_lasso.csv", index_col = 0)
+    df_rsf_dosesvol = pd.read_csv(rsf_results_dir + "metrics_1320_dosesvol.csv", index_col = 0)
     # Firstorder radiomics Cox
     df_cox_1320_firstorder = pd.read_csv(coxph_results_dir + "metrics_1320_radiomics_firstorder_lasso_all.csv", index_col = 0)
     df_cox_1320_filter_firstorder = pd.read_csv(coxph_results_dir + "metrics_1320_radiomics_firstorder_lasso_features_hclust_corr.csv", index_col = 0)
@@ -66,6 +72,7 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
     table_train += f"Cox mean heart dose & {generate_line_set(df_cox_mean, 'Train')} \\\\ \\hline\n"
     table_train += f"Cox doses volumes & {generate_line_set(df_dosesvol, 'Train')} \\\\ \\hline\n"
     table_train += f"Cox Lasso doses volumes & {generate_line_set(df_dosesvol_lasso, 'Train')}  \\\\ \\hline\n"
+    table_train += f"RSF doses volumes & {generate_line_set(df_rsf_dosesvol, 'Train')}  \\\\ \\hline\n"
     # Firstorder radiomics Cox
     table_train += f"Cox Lasso firstorder whole heart (AllTrain) & {generate_line_set(df_cox_1320_firstorder, 'Train')}  \\\\ \\hline\n"
     table_train += f"Cox Lasso firstorder whole heart (FETrain) & {generate_line_set(df_cox_1320_filter_firstorder, 'Train')}  \\\\ \\hline\n"
@@ -94,6 +101,7 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
     table_test += f"Cox mean heart dose & {generate_line_set(df_cox_mean, 'Test')} \\\\ \\hline\n"
     table_test += f"Cox doses volumes & {generate_line_set(df_dosesvol, 'Test')} \\\\ \\hline\n"
     table_test += f"Cox Lasso doses volumes & {generate_line_set(df_dosesvol_lasso, 'Test')}  \\\\ \\hline\n"
+    table_test += f"RSF doses volumes & {generate_line_set(df_rsf_dosesvol, 'Test')}  \\\\ \\hline\n"
     # Firstorder radiomics Cox
     table_test += f"Cox Lasso firstorder whole heart (AllTrain) & {generate_line_set(df_cox_1320_firstorder, 'Test')}  \\\\ \\hline\n"
     table_test += f"Cox Lasso firstorder whole heart (FETrain) & {generate_line_set(df_cox_1320_filter_firstorder, 'Test')}  \\\\ \\hline\n"
@@ -120,6 +128,7 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
     df_multiple_cox_mean = pd.read_csv(coxph_results_dir + str(nb_estim) + "_runs_test_metrics_1320_mean.csv", index_col = 0)
     df_multiple_dosesvol = pd.read_csv(coxph_results_dir + str(nb_estim) + "_runs_test_metrics_1320_dosesvol.csv", index_col = 0)
     df_multiple_dosesvol_lasso = pd.read_csv(coxph_results_dir + str(nb_estim) + "_runs_test_metrics_1320_dosesvol_lasso.csv", index_col = 0)
+    df_multiple_rsf_dosesvol = pd.read_csv(rsf_results_dir + str(nb_estim) + "_runs_test_metrics_1320_dosesvol.csv", index_col = 0)
     # Firstorder radiomics Cox
     df_multiple_cox_1320_firstorder = pd.read_csv(coxph_results_dir + str(nb_estim) + "_runs_test_metrics_1320_radiomics_firstorder_lasso_all.csv", index_col = 0)
     df_multiple_cox_1320_filter_firstorder = pd.read_csv(coxph_results_dir + str(nb_estim) + "_runs_test_metrics_1320_radiomics_firstorder_lasso_features_hclust_corr.csv", index_col = 0)
@@ -146,6 +155,7 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
         "Cox mean heart dose" : df_multiple_cox_mean,
         "Cox doses-volumes indicators": df_multiple_dosesvol,
         "Cox Lasso doses-volumes indicators": df_multiple_dosesvol_lasso,
+        "RSF doses-volumes indicators": df_multiple_rsf_dosesvol,
         "Cox Lasso whole-heart first-order dosiomics": df_multiple_cox_1320_firstorder,
         "Cox Lasso screened whole-heart first-order dosiomics": df_multiple_cox_1320_filter_firstorder,
         "Cox Lasso heart's subparts first-order dosiomics": df_multiple_cox_32X_firstorder,
@@ -183,8 +193,9 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
     fig.update_yaxes(range = [0.6, 0.8], title = "Mean C-index")
     fig.update_xaxes(categoryorder = "total descending", title = "Model", tickfont = {'size': 19})
     fig.update_layout(legend = {'font' : {'size' : 15}})
+    fig.update_layout(title = model)
     # fig.update_layout(xaxis_categoryorder = "total descending")
-    fig.write_image("tables/results_cindex.png", width = 1200, height = 900)
+    fig.write_image(f"tables/{model}/results_cindex.png", width = 1200, height = 900)
 
     #table_multiple = "\\begin{tabular}{|c|c|c|c|c|}\n"
     table_multiple = "\\begin{tabular}{|c|c|c|}\n"
@@ -194,6 +205,7 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
     table_multiple += f"Cox mean heart dose & {generate_line_multiple(df_multiple_cox_mean)} \\\\ \\hline\n"
     table_multiple += f"Cox doses volumes & {generate_line_multiple(df_multiple_dosesvol)} \\\\ \\hline\n"
     table_multiple += f"Cox Lasso doses volumes & {generate_line_multiple(df_multiple_dosesvol_lasso)}  \\\\ \\hline\n"
+    table_multiple += f"RSF doses volumes & {generate_line_multiple(df_multiple_rsf_dosesvol)}  \\\\ \\hline\n"
     # Firstorder radiomics Cox
     table_multiple += f"Cox Lasso whole heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_cox_1320_firstorder)}  \\\\ \\hline\n"
     table_multiple += f"Cox Lasso whole heart firstorder (FETrain) & {generate_line_multiple(df_multiple_cox_1320_filter_firstorder)}  \\\\ \\hline\n"
@@ -216,10 +228,10 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
     table_multiple += f"RSF subparts of heart (FETrain) & {generate_line_multiple(df_multiple_rsf_32X_filter)}  \\\\ \\hline\n"
     table_multiple += "\\end{tabular}" 
 
-    with open(f"tables/results_train_{model}.tex", "w") as f:
+    with open(f"tables/{model}/results_train.tex", "w") as f:
         f.write(table_train)
-    with open(f"tables/results_test_{model}.tex", "w") as f:
+    with open(f"tables/{model}/results_test.tex", "w") as f:
         f.write(table_test)
-    with open(f"tables/results_multiple_scores_{nb_estim}_{model}.tex", "w") as f:
+    with open(f"tables/{model}/results_multiple_scores_{nb_estim}.tex", "w") as f:
         f.write(table_multiple)
 

@@ -70,14 +70,21 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 %\foreach \picturesdir in {{../../slurm_results/analyzes/pathol_cardiaque},{../../slurm_results/analyzes/pathol_cardiaque_chimio},{../../slurm_results/analyzes/pathol_cardiaque_drugs}} {%
 
 \newcommand{\nbestim}{10}
-\newcommand{\analyzesdir}{../../slurm_results/analyzes}
-\foreach \model in {{pathol_cardiaque_chimio},{pathol_cardiaque_drugs},{pathol_cardiaque_grade3_chimio}} {%
+%\newcommand{\analyzesdir}{../../slurm_results/analyzes}
+\newcommand{\analyzesdir}{/media/moud/LaCie/local_results/analyzes}
+
+
+%\foreach \model in {{pathol_cardiaque_chimio},{pathol_cardiaque_drugs},{pathol_cardiaque_grade3_chimio}} {%
+%\foreach \model in {{pathol_cardiaque_drugs}, {pathol_cardiaque_grade3_drugs}} {%
+\foreach \model in {{pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1_filter_entropy}} {%
+%\foreach \model in {\listmodels} {%
+%\foreach \model in {{pathol_cardiaque_chimio}} {%
 
 \StrSubstitute{\model}{_}{ }[\titlemodel]
 \subsection{\titlemodel}
 
 \begin{figure}[H]
-    \textbf{1320 mean (\titlemodel)}
+    \textbf{Cox 1320 mean (\titlemodel)}
     \centering
     \includegraphics[width=0.9\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_mean.png} \\
     \caption{Coefficients of mean heart dose.}
@@ -85,7 +92,7 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 
 
 \begin{figure}[H]
-\textbf{1320 doses volumes (\titlemodel)}
+\textbf{Cox 1320 doses volumes (\titlemodel)}
     \centering
     \begin{tabular}{c}
     \includegraphics[width=0.9\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_dosesvol.png} \\
@@ -94,7 +101,7 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 \end{figure}    
 
 \begin{figure}[H]
-\textbf{1320 doses volumes lasso (\titlemodel)}
+\textbf{Cox Lasso 1320 doses volumes (\titlemodel)}
     \centering
     \begin{tabular}{ll}
         \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_dosesvol_lasso.png} &
@@ -105,45 +112,53 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 \end{figure}    
 
 \begin{figure}[H]
-\textbf{1320 radiomics lasso all (\titlemodel)}
+\textbf{RSF 1320 doses volumes (\titlemodel)}
+    \centering
+    \begin{tabular}{c}
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_1320_dosesvol.png}
+    \end{tabular}
+\end{figure}
+
+\begin{figure}[H]
+\textbf{Cox Lasso 1320 radiomics full lasso all (\titlemodel)}
     \centering
     \begin{tabular}{ll}
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_radiomics_lasso_all.png} &
-        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_radiomics_lasso_all.png} \\
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_radiomics_lasso_all.png} & \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_radiomics_full_lasso_all.png} &
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_radiomics_full_lasso_all.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_radiomics_full_lasso_all.png} & \\
     \end{tabular}
     \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Global heart dosiomics (AllTrain).}
 \end{figure}    
 
 \begin{figure}[H]
-\textbf{1320 radiomics lasso features hclust (\titlemodel)}
+\textbf{Cox Lasso 1320 radiomics full lasso features hclust (\titlemodel)}
     \centering
     \begin{tabular}{ll}
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_radiomics_lasso_features_hclust_corr.png} &
-        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_radiomics_lasso_features_hclust_corr.png} \\
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_radiomics_lasso_features_hclust_corr.png} & \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_1320_radiomics_full_lasso_features_hclust_corr.png} &
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_1320_radiomics_full_lasso_features_hclust_corr.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_1320_radiomics_full_lasso_features_hclust_corr.png} & \\
     \end{tabular}
     \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Global heart dosiomics (FETrain).}
 \end{figure}
 
 \begin{figure}[H]
-\textbf{32X radiomics lasso all (\titlemodel)}
+\textbf{Cox Lasso 32X radiomics full lasso all (\titlemodel)}
     \centering
     \begin{tabular}{ll}
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_32X_radiomics_lasso_all.png} & 
-        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_32X_radiomics_lasso_all.png} \\
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_32X_radiomics_lasso_all.png} & \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_32X_radiomics_full_lasso_all.png} & 
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_32X_radiomics_full_lasso_all.png} \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_32X_radiomics_full_lasso_all.png} & \\
     \end{tabular}
     \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Subparts of heart dosiomics (AllTrain)}
 \end{figure}
 
 \begin{figure}[H]
-\textbf{32X radiomics lasso features hclust (\titlemodel)}
+\textbf{Cox Lasso 32X radiomics full lasso features hclust (\titlemodel)}
     \centering
     \begin{tabular}{ll}
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_32X_radiomics_lasso_features_hclust_corr.png} & 
-        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_32X_radiomics_lasso_features_hclust_corr.png} \\ 
-        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_32X_radiomics_lasso_features_hclust_corr.png} & \\
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/regularization_path_32X_radiomics_full_lasso_features_hclust_corr.png} & 
+        \includegraphics[width=0.6\textwidth]{\analyzesdir/\model/coxph_R_plots/coefs_32X_radiomics_full_lasso_features_hclust_corr.png} \\ 
+        \includegraphics[width=0.65\textwidth]{\analyzesdir/\model/coxph_R_plots/cv_mean_error_32X_radiomics_full_lasso_features_hclust_corr.png} & \\
     \end{tabular}
     \caption{Regularization path plot: estimated coefficients of the Cox Lasso model evolving along with the penalty alpha. Subparts of heart dosiomics (FETrain)}
 \end{figure}
@@ -151,12 +166,12 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 \begin{figure}[H]
     \centering
     \begin{tabular}{cc}
-    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_1320_all.png}
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_1320_radiomics_full_all.png}
     &  
-    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_1320_features_hclust_corr.png} \\
-    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_32X_all.png}
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_1320_radiomics_full_features_hclust_corr.png} \\
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_32X_radiomics_full_all.png}
     &
-    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_model_32X_features_hclust_corr.png} \\
+    \includegraphics[width=0.45\textwidth]{\analyzesdir/\model/rsf_plots/rsf_vimp_32X_radiomics_full_features_hclust_corr.png} \\
     \end{tabular}
     \caption{Estimated feature importances of Random Survival Forestsls using VIMP method.\\
     Top: global heart dosiomics (left: AllTrain, right: FETrain). \\
@@ -166,7 +181,7 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 \begin{table}[h]
     \centering
     \small
-    \input{tables/results_train_\model.tex}
+    \input{tables/\model/results_train.tex}
     \caption{Metrics results over the train set.}
     \label{tab:my_label}
 \end{table}
@@ -174,7 +189,7 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 \begin{table}[h]
     \centering
     \small
-    \input{tables/results_test_\model.tex}
+    \input{tables/\model/results_test.tex}
     \caption{Metrics results over the test set.}
     \label{tab:my_label}
 \end{table}
@@ -182,7 +197,7 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 \begin{table}[h]
     \centering
     \small
-    \input{tables/results_multiple_scores_\nbestim_\model.tex}
+    \input{tables/\model/results_multiple_scores_\nbestim.tex}
     \caption{Metrics results over the test set for \nbestim runs.}
     \label{tab:my_label}
 \end{table}
@@ -192,14 +207,18 @@ Second, we compute the Brier score at 60 years (above 99\% quantile of survival 
 
 \subsection{Only multiple runs results over the test set}
 
-\foreach \model in {{pathol_cardiaque_chimio},{pathol_cardiaque_drugs},{pathol_cardiaque_grade3_chimio}} {%
+%\foreach \model in {\listmodels} {%
+%\foreach \model in {{pathol_cardiaque_chimio},{pathol_cardiaque_drugs},{pathol_cardiaque_grade3_chimio}} {%
+%\foreach \model in {{pathol_cardiaque_drugs}, {pathol_cardiaque_grade3_drugs}} {%
+\foreach \model in {{pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1_filter_entropy}} {%
+%\foreach \model in {{pathol_cardiaque_chimio}} {%
 
 \StrSubstitute{\model}{_}{ }[\titlemodel]
 \begin{table}[h]
     \centering
     \small
     \textbf{\titlemodel}
-    \input{tables/results_multiple_scores_\nbestim_\model.tex}
+    \input{tables/\model/results_multiple_scores_\nbestim.tex}
     \caption{Metrics results over the test set for \nbestim runs.}
     \label{tab:my_label}
 \end{table}
