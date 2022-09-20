@@ -16,13 +16,12 @@ model_rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_d
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
     log_appender(appender_file(rsf_logfile, append = TRUE))
-    log_info(id_set)
     model_rsf(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
-              save_results = FALSE, load_results = TRUE, level = INFO)
+              save_results = FALSE, load_results = TRUE, level = INFO, id_set = id_set)
 }
 
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
-                      analyzes_dir, model_name, rsf_logfile, 
+                      analyzes_dir, model_name, rsf_logfile, id_set = "", cv_nfolds = 5,  
                       save_results = TRUE, load_results = FALSE, level = INFO,  
                       ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
     log_threshold(level)
@@ -37,8 +36,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_model_test <- df_testset[,c(event_col, duration_col, filtered_covariates)]
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
-    log_info(paste("Model name:", model_name))
-    log_info(paste0("Covariates (", length(filtered_covariates),"):"))
+    log_info(paste0("(", id_set, ") ", "Model name: ", model_name))
+    log_info(paste0("(", id_set, ") ", "Covariates (", length(filtered_covariates),"):"))
     if (!run_parallel) {
         log_info(paste0(filtered_covariates, collapse = ", "))
         log_info(paste0("Trained:", nrow(df_model_train), "samples"))
@@ -53,15 +52,18 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     } else {
         params.df <- create.params.df(ntrees, nodesizes, nsplits)
         # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
-        cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, pred.times = pred.times, error.metric = "cindex")
+        cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, 
+                            nfolds = cv_nfolds, pred.times = pred.times, error.metric = "cindex")
     }
     if (save_results) {
         write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
         params.best <- cv.params[1,]
     }
-    log_info("Best params:")
-    log_info(toString(names(params.best)))
-    log_info(toString(params.best))
+    if (!run_parallel) {
+        log_info("Best params:")
+        log_info(toString(names(params.best)))
+        log_info(toString(params.best))
+    } 
     rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
     # Predictions
     rsf.survprob.train <- predictSurvProb(rsf.best, newdata = df_model_train, times = pred.times)
@@ -85,15 +87,17 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.err.oob <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted.oob)
     rsf.err.train <- get.cindex(rsf.best$yvar[[duration_col]], rsf.best$yvar[[event_col]], rsf.best$predicted)
     rsf.err.test <- get.cindex(rsf.pred.test$yvar[[duration_col]], rsf.pred.test$yvar[[event_col]], rsf.pred.test$predicted)
-    log_info(paste0("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
-    log_info(paste0("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
-    log_info(paste0("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
-    log_info(paste0("rfsrc C-index on trainset: ", 1-rsf.err.train))
-    log_info(paste0("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
-    log_info(paste0("rfsrc C-index on testset: ", 1-rsf.err.test))
-    log_info(paste0("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
-    log_info(paste0("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
-    log_info(paste0("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
+    if (!run_parallel) {
+        log_info(paste0("Harrell's C-index on trainset: ", rsf.cindex.harrell.train))
+        log_info(paste0("Harrell's C-index OOB trainset: ", rsf.cindex.harrell.oob))
+        log_info(paste0("Harrell's C-index on testset: ", rsf.cindex.harrell.test))
+        log_info(paste0("rfsrc C-index on trainset: ", 1-rsf.err.train))
+        log_info(paste0("rfsrc C-index OOB trainset: ", 1-rsf.err.oob))
+        log_info(paste0("rfsrc C-index on testset: ", 1-rsf.err.test))
+        log_info(paste0("IPCW C-index on trainset: ", rsf.cindex.ipcw.train))
+        log_info(paste0("IPCW C-index OOB trainset: ", rsf.cindex.ipcw.oob))
+        log_info(paste0("IPCW C-index on testset: ", rsf.cindex.ipcw.test))
+    }
     # IBS
     # Z normalisation for Breslow estimator of pec
     # means_train <- as.numeric(lapply(df_model_train[filtered_covariates], mean))
@@ -116,18 +120,20 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rsf.ibs.train <- crps(rsf.perror.train)[1]
     rsf.ibs.oob <- crps(rsf.perror.train)[2]
     rsf.ibs.test <- crps(rsf.perror.test)[1]
-    log_info(paste0("BS at 60 on trainset: ", rsf.bs.final.train))
-    log_info(paste0("BS OOB at 60 on trainset: ", rsf.bs.final.oob))
-    log_info(paste0("BS at 60 on testset: ", rsf.bs.final.test))
-    log_info(paste0("IBS on trainset: ", rsf.ibs.train))
-    log_info(paste0("IBS OOB on trainset: ", rsf.ibs.oob))
-    log_info(paste0("IBS on testset: ", rsf.ibs.test))
+    if (!run_parallel) {
+        log_info(paste0("BS at 60 on trainset: ", rsf.bs.final.train))
+        log_info(paste0("BS OOB at 60 on trainset: ", rsf.bs.final.oob))
+        log_info(paste0("BS at 60 on testset: ", rsf.bs.final.test))
+        log_info(paste0("IBS on trainset: ", rsf.ibs.train))
+        log_info(paste0("IBS OOB on trainset: ", rsf.ibs.oob))
+        log_info(paste0("IBS on testset: ", rsf.ibs.test))
+    }
     results_train <- c(rsf.cindex.harrell.train, rsf.cindex.ipcw.train, 
                        rsf.bs.final.train, rsf.ibs.train)
     results_test <- c(rsf.cindex.harrell.test, rsf.cindex.ipcw.test, 
                       rsf.bs.final.test, rsf.ibs.test)
-    log_info(paste0("Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
-    log_info(paste0("Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
+    log_info(paste0("(", id_set, ") ", "Train:", results_train[1], "&", results_train[2], "&", results_train[3], "&", results_train[4]))
+    log_info(paste0("(", id_set, ") ", "Test:", results_test[1], "&", results_test[2], "&", results_test[3], "&", results_test[4]))
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {
