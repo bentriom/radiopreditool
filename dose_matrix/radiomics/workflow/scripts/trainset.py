@@ -244,7 +244,7 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, 
         for feature in list_features:
             cph_feature = CoxPHFitter(penalizer = 0.0001)
             df_survival.loc[:,feature] = StandardScaler().fit_transform(df_survival[[feature]])
-            cph_feature.fit(df_survival, step_size = 0.5, duration_col = surv_duration_col,
+            cph_feature.fit(df_survival, step_size = 0.4, duration_col = surv_duration_col,
                             event_col = event_col, formula = feature)
             pvalue = cph_feature.summary.loc[feature, "p"]
             coef = cph_feature.summary.loc[feature, "coef"]
@@ -354,7 +354,7 @@ def pca_viz(file_dataset, event_col, analyzes_dir, duration_col = "survival_time
         cph_feature = CoxPHFitter(penalizer = 0.0001)
         df_univariate = df_dataset[[event_col, duration_col, feature]].dropna()
         df_univariate.loc[:,feature] = StandardScaler().fit_transform(df_univariate[[feature]])
-        cph_feature.fit(df_univariate, step_size = 0.5, duration_col = duration_col, event_col = event_col, formula = feature)
+        cph_feature.fit(df_univariate, step_size = 0.4, duration_col = duration_col, event_col = event_col, formula = feature)
         pvalue = cph_feature.summary.loc[feature, "p"]
         list_pvalues.append(pvalue)
     logger.info("Non-rejected Cox test features are dropped (FDR correction - 0.01)")
