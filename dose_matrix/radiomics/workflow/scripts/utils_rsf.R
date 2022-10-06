@@ -27,6 +27,10 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(level)
     log_appender(appender_file(rsf_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
+    save_results_dir <- paste0(analyzes_dir, "rsf_results/", model_name, "/")
+    save_plots_dir <- paste0(analyzes_dir, "rsf_plots/", model_name, "/")
+    dir.create(save_results_dir, showWarnings = FALSE)
+    dir.create(save_plots_dir, showWarnings = FALSE)
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -48,7 +52,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))
     pred.times <- seq(1, final.time, by = 1)
     if (load_results) {
-        params.best <- read.csv(paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"))[1,]
+        params.best <- read.csv(paste0(save_results_dir, "cv.csv"))[1,]
     } else {
         params.df <- create.params.df(ntrees, nodesizes, nsplits)
         # test.params.df <- data.frame(ntrees = c(5), nodesizes = c(50), nsplits = c(10))
@@ -56,7 +60,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
                             nfolds = cv_nfolds, pred.times = pred.times, error.metric = "cindex")
     }
     if (save_results) {
-        write.csv(cv.params, file = paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"), row.names = FALSE)
+        write.csv(cv.params, file = paste0(save_results_dir, "cv.csv"), row.names = FALSE)
         params.best <- cv.params[1,]
     }
     if (!run_parallel) {
@@ -137,8 +141,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {
-        write.csv(df_results, file = paste0(analyzes_dir, "rsf_results/metrics_", model_name, ".csv"), row.names = TRUE)
-        saveRDS(rsf.best, file = paste0(analyzes_dir, "rsf_results/fitted_models/", model_name, ".rds"))
+        write.csv(df_results, file = paste0(save_results_dir, "metrics.csv"), row.names = TRUE)
+        saveRDS(rsf.best, file = paste0(save_results_dir, "model.rds"))
     }
     log_threshold(INFO)
     results_test
@@ -149,7 +153,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
 plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
     new_labels <- pretty.labels(rsf.obj$xvar.names)
     subs.rsf.obj <- subsample(rsf.obj, B = 100)
-    png(paste0(analyzes_dir, "rsf_plots/rsf_vimp_", model_name, ".png"), width = 1250, height = 1600, res = 70)
+    save_plots_dir <- paste0(analyzes_dir, "rsf_plots/", model_name, "/")
+    png(paste0(save_plots_dir, "rsf_vimp.png"), width = 1250, height = 1600, res = 70)
     par(oma = c(0.5, 10, 0.5, 0.5))
     par(cex.axis = 2.0, cex.lab = 2.0, cex.main = 2.0, mar = c(6.0,17,1,1), mgp = c(4, 1, 0))
     pmax = 30
@@ -276,7 +281,7 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
     df_model_test <- na.omit(df_model_test)
     # Fit RSF
     formula_model <- get.surv.formula(event_col, covariates, duration_col = duration_col)
-    params.best <- read.csv(paste0(analyzes_dir, "rsf_results/cv_", model_name, ".csv"))[1,]
+    params.best <- read.csv(paste0(save_results_dir, "cv.csv"))[1,]
     rsf.best <- rfsrc(formula_model, data = df_model_train, ntree = params.best$ntree, nodesize = params.best$nodesize, nsplit = params.best$nsplit)
     # Predictions / metrics
     final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))

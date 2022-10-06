@@ -26,7 +26,8 @@ NII_DIR = RESULTS_DIR + "nii/"
 METADATA_DIR = RESULTS_DIR + "metadata/"
 RADIOMICS_DIR = RESULTS_DIR + "extraction/" + RADIOMICS_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
-CONFIGFILE_PATH = sys.argv[sys.argv.index("--configfile")+1]
+CONFIGFILE_PATH = sys.argv[sys.argv.index("--configfile")+1] if "--configfile" in sys.argv \
+                  else sys.argv[sys.argv.index("--configfiles")+1]
 
 # Wildcard functions
 def get_newdosi_files(wildcards):

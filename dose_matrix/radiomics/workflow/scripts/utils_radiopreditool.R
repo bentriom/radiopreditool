@@ -2,6 +2,11 @@
 suppressPackageStartupMessages(library("stringr", quietly = TRUE))
 suppressPackageStartupMessages(library("parallel", quietly = TRUE))
 
+# Get analyzes dir from the snakemake's config file
+get.analyzes_dir_from_config <- function(config) {
+    paste0(config$RESULTS_DIR, "analyzes/", config$MODEL_NAME, "/")
+}
+
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
     regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")

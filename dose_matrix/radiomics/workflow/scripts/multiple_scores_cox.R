@@ -1,4 +1,5 @@
 
+suppressPackageStartupMessages({library("yaml", quietly = TRUE)})
 options(show.error.locations = TRUE, error=traceback)
 
 source("workflow/scripts/utils_cox.R")
@@ -24,7 +25,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Coxph doses volumes indicators of heart (1320)
@@ -36,7 +37,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
     # Coxph doses volumes indicators of heart Lasso (1320)
@@ -48,7 +49,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     log_info("Multiple scores baseline models learning R: Done")
@@ -80,7 +81,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
     # Coxph Lasso radiomics firstorder 1320
@@ -92,7 +93,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Coxph Lasso all radiomics 32X
@@ -104,7 +105,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
     # Coxph Lasso all radiomics 1320
@@ -116,7 +117,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     log_info("Multiple scores cox lasso radiomics learning R: Done")
@@ -126,22 +127,25 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-    run_type <- args[1]
-    nb_estim <- as.numeric(args[2])
-    analyzes_dir <- args[3]
-    event_col <- args[4]
-    duration_col <- args[5]
+    config <- yaml.load_file(args[1])
+    run_type <- args[2]
+    analyzes_dir <- get.analyzes_dir_from_config(config)
+    event_col <- config$EVENT_COL
+    duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
+    nb_estim <- as.numeric(config$NB_ESTIM_SCORE_MODELS)
+    file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
+    file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
+    file_features <- "all"
     log_threshold(INFO)
-    if (run_type == "multiple_scores_baseline_models") {
+    if (run_type == "baseline_models") {
         multiple_scores_baseline_models(nb_estim, event_col, analyzes_dir, duration_col)
-    } else if (run_type == "multiple_scores_cox_lasso_radiomics_all") {
-        file_features <- "all"
+    } else if (run_type == "cox_lasso_radiomics_all") {
         multiple_scores_cox_radiomics(nb_estim, file_features, event_col, analyzes_dir, duration_col, "all")
-    } else if (run_type == "multiple_scores_cox_lasso_radiomics_features_hclust_corr") {
-        file_features <- args[6]
+    } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
+        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         multiple_scores_cox_radiomics(nb_estim, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr")
     } else {
-        print("Run type unrecognized.")
+        stop(paste("Run type unrecognized:", run_type))
     }
 } else {
     print("No arguments provided. Skipping.")

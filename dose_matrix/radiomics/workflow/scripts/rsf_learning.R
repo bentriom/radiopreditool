@@ -2,6 +2,7 @@
 options(show.error.locations = TRUE, error=traceback)
 
 suppressPackageStartupMessages({
+library("yaml", quietly = TRUE)
 library("caret", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
@@ -17,7 +18,6 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
                          analyzes_dir, duration_col, suffix_model, subdivision_type) {
     dir.create(paste0(analyzes_dir, "rsf_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "rsf_results/fitted_models/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
     options(rf.cores = nworkers, mc.cores = nworkers)
     rsf_logfile <- paste0(analyzes_dir, "rsf_", suffix_model, "_", subdivision_type,".log")
@@ -87,17 +87,26 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-    file_trainset = args[1]
-    file_testset = args[2]
-    file_features <- args[3]
-    event_col <- args[4]
-    analyzes_dir <- args[5]
-    suffix_model <- args[6]
-    subdivision_type <- args[7]
-    duration_col <- `if`(length(args) == 8, args[8], "survival_time_years")
+    config <- yaml.load_file(args[1])
+    run_type <- args[2]
+    subdivision_type <- args[3]
+    analyzes_dir <- get.analyzes_dir_from_config(config)
+    event_col <- config$EVENT_COL
+    duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
+    file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
+    file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
+    file_features <- "all"
     log_threshold(INFO)
-    rsf_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model, subdivision_type)
-} else{
+    if (run_type == "rsf_radiomics_all") {
+        rsf_learning(file_trainset, file_testset, file_features, event_col, 
+                     analyzes_dir, duration_col, "all", subdivision_type)
+    } else if (run_type == "rsf_radiomics_features_hclust_corr") {
+        rsf_learning(file_trainset, file_testset, file_features, event_col, 
+                     analyzes_dir, duration_col, "features_hclust_corr", subdivision_type)
+    } else {
+        stop(paste("Run type unrecognized:", run_type))
+    }
+} else {
     print("No arguments provided. Skipping.")
 }
 

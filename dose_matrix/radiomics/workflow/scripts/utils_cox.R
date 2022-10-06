@@ -14,9 +14,9 @@ library("reshape2", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
 })
 # Not available in conda
-if(!require("bolasso")) {
-    install.packages("bolasso", repos = "https://cran.irsn.fr/")
-}
+# if(!require("bolasso")) {
+#     install.packages("bolasso", repos = "https://cran.irsn.fr/")
+#}
 
 source("workflow/scripts/utils_radiopreditool.R")
 
@@ -225,14 +225,6 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     out
 }
 
-# Plot bootstrap selected coefficients + error statistics
-plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
-    freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
-    df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
-    ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + coord_flip()
-    ggsave(paste0(analyzes_dir, "coxph_R_plots/freq_selected_features_", model_name, ".png"), device = "png", dpi = 480)
-}
-
 model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
@@ -249,6 +241,10 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
+    save_results_dir <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/")
+    save_plots_dir <- paste0(analyzes_dir, "coxph_R_plots/", model_name, "/")
+    dir.create(save_results_dir, showWarnings = FALSE)
+    dir.create(save_plots_dir, showWarnings = FALSE)
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -283,8 +279,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         coxmodel <- coxph(formula_model, data = df_model_train, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
     } else if (penalty == "lasso") {
         if (load_results) {
-            best.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))[1, "penalty"]
-            list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))[["lambda"]]
+            best.lambda <- read.csv(paste0(save_results_dir, "best_params.csv"))[1, "penalty"]
+            list.lambda <- read.csv(paste0(save_results_dir, "path_lambda.csv"))[["lambda"]]
             coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, list.lambda = list.lambda, type.measure = "C")
         } else {
             coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, nfolds = cv_nfolds, 
@@ -294,19 +290,19 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ]
             best.lambda = select_best_lambda(coxmodel$coxnet.fit, cv.params)
             if (save_results) {
-                write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
+                write.csv(cv.params, file = paste0(save_results_dir, "cv.csv"), row.names = FALSE)
                 write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), row.names = F, 
-                          file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
+                          file = paste0(save_results_dir, "best_params.csv"))
                 write.csv(data.frame(lambda = coxmodel$coxnet.fit$lambda[coxmodel$coxnet.fit$lambda >= best.lambda]), row.names = F, 
-                          file = paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))
+                          file = paste0(save_results_dir, "path_lambda.csv"))
             }
         }
         if (!run_parallel)
             log_info(paste("Best lambda:", best.lambda))
     } else if (penalty == "bootstrap_lasso") {
         if (load_results) {
-            selected_features <- read.csv(paste0(analyzes_dir, "coxph_R_results/final_selected_features_", model_name, ".csv"))[["selected_features"]]
-            bootstrap_selected_features <- read.csv(paste0(analyzes_dir, "coxph_R_results/bootstrap_selected_features_", model_name, ".csv"), header = T)
+            selected_features <- read.csv(paste0(save_results_dir, "final_selected_features.csv"))[["selected_features"]]
+            bootstrap_selected_features <- read.csv(paste0(save_results_dir, "bootstrap_selected_features.csv"), header = T)
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
                                          best.lambda = "lambda.1se", selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features)
@@ -314,9 +310,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, best.lambda = "lambda.1se")
             if (save_results) {
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
-                          file = paste0(analyzes_dir, "coxph_R_results/bootstrap_selected_features_", model_name, ".csv"))
+                          file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
                 write.csv(data.frame(selected_features = coxmodel$selected_features), row.names = F,
-                          file = paste0(analyzes_dir, "coxph_R_results/final_selected_features_", model_name, ".csv"))
+                          file = paste0(save_results_dir, "final_selected_features.csv"))
             }
         }
     }
@@ -367,8 +363,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {
-        write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
-        saveRDS(coxmodel, file = paste0(analyzes_dir, "coxph_R_results/fitted_models/", model_name, ".rds"))
+        write.csv(df_results, file = paste0(save_results_dir, "metrics.csv"), row.names = TRUE)
+        saveRDS(coxmodel, file = paste0(save_results_dir, "model.rds"))
     }
     if (do_plot) {
         if (penalty == "none") {
@@ -385,20 +381,22 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
 }
 
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
+    save_results_dir <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/")
+    save_plots_dir <- paste0(analyzes_dir, "coxph_R_plots/", model_name, "/")
     # Coefficients of best Cox
     if (is(cox_object, "cv.glmnet") | is(cox_object, "glmnet")) {
-        best.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
+        best.params <- read.csv(paste0(save_results_dir, "best_params.csv"))
         best.lambda <- best.params[1, "penalty"]
     }
     best.coefs.cox <- `if`(is(cox_object, "glmnet") | is(cox_object, "cv.glmnet"), coef(cox_object, s = best.lambda)[,1], coef(cox_object))
     names.nonnull.coefs <- pretty.labels(names(best.coefs.cox[abs(best.coefs.cox) > 0]))
     df.coefs = data.frame(labels = pretty.labels(names(best.coefs.cox)), coefs = best.coefs.cox)
     ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + geom_bar(stat = "identity") + coord_flip() 
-    ggsave(paste0(analyzes_dir, "coxph_R_plots/coefs_", model_name, ".png"), device = "png", dpi = 480)
+    ggsave(paste0(save_plots_dir, "coefs.png"), device = "png", dpi = 480)
     # Regularization path + mean error for Cox Lasso
     if (is(cox_object, "cv.glmnet")) {
         # Mean errors of cross-validation
-        cv.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"))
+        cv.params <- read.csv(paste0(save_results_dir, "cv.csv"))
         cv.params.unique <- cv.params[order(-cv.params$non_zero_coefs, cv.params$penalty), ]
         cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
         mask_even = which((1:nrow(cv.params.unique)) %% 2 == 0)
@@ -412,7 +410,7 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), size = 3, vjust = 2) +
         scale_x_log10() +
         labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
-        ggsave(paste0(analyzes_dir, "coxph_R_plots/cv_mean_error_", model_name, ".png"), device = "png", dpi = 480)
+        ggsave(paste0(save_plots_dir, "cv_mean_error.png"), device = "png", dpi = 480)
         # Regularization path
         mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
         rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
@@ -429,7 +427,16 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
         geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
         scale_x_log10()
-        ggsave(paste0(analyzes_dir, "coxph_R_plots/regularization_path_", model_name, ".png"), device = "png", dpi = 480)
+        ggsave(paste0(save_plots_dir, "regularization_path.png"), device = "png", dpi = 480)
     }
+}
+
+# Plot bootstrap selected coefficients + error statistics
+plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
+    save_plots_dir <- paste0(analyzes_dir, "coxph_R_plots/", model_name, "/")
+    freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
+    df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
+    ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + coord_flip()
+    ggsave(paste0(save_plots_dir, "freq_selected_features.png"), device = "png", dpi = 480)
 }
 

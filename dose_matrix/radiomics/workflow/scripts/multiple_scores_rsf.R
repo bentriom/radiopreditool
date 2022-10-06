@@ -1,22 +1,23 @@
 
+suppressPackageStartupMessages({library("yaml", quietly = TRUE)})
 options(show.error.locations = TRUE, error=traceback)
 
 source("workflow/scripts/utils_rsf.R")
 
 multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
-    dir.create(paste(analyzes_dir, "rsf_results/", sep = ""), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
     options(rf.cores = 1, mc.cores = 1)
-    rsf_logfile <- paste(analyzes_dir, "multiple_scores_rsf_", suffix_model, ".log", sep = "")
+    rsf_logfile <- paste0(analyzes_dir, "multiple_scores_rsf_", suffix_model, ".log")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info("Multiple scores")
     # Dataset
-    df_trainset0 <- read.csv(paste(analyzes_dir, "datasets/trainset_0.csv.gz", sep = ""), header = TRUE)
+    df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
     # Select subset of features due to feature elimination
     features <- `if`(file_features == "all", colnames(df_trainset0), as.character(read.csv(file_features)[,1]))
     # Add "X" for R colname compatibility
-    features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste("X", x, sep = ""), x) }))
+    features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste0("X", x), x) }))
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
     index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
        
@@ -30,7 +31,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
         results <- as.data.frame(results)
         df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
         rownames(df_results) <- index_results
-        filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+        filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
         write.csv(df_results, file = filename_results, row.names = TRUE)
     }
 
@@ -43,7 +44,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Model 1320 radiomics firstorder covariates
@@ -55,7 +56,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Model 32X all radiomics covariates
@@ -67,7 +68,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Model 1320 all radiomics covariates
@@ -79,28 +80,30 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste(analyzes_dir, "rsf_results/", nb_estim, "_runs_test_metrics_", model_name, ".csv", sep = "")
+    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 }
 
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-    nb_estim <- as.numeric(args[1])
-    file_features <- args[2]
-    event_col <- args[3]
-    analyzes_dir <- args[4]
-    suffix_model <- args[5]
-    if (length(args) == 6) {
-        duration_col <- args[6]
-    } else {
-        duration_col <- "survival_time_years"
-    }
-
+    config <- yaml.load_file(args[1])
+    run_type <- args[2]
+    analyzes_dir <- get.analyzes_dir_from_config(config)
+    event_col <- config$EVENT_COL
+    duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
+    file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
+    file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
+    file_features <- "all"
     log_threshold(INFO)
-    multiple_scores_rsf(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model)
+    if (run_type == "rsf_radiomics_all") {
+        multiple_scores_rsf(nb_estim, file_features, event_col, analyzes_dir, duration_col, "all")
+    } else if (run_type == "rsf_radiomics_features_hclust_corr") {
+        multiple_scores_rsf(nb_estim, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr")
+    } else {
+        stop(paste("Run type unrecognized:", run_type))
+    }
 } else {
     print("No arguments provided. Skipping.")
 }
-
 

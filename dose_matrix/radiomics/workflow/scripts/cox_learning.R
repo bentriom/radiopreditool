@@ -52,6 +52,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info("Cox lasso radiomics learning R")
+    
     # Dataset
     df_trainset <- read.csv(file_trainset, header = TRUE)
     df_testset <- read.csv(file_testset, header = TRUE)
@@ -110,9 +111,10 @@ if (length(args) > 1) {
     config <- yaml.load_file(args[1])
     run_type <- args[2]
     subdivision_type <- args[3]
-    analyzes_dir <- config$ANALYZES_DIR
+    analyzes_dir <- get.analyzes_dir_from_config(config)
     event_col <- config$EVENT_COL
     duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
+    n.boot <- `if`(is.null(config$N_BOOTSTRAP), 200, as.numeric(config$N_BOOTSTRAP))
     file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
     file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
     file_features <- "all"
@@ -121,11 +123,16 @@ if (length(args) > 1) {
         baseline_models_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col)
     } else if (run_type == "cox_lasso_radiomics_all") {
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "all", subdivision_type)
+    } else if (run_type == "cox_bootstrap_lasso_radiomics_all") {
+        cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "all", subdivision_type, penalty = "bootstrap_lasso")
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type)
+    } else if (run_type == "cox_bootstrap_lasso_radiomics_features_hclust_corr") {
+        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
+        cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type, penalty = "bootstrap_lasso")
     } else {
-        print("Run type unrecognized.")
+        stop(paste("Run type unrecognized:", run_type))
     }
 } else {
     print("No arguments provided. Skipping.")
