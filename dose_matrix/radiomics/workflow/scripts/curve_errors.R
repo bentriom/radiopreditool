@@ -105,21 +105,36 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     pec_B = B
     registerDoParallel(nworkers)
     print(paste("PEC, B =", pec_B))
-    #system.time({
-    fitpec <- pec(list("Cox mean dose" = coxmean, 
+    compared_models <- list("Cox mean dose" = coxmean, 
                        "Cox Lasso doses-volumes" = coxlassodv, 
-                       #"Cox Lasso heart's subparts screened dosiomics" = coxlasso_32X, 
+                       "Cox Lasso heart's subparts screened dosiomics" = coxlasso_32X, 
                        "RSF whole-heart screened first-order dosiomics" = rsf.best
-                       ), 
+                       )
+    if (F) {
+    fitpec <- pec(compared_models, 
                   data = infos$data, formula = formula_ipcw,
                   times = pred.times, start = pred.times[1], 
                   exact = F, splitMethod = "BootCv", reference = F, 
                   B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
-    #})
     print("End pec")
     saveRDS(fitpec, file = paste0(analyzes_dir, "pec_results/fit_pec_", pec_B, ".rds"))
     png(paste0(analyzes_dir, "pec_plots/bootcv_", pec_B, ".png"), width = 800, height = 600)
     plot(fitpec, what = "BootCvErr", xlim = c(0, 60),
+         axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
+    dev.off()
+    }
+    print(paste("Cindex, B =", pec_B))
+    print(class(infos$data))
+    print(dim(infos$data))
+    fitcindex <- pec::cindex(compared_models, 
+                             data = infos$data, formula = formula_ipcw,
+                             times = pred.times, start = pred.times[1], 
+                             exact = F, splitMethod = "bootcv", reference = F, 
+                             B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
+    print("End cindex")
+    saveRDS(fitcindex, file = paste0(analyzes_dir, "pec_results/fit_cindex_", pec_B, ".rds"))
+    png(paste0(analyzes_dir, "pec_plots/cindex_", pec_B, ".png"), width = 800, height = 600)
+    plot(fitcindex, what = "BootCvErr", xlim = c(0, 60),
          axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
     dev.off()
 }
