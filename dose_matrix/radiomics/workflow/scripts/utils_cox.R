@@ -1,6 +1,7 @@
 
 suppressPackageStartupMessages({
 library("caret", quietly = TRUE)
+library("boot", quietly = TRUE)
 library("survival", quietly = TRUE)
 library("glmnet", quietly = TRUE)
 library("pec", quietly = TRUE)
@@ -12,9 +13,14 @@ library("ggplot2", quietly = TRUE)
 library("reshape2", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
 })
+# Not available in conda
+if(!require("bolasso")) {
+    install.packages("bolasso", repos = "https://cran.irsn.fr/")
+}
 
 source("workflow/scripts/utils_radiopreditool.R")
 
+# Select the best lambda after CV coxnet
 select_best_lambda <- function(cox_object, cv.params) {
     lambda.ref <- cox_object$lambda.min
     deviance.params <- data.frame(penalty = cox_object$lambda, deviance = deviance(cox_object$glmnet.fit))
@@ -72,6 +78,7 @@ preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col)
     return (list("data" = df_model, "covariates" = filtered_covariates, "formula_model" = formula_model)) 
 }
 
+# Z-normalization of data
 normalize_data <- function(df_train, covariates, event_col, duration_col, df_test = NULL) {
     continuous_vars <- covariates
     discrete_vars <- NULL
@@ -97,25 +104,148 @@ normalize_data <- function(df_train, covariates, event_col, duration_col, df_tes
     list("train" = df_train, "test" = df_test) 
 }
 
+# From dataframe to glmnet objects
 coxlasso_data <- function(df, covariates, event_col, duration_col) {
     X <- as.matrix(df[covariates])
     surv_y <- Surv(df[[duration_col]], df[[event_col]])
     list("X" = X, "surv_y" = surv_y)
 }
 
+# S3 method for selection.coxnet
+predictSurvProb.selection.coxnet <- function(object, newdata, times, ...) {
+    predictSurvProb(object$coxph.fit, newdata = newdata, times = times, ...)
+}
+
+# S3 method for bootstrap.coxnet
+predictSurvProb.bootstrap.coxnet <- function(object, newdata, times, ...) {
+    predictSurvProb(object$coxph.fit, newdata = newdata, times = times, ...)
+}
+
+# Select the best lambda from cv.glmnet / glmnet object
+# To be implemented : method is a function
+get.coefs.cox <- function(object, method) {
+    # It means it's a loaded object in my case
+    if (is(object, "glmnet"))
+        return(coef(object, s = tail(object$lambda, 1))[,1])
+    # Best lambda method allowed by glmnet
+    if (is.character(method)) {
+        if (is(object, "cv.glmnet"))
+            return(coef(object, s = method)[,1])
+    }
+}
+
+# Lasso selection + coxph model
+selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda = NULL,  
+                             best.lambda.method = "lambda.min", cv.parallel = T, type.measure = "C") {
+    covariates <- all.vars(formula[[3]])
+    duration_col <- all.vars(formula[[2]])[1]
+    event_col <- all.vars(formula[[2]])[2]
+    lasso_data <- coxlasso_data(data, covariates, event_col, duration_col)
+    coxnet_X <- lasso_data$X 
+    coxnet_surv_y <- lasso_data$surv_y
+    # Lasso selection
+    if (is.null(list.lambda)) { 
+    coxnet_model <- cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
+                              nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+    } else {
+        coxnet_model <- glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
+                               nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+    }
+    # best.coefs.cox <- coef(coxnet_model, s = best.lambda)[,1]
+    best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda.method)
+    nonnull.covariates <- names(best.coefs.cox[abs(best.coefs.cox) > 0])
+    # Coxph on selected models
+    formula_nonnull <- get.surv.formula(event_col, nonnull.covariates, duration_col = duration_col)
+    coxmodel <- coxph(formula_nonnull, data = data, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
+    out <- list("selected_features" = nonnull.covariates, "coxnet.fit" = coxnet_model, best.lambda.method = best.lambda.method,  
+                "coxph.fit" = coxmodel, "coxph.formula" = formula_nonnull, "surv_y" = coxnet_surv_y)
+    class(out) <- "selection.coxnet"
+    out
+}
+
+# Task for bootstrapping Coxnet selection
+sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, best.lambda, nfolds, type.measure, pred.times) {
+    bstrap_data <- data[indices, ]
+    select_coxmodel <- selection.coxnet(formula, bstrap_data, nfolds = nfolds, cv.parallel = F)
+    covariates <- all.vars(formula[[3]])
+    ind_selected_features <- rep(0, length(covariates))
+    ind_selected_features[covariates %in% select_coxmodel$selected_features] <- 1
+    idx_surv <- length(pred.times)
+    cox.survprob.boot <- predictSurvProb(select_coxmodel, newdata = data.table::as.data.table(bstrap_data), times = pred.times)
+    cox.survprob.all <- predictSurvProb(select_coxmodel, newdata = data.table::as.data.table(data), times = pred.times)
+    cindex.boot <- rcorr.cens(cox.survprob.boot[,idx_surv], S = select_coxmodel$surv_y)[["C Index"]]
+    cindex.orig <- rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
+    c(cindex.boot, cindex.orig, ind_selected_features)
+}
+
+select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) {
+    freq_features <- colSums(bootstrap_selected_features) / nrow(bootstrap_selected_features)
+    colnames(bootstrap_selected_features)[freq_features >= threshold]
+}
+
+# Bootstrap error estimation the coxnet model
+bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda = "lambda.min", 
+                             nfolds = 5, boot.parallel = "multicore", boot.ncpus = get.nworkers(), 
+                             type.measure = "C", bolasso.threshold = 1, selected_features = NULL,
+                             bootstrap_selected_features = NULL) {
+    covariates <- all.vars(formula[[3]])
+    duration_col <- all.vars(formula[[2]])[1]
+    event_col <- all.vars(formula[[2]])[2]
+    lasso_data_full <- coxlasso_data(data, covariates, event_col, duration_col)
+    if (is.null(selected_features)) {
+        # Launch bootstrap
+        resBoot <- boot(data, sample.coxnet, R = B, parallel = boot.parallel, ncpus = boot.ncpus, 
+                        lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, nfolds = nfolds, 
+                        best.lambda = best.lambda, type.measure = type.measure, pred.times = pred.times)
+        # Computation of the adjusted C-index over the whole dataset
+        select_coxmodel_app <- selection.coxnet(formula, data, nfolds = nfolds, cv.parallel = F)
+        idx_surv <- length(pred.times)
+        cox.survprob.all <- predictSurvProb(select_coxmodel_app, newdata = data.table::as.data.table(data), times = pred.times)
+        cindex.app <- rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
+        optimism = mean(resBoot$t[,1] - resBoot$t[,2])
+        cindex.adjust <- cindex.app - optimism
+        # Select the features and fit Cox model
+        bootstrap_selected_features <- resBoot$t[,-c(1,2)]
+        colnames(bootstrap_selected_features) <- covariates
+        selected_features <- select.bolasso.features(bootstrap_selected_features, bolasso.threshold)
+    }
+    formula_selected <- get.surv.formula(event_col, selected_features, duration_col = duration_col)
+    coxmodel <- coxph(formula_selected, data = data, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
+    # bootstrap.coxnet model
+    if (is.null(selected_features)) {
+        out <- list("cindex_adjusted" = cindex.adjust, "optimism" = optimism, "cindex_app" = cindex.app,  
+                    "cindex_bootstrap" = resBoot$t[,1], "cindex_orig" = resBoot$t[,2],
+                    "bootstrap_selected_features" = bootstrap_selected_features, "selected_features" = selected_features, 
+                    "coxph.fit" = coxmodel)
+    } else {
+        out <- list("coxph.fit" = coxmodel, "selected_features" = selected_features, 
+                    "bootstrap_selected_features" = bootstrap_selected_features)
+    }
+    class(out) <- "bootstrap.coxnet"
+    out
+}
+
+# Plot bootstrap selected coefficients + error statistics
+plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
+    freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
+    df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
+    ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + coord_flip()
+    ggsave(paste0(analyzes_dir, "coxph_R_plots/freq_selected_features_", model_name, ".png"), device = "png", dpi = 480)
+}
+
 model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, coxlasso_logfile, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = TRUE)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = TRUE)
-    log_appender(appender_file(coxlasso_logfile, append = TRUE))
+    log_appender(appender_file(coxlasso_logfile, append = T))
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
               model_name, coxlasso_logfile, penalty = penalty, 
-              do_plot = FALSE, save_results = FALSE, load_results = TRUE, level = INFO, id_set = id_set)
+              do_plot = F, save_results = F, load_results = T, level = INFO, id_set = id_set)
 }
 
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
                       analyzes_dir, model_name, coxlasso_logfile,
-                      penalty = "lasso", do_plot = TRUE, 
-                      save_results = TRUE, load_results = FALSE, level = INFO, id_set = "") {
+                      penalty = "lasso", do_plot = T, cv_nfolds = 5, n.boot = 200, 
+                      save_results = T, load_results = F, level = INFO, id_set = "") {
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
@@ -139,6 +269,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         log_info("NAs are omitted")
         log_info(paste("Trained:", nrow(df_model_train), "samples"))
         log_info(paste("Testset: ", nrow(df_model_test), " samples"))
+        log_info(paste("Number of bootstrap samples (for bootstrap model only):", n.boot))
     }
     final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))
     pred.times <- seq(1, final.time, by = 1)
@@ -150,40 +281,48 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     X_test <- coxlasso_data_test$X; surv_y_test <- coxlasso_data_test$surv_y   
     if (penalty == "none") {
         coxmodel <- coxph(formula_model, data = df_model_train, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
-        coxlasso.survprob.train <- predictSurvProb(coxmodel, newdata = data.table::as.data.table(df_model_train), times = pred.times)
-        coxlasso.survprob.test <- predictSurvProb(coxmodel, newdata = data.table::as.data.table(df_model_test), times = pred.times)
-        # coxlasso.predict.train <- predict(coxmodel, type = "survival")
-        # coxlasso.predict.train <- matrix(coxlasso.predict.train, length(coxlasso.predict.train), 1)
-        # coxlasso.predict.test <- predict(coxmodel, newdata = data.table::as.data.table(df_model_test), type = "survival")
-        # coxlasso.predict.test <- matrix(coxlasso.predict.test, length(coxlasso.predict.test), 1)
     } else if (penalty == "lasso") {
         if (load_results) {
             best.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))[1, "penalty"]
             list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))[["lambda"]]
-            coxmodel <- glmnet(X_train, surv_y_train, family = "cox", alpha = 1, lambda = list.lambda, type.measure = "C")
+            coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, list.lambda = list.lambda, type.measure = "C")
         } else {
-            coxmodel <- cv.glmnet(X_train, surv_y_train, family = "cox", alpha = 1, 
-                                  nfolds = 5, parallel = T, type.measure = "C")
-            cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$nzero), penalty = coxmodel$lambda, mean_score = coxmodel$cvm, std_score = as.numeric(coxmodel$cvsd))
-            cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ] 
-            if (save_results) write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
-            best.lambda = select_best_lambda(coxmodel, cv.params)
+            coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, nfolds = cv_nfolds, 
+                                         cv.parallel = T, type.measure = "C")
+            cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$coxnet.fit$nzero), penalty = coxmodel$coxnet.fit$lambda, 
+                                    mean_score = coxmodel$coxnet.fit$cvm, std_score = as.numeric(coxmodel$coxnet.fit$cvsd))
+            cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ]
+            best.lambda = select_best_lambda(coxmodel$coxnet.fit, cv.params)
             if (save_results) {
+                write.csv(cv.params, file = paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"), row.names = FALSE)
                 write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), row.names = F, 
                           file = paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
-                write.csv(data.frame(lambda = coxmodel$lambda[coxmodel$lambda >= best.lambda]), row.names = F, 
+                write.csv(data.frame(lambda = coxmodel$coxnet.fit$lambda[coxmodel$coxnet.fit$lambda >= best.lambda]), row.names = F, 
                           file = paste0(analyzes_dir, "coxph_R_results/path_lambda_", model_name, ".csv"))
             }
         }
         if (!run_parallel)
             log_info(paste("Best lambda:", best.lambda))
-        coxlasso.survfit.train <- survfit(coxmodel, x = X_train, y = surv_y_train, newx = X_train, s = best.lambda)
-        coxlasso.survfit.test <- survfit(coxmodel, x = X_train, y = surv_y_train, newx = X_test, s = best.lambda)
-        coxlasso.survprob.train <- t(summary(coxlasso.survfit.train, times = pred.times)$surv)
-        coxlasso.survprob.test <- t(summary(coxlasso.survfit.test, times = pred.times)$surv)
-        # coxlasso.predict.train <- predict(coxmodel, newx = X_train, s = best.lambda)
-        # coxlasso.predict.test <- predict(coxmodel, newx = X_test, s = best.lambda)
+    } else if (penalty == "bootstrap_lasso") {
+        if (load_results) {
+            selected_features <- read.csv(paste0(analyzes_dir, "coxph_R_results/final_selected_features_", model_name, ".csv"))[["selected_features"]]
+            bootstrap_selected_features <- read.csv(paste0(analyzes_dir, "coxph_R_results/bootstrap_selected_features_", model_name, ".csv"), header = T)
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
+                                         best.lambda = "lambda.1se", selected_features = selected_features, 
+                                         bootstrap_selected_features = bootstrap_selected_features)
+        } else {
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, best.lambda = "lambda.1se")
+            if (save_results) {
+                write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
+                          file = paste0(analyzes_dir, "coxph_R_results/bootstrap_selected_features_", model_name, ".csv"))
+                write.csv(data.frame(selected_features = coxmodel$selected_features), row.names = F,
+                          file = paste0(analyzes_dir, "coxph_R_results/final_selected_features_", model_name, ".csv"))
+            }
+        }
     }
+
+    coxlasso.survprob.train <- predictSurvProb(coxmodel, newdata = data.table::as.data.table(df_model_train), times = pred.times)
+    coxlasso.survprob.test <- predictSurvProb(coxmodel, newdata = data.table::as.data.table(df_model_test), times = pred.times)
     formula_ipcw <- get.ipcw.surv.formula(event_col, filtered_covariates)
     # C-index ipcw (censored free, marginal = KM)
     coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.train[,idx_surv])), formula = formula_ipcw, 
@@ -231,25 +370,33 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         write.csv(df_results, file = paste0(analyzes_dir, "coxph_R_results/metrics_", model_name, ".csv"), row.names = TRUE)
         saveRDS(coxmodel, file = paste0(analyzes_dir, "coxph_R_results/fitted_models/", model_name, ".rds"))
     }
-    if (do_plot) 
-        plot_cox(coxmodel, analyzes_dir, model_name)
+    if (do_plot) {
+        if (penalty == "none") {
+            plot_cox(coxmodel, analyzes_dir, model_name) # coxph
+        } else if (penalty == "lasso") {
+            plot_cox(coxmodel$coxnet.fit, analyzes_dir, model_name) # selection.coxnet$coxnet
+        } else if (penalty == "bootstrap_lasso") {
+            plot_cox(coxmodel$coxph.fit, analyzes_dir, model_name) # bootstrap.coxnet$coxph
+            plot_bootstrap(coxmodel, analyzes_dir, model_name, n.boot) # bootstrap.coxnet
+        }
+    }
     log_threshold(INFO)
     results_test
 }
 
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
     # Coefficients of best Cox
-    if (class(cox_object) == "cv.glmnet") {
+    if (is(cox_object, "cv.glmnet") | is(cox_object, "glmnet")) {
         best.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/best_params_", model_name, ".csv"))
         best.lambda <- best.params[1, "penalty"]
     }
-    best.coefs.cox <- `if`(class(cox_object) == "cv.glmnet", coef(cox_object, s = best.lambda)[,1], coef(cox_object))
+    best.coefs.cox <- `if`(is(cox_object, "glmnet") | is(cox_object, "cv.glmnet"), coef(cox_object, s = best.lambda)[,1], coef(cox_object))
     names.nonnull.coefs <- pretty.labels(names(best.coefs.cox[abs(best.coefs.cox) > 0]))
     df.coefs = data.frame(labels = pretty.labels(names(best.coefs.cox)), coefs = best.coefs.cox)
     ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + geom_bar(stat = "identity") + coord_flip() 
     ggsave(paste0(analyzes_dir, "coxph_R_plots/coefs_", model_name, ".png"), device = "png", dpi = 480)
     # Regularization path + mean error for Cox Lasso
-    if (class(cox_object) == "cv.glmnet") {
+    if (is(cox_object, "cv.glmnet")) {
         # Mean errors of cross-validation
         cv.params <- read.csv(paste0(analyzes_dir, "coxph_R_results/cv_", model_name, ".csv"))
         cv.params.unique <- cv.params[order(-cv.params$non_zero_coefs, cv.params$penalty), ]

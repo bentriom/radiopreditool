@@ -1,4 +1,5 @@
 
+suppressPackageStartupMessages({library("yaml", quietly = TRUE)})
 options(show.error.locations = TRUE, error=traceback)
 
 source("workflow/scripts/utils_cox.R")
@@ -41,7 +42,8 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
 }
 
-cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, suffix_model, subdivision_type) {
+cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, 
+                                   duration_col, suffix_model, subdivision_type, penalty = "lasso", n.boot = 200) {
     dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
     dir.create(paste0(analyzes_dir, "coxph_R_results/fitted_models"), showWarnings = FALSE)
@@ -62,35 +64,41 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
     log_info(paste("Trainset file:", file_trainset, "with", nrow(df_trainset), "samples"))
     log_info(paste("Testset file:", file_testset, "with", nrow(df_testset), "samples"))
 
-    registerDoParallel(5)
+    if (penalty == "lasso")
+        registerDoParallel(5)
+    
     if (subdivision_type == "32X") {
         # Coxph Lasso radiomics firstorder 32X
-        model_name = paste0("32X_radiomics_firstorder_lasso_", suffix_model)
+        model_name = paste0("32X_radiomics_firstorder_", penalty, "_", suffix_model)
         cols_32X_firstorder <- grep("^X32[0-9]{1}_original_firstorder_", colnames(df_trainset), value = TRUE)
         covariates = c(cols_32X_firstorder, clinical_vars)
         log_info("Model radiomics firstorder lasso (32X)")
-        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
+        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+                  model_name, logfile, penalty = penalty, n.boot = n.boot)
     
         # Coxph Lasso all radiomics 32X
-        model_name = paste0("32X_radiomics_full_lasso_", suffix_model)
+        model_name = paste0("32X_radiomics_full_", penalty, "_", suffix_model)
         cols_32X <- filter.gl(grep("^X32[0-9]{1}_", colnames(df_trainset), value = TRUE))
         covariates = c(cols_32X, clinical_vars)
         log_info("Model radiomics full lasso (32X)")
-        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
+        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+                  model_name, logfile, penalty = penalty, n.boot = n.boot)
     } else if (subdivision_type == "1320") {
         # Coxph Lasso radiomics firstorder 1320
-        model_name = paste0("1320_radiomics_firstorder_lasso_", suffix_model)
+        model_name = paste0("1320_radiomics_firstorder_", penalty, "_", suffix_model)
         cols_1320_firstorder <- grep("^X1320_original_firstorder_", colnames(df_trainset), value = TRUE)
         covariates = c(cols_1320_firstorder, clinical_vars)
         log_info("Model radiomics firstorder lasso (1320)")
-        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
+        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+                  model_name, logfile, penalty = penalty, n.boot = n.boot)
 
         # Coxph Lasso all radiomics 1320
-        model_name = paste0("1320_radiomics_full_lasso_", suffix_model)
+        model_name = paste0("1320_radiomics_full_", penalty, "_", suffix_model)
         cols_1320 <- filter.gl(grep("^X1320_", colnames(df_trainset), value = TRUE))
         covariates = c(cols_1320, clinical_vars)
         log_info("Model radiomics full lasso (1320)")
-        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
+        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
+                  model_name, logfile, penalty = penalty, n.boot = n.boot)
     } else {
         stop("Subdivision type of features unrecognized")
     }
@@ -99,24 +107,22 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-    run_type <- args[1]
-    analyzes_dir <- args[2]
-    event_col <- args[3]
+    config <- yaml.load_file(args[1])
+    run_type <- args[2]
+    subdivision_type <- args[3]
+    analyzes_dir <- config$ANALYZES_DIR
+    event_col <- config$EVENT_COL
+    duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
     file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
     file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
+    file_features <- "all"
     log_threshold(INFO)
     if (run_type == "baseline_models") {
-        duration_col <- `if`(length(args) == 4, args[4], "survival_time_years")
         baseline_models_learning(file_trainset, file_testset, event_col, analyzes_dir, duration_col)
     } else if (run_type == "cox_lasso_radiomics_all") {
-        file_features <- "all"
-        subdivision_type <- args[4]
-        duration_col <- `if`(length(args) == 5, args[5], "survival_time_years")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "all", subdivision_type)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
-        file_features <- args[4]
-        subdivision_type <- args[5]
-        duration_col <- `if`(length(args) == 6, args[6], "survival_time_years")
+        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type)
     } else {
         print("Run type unrecognized.")
