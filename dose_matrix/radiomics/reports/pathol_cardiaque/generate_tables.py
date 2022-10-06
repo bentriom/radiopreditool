@@ -31,14 +31,15 @@ def generate_line_multiple(df):
     return f"${df.loc['C-index','Mean']:.3f} \pm {df.loc['C-index','Std']:.3f}$ & \
              ${df.loc['IBS','Mean']:.3f} \pm {df.loc['IBS','Std']:.3f}$"
 
-#for model in ["pathol_cardiaque_chimio", "pathol_cardiaque_drugs", "pathol_cardiaque_grade3_chimio"]:
-#for model in ["pathol_cardiaque_drugs", "pathol_cardiaque_grade3_drugs", "pathol_cardiaque_drugs_iccc_other", "pathol_cardiaque_grade3_drugs_iccc_other"]:
 #for model in ["pathol_cardiaque_grade3_drugs_iccc_other"]:
-for model in ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1_filter_entropy"]:
-    #coxph_results_dir = f"../../slurm_results/analyzes/{model}/coxph_R_results/"
-    #rsf_results_dir = f"../../slurm_results/analyzes/{model}/rsf_results/"
-    coxph_results_dir = f"/media/moud/LaCie/local_results/analyzes/{model}/coxph_R_results/"
-    rsf_results_dir = f"/media/moud/LaCie/local_results/analyzes/{model}/rsf_results/"
+local_results_dir = "/media/moud/LaCie/local_results/analyzes/"
+slurm_results_dir = "../../slurm_results/analyzes/"
+list_binwidth = [0.1, 0.2, 0.5, 1.0]
+list_models = [(local_results_dir, f"pathol_cardiaque_grade3_drugs_iccc_other_bw_{binw}") for binw in list_binwidth]
+list_models += [(local_results_dir, f"pathol_cardiaque_grade3_drugs_iccc_other_bw_{binw}_filter_entropy") for binw in list_binwidth]
+for results_dir, model in list_models:
+    coxph_results_dir = f"{results_dir}{model}/coxph_R_results/"
+    rsf_results_dir = f"{results_dir}{model}/rsf_results/"
     os.makedirs(f"tables/{model}", exist_ok = True)
 
     df_cox_mean = pd.read_csv(coxph_results_dir + "metrics_1320_mean.csv", index_col = 0)
@@ -187,8 +188,8 @@ for model in ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1_filter_entropy"]:
                 return "Cox PH"
     df_results.loc[:, "model type"] = df_results["model"].apply(get_color)
     df_results.sort_values(by = ["mean"], ascending = False, inplace = True)
-
-    fig = px.scatter(df_results, x = "model", y = "mean", color = "model type", error_y = "std")
+    map_model_type = {'Random Survival Forest': 'red', 'Cox PH with Lasso penalty': 'blue', 'Cox PH': 'green'}
+    fig = px.scatter(df_results, x = "model", y = "mean", color = "model type", color_discrete_map = map_model_type, error_y = "std")
     fig.update_xaxes(tickangle = -60)
     fig.update_yaxes(range = [0.6, 0.8], title = "Mean C-index")
     fig.update_xaxes(categoryorder = "total descending", title = "Model", tickfont = {'size': 19})
