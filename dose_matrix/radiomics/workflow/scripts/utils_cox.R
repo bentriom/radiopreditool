@@ -151,7 +151,6 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
         coxnet_model <- glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
                                nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
     }
-    # best.coefs.cox <- coef(coxnet_model, s = best.lambda)[,1]
     best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda.method)
     nonnull.covariates <- names(best.coefs.cox[abs(best.coefs.cox) > 0])
     # Coxph on selected models
@@ -164,9 +163,11 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
 }
 
 # Task for bootstrapping Coxnet selection
-sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, best.lambda, nfolds, type.measure, pred.times) {
+sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, best.lambda.method, 
+                          nfolds, type.measure, pred.times) {
     bstrap_data <- data[indices, ]
-    select_coxmodel <- selection.coxnet(formula, bstrap_data, nfolds = nfolds, cv.parallel = F)
+    select_coxmodel <- selection.coxnet(formula, bstrap_data, best.lambda.method = best.lambda.method, 
+                                        nfolds = nfolds, cv.parallel = F)
     covariates <- all.vars(formula[[3]])
     ind_selected_features <- rep(0, length(covariates))
     ind_selected_features[covariates %in% select_coxmodel$selected_features] <- 1
@@ -184,9 +185,9 @@ select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) 
 }
 
 # Bootstrap error estimation the coxnet model
-bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda = "lambda.min", 
+bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda.method = "lambda.1se", 
                              nfolds = 5, boot.parallel = "multicore", boot.ncpus = get.nworkers(), 
-                             type.measure = "C", bolasso.threshold = 1, selected_features = NULL,
+                             type.measure = "C", bolasso.threshold = 0.8, selected_features = NULL,
                              bootstrap_selected_features = NULL) {
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
@@ -196,7 +197,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
         # Launch bootstrap
         resBoot <- boot(data, sample.coxnet, R = B, parallel = boot.parallel, ncpus = boot.ncpus, 
                         lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, nfolds = nfolds, 
-                        best.lambda = best.lambda, type.measure = type.measure, pred.times = pred.times)
+                        best.lambda.method = best.lambda.method, type.measure = type.measure, pred.times = pred.times)
         # Computation of the adjusted C-index over the whole dataset
         select_coxmodel_app <- selection.coxnet(formula, data, nfolds = nfolds, cv.parallel = F)
         idx_surv <- length(pred.times)
@@ -241,10 +242,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
-    save_results_dir <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/")
-    save_plots_dir <- paste0(analyzes_dir, "coxph_R_plots/", model_name, "/")
+    save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     dir.create(save_results_dir, showWarnings = FALSE)
-    dir.create(save_plots_dir, showWarnings = FALSE)
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -381,8 +380,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
 }
 
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
-    save_results_dir <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/")
-    save_plots_dir <- paste0(analyzes_dir, "coxph_R_plots/", model_name, "/")
+    save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     # Coefficients of best Cox
     if (is(cox_object, "cv.glmnet") | is(cox_object, "glmnet")) {
         best.params <- read.csv(paste0(save_results_dir, "best_params.csv"))
@@ -392,7 +390,7 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
     names.nonnull.coefs <- pretty.labels(names(best.coefs.cox[abs(best.coefs.cox) > 0]))
     df.coefs = data.frame(labels = pretty.labels(names(best.coefs.cox)), coefs = best.coefs.cox)
     ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + geom_bar(stat = "identity") + coord_flip() 
-    ggsave(paste0(save_plots_dir, "coefs.png"), device = "png", dpi = 480)
+    ggsave(paste0(save_results_dir, "coefs.png"), device = "png", dpi = 480)
     # Regularization path + mean error for Cox Lasso
     if (is(cox_object, "cv.glmnet")) {
         # Mean errors of cross-validation
@@ -410,7 +408,7 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), size = 3, vjust = 2) +
         scale_x_log10() +
         labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
-        ggsave(paste0(save_plots_dir, "cv_mean_error.png"), device = "png", dpi = 480)
+        ggsave(paste0(save_results_dir, "cv_mean_error.png"), device = "png", dpi = 480)
         # Regularization path
         mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
         rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
@@ -427,16 +425,16 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
         geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
         scale_x_log10()
-        ggsave(paste0(save_plots_dir, "regularization_path.png"), device = "png", dpi = 480)
+        ggsave(paste0(save_results_dir, "regularization_path.png"), device = "png", dpi = 480)
     }
 }
 
 # Plot bootstrap selected coefficients + error statistics
 plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
-    save_plots_dir <- paste0(analyzes_dir, "coxph_R_plots/", model_name, "/")
+    save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
     df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
     ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + coord_flip()
-    ggsave(paste0(save_plots_dir, "freq_selected_features.png"), device = "png", dpi = 480)
+    ggsave(paste0(save_results_dir, "freq_selected_features.png"), device = "png", dpi = 480)
 }
 

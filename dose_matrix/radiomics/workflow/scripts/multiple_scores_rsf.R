@@ -5,7 +5,7 @@ options(show.error.locations = TRUE, error=traceback)
 source("workflow/scripts/utils_rsf.R")
 
 multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
-    dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "rsf/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
     options(rf.cores = 1, mc.cores = 1)
     rsf_logfile <- paste0(analyzes_dir, "multiple_scores_rsf_", suffix_model, ".log")

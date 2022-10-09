@@ -5,9 +5,7 @@ options(show.error.locations = TRUE, error=traceback)
 source("workflow/scripts/utils_cox.R")
 
 baseline_models_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col) {
-    dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "coxph_R_results/fitted_models"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
     logfile <- paste0(analyzes_dir, "baseline_models_R.log")
     if (file.exists(logfile)) { file.remove(logfile) }
@@ -44,11 +42,9 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
 
 cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, 
                                    duration_col, suffix_model, subdivision_type, penalty = "lasso", n.boot = 200) {
-    dir.create(paste0(analyzes_dir, "coxph_R_plots/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "coxph_R_results/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "coxph_R_results/fitted_models"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
-    logfile <- paste0(analyzes_dir, "cox_lasso_radiomics_R_", subdivision_type, "_", suffix_model, ".log")
+    logfile <- paste0(analyzes_dir, "cox_", penalty, "_radiomics_R_", subdivision_type, "_", suffix_model, ".log")
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info("Cox lasso radiomics learning R")
@@ -124,13 +120,15 @@ if (length(args) > 1) {
     } else if (run_type == "cox_lasso_radiomics_all") {
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "all", subdivision_type)
     } else if (run_type == "cox_bootstrap_lasso_radiomics_all") {
-        cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "all", subdivision_type, penalty = "bootstrap_lasso")
+        cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, 
+                               "all", subdivision_type, penalty = "bootstrap_lasso", n.boot = n.boot)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type)
     } else if (run_type == "cox_bootstrap_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
-        cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type, penalty = "bootstrap_lasso")
+        cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, 
+                               "features_hclust_corr", subdivision_type, penalty = "bootstrap_lasso", n.boot = n.boot)
     } else {
         stop(paste("Run type unrecognized:", run_type))
     }

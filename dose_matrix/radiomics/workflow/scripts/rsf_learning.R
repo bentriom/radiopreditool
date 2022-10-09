@@ -16,8 +16,7 @@ source("workflow/scripts/utils_rsf.R")
 
 rsf_learning <- function(file_trainset, file_testset, file_features, event_col, 
                          analyzes_dir, duration_col, suffix_model, subdivision_type) {
-    dir.create(paste0(analyzes_dir, "rsf_plots/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "rsf_results/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "rsf/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
     options(rf.cores = nworkers, mc.cores = nworkers)
     rsf_logfile <- paste0(analyzes_dir, "rsf_", suffix_model, "_", subdivision_type,".log")

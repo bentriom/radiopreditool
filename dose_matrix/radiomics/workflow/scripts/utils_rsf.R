@@ -27,10 +27,8 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     log_threshold(level)
     log_appender(appender_file(rsf_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
-    save_results_dir <- paste0(analyzes_dir, "rsf_results/", model_name, "/")
-    save_plots_dir <- paste0(analyzes_dir, "rsf_plots/", model_name, "/")
+    save_results_dir <- paste0(analyzes_dir, "rsf/", model_name, "/")
     dir.create(save_results_dir, showWarnings = FALSE)
-    dir.create(save_plots_dir, showWarnings = FALSE)
     ## Preprocessing sets
     filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
                     unlist(lapply(df_trainset[covariates], 
@@ -149,12 +147,11 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
 }
 
 # Plot of features importances with VIMP method
-
 plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
     new_labels <- pretty.labels(rsf.obj$xvar.names)
     subs.rsf.obj <- subsample(rsf.obj, B = 100)
-    save_plots_dir <- paste0(analyzes_dir, "rsf_plots/", model_name, "/")
-    png(paste0(save_plots_dir, "rsf_vimp.png"), width = 1250, height = 1600, res = 70)
+    save_results_dir <- paste0(analyzes_dir, "rsf/", model_name, "/")
+    png(paste0(save_results_dir, "rsf_vimp.png"), width = 1250, height = 1600, res = 70)
     par(oma = c(0.5, 10, 0.5, 0.5))
     par(cex.axis = 2.0, cex.lab = 2.0, cex.main = 2.0, mar = c(6.0,17,1,1), mgp = c(4, 1, 0))
     pmax = 30
@@ -165,7 +162,6 @@ plot_vimp <- function(rsf.obj, analyzes_dir, model_name) {
 }
 
 # Brier score computation for OOB samples
-
 predictSurvProbOOB <- function(object, times, ...){
     ptemp <- predict(object, importance="none",...)$survival.oob
     pos <- prodlim::sindex(jump.times=object$time.interest,eval.times=times)
@@ -176,7 +172,6 @@ predictSurvProbOOB <- function(object, times, ...){
 }
 
 # Create a data frame with the hyperparameters to test in CV
-
 create.params.df <- function(ntrees, nodesizes, nsplits) {
     params.df <- data.frame(ntree=integer(), nodesize=integer(), nsplit=integer())
     for (ntree in ntrees) {
@@ -190,7 +185,6 @@ create.params.df <- function(ntrees, nodesizes, nsplits) {
 }
 
 # Cross-validation for RSF
-
 cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile, 
                    duration_col = "survival_time_years", nfolds = 5, 
                    pred.times = seq(5, 50, 5), error.metric = "ibs", bootstrap.strategy = NULL) {
@@ -212,7 +206,6 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
 }
 
 # The job for one parameter vector in cross-validation
-
 get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, folds, params.df, bootstrap.strategy, error.metric, pred.times, rsf_logfile) {
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info(paste("Error CV:", error.metric))
@@ -272,7 +265,6 @@ get.param.cv.error <- function(idx.row, formula, data, event_col, duration_col, 
 }
 
 # Refit RSF with stored best parameters
-
 refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, duration_col, analyzes_dir, model_name = "") {
     # Prepare sets
     df_model_train <- read.csv(file_trainset, header = TRUE)[,c(event_col, duration_col, covariates)]
@@ -302,7 +294,6 @@ refit.best.rsf <- function(file_trainset, file_testset, covariates, event_col, d
 }
 
 # Refit RSF with a database
-
 refit.best.rsf.id <- function(id_set, covariates, event_col, duration_col, 
                               analyzes_dir, model_name = "") {
     log_info(id_set)
@@ -312,7 +303,6 @@ refit.best.rsf.id <- function(id_set, covariates, event_col, duration_col,
 }
 
 # Under-sampling
-
 bootstrap.undersampling <- function(data,ntree) {
     nsamples <- dim(data)[1]
     index.data.event <- which(data[[event_col]]==1)
@@ -328,7 +318,6 @@ bootstrap.undersampling <- function(data,ntree) {
 }
 
 # Plot of features importances for RSF
-
 new.plot.subsample.rfsrc <- function(x, alpha = .01,
                                      standardize = TRUE, normal = TRUE, jknife = TRUE,
                                      target, m.target = NULL, pmax = 75, main = "", 

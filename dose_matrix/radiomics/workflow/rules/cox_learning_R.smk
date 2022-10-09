@@ -27,15 +27,15 @@ rule baseline_analysis_R:
         ANALYZES_DIR + "datasets/testset.csv.gz"
     output:
         ANALYZES_DIR + "baseline_models_R.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = BASELINE_MODELS_COX),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = BASELINE_MODELS_COX),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = BASELINE_MODELS_LASSO),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = BASELINE_MODELS_COX),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = BASELINE_MODELS_COX),
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv_mean_error.png", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/regularization_path.png", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv.csv", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = BASELINE_MODELS_LASSO)
     threads:
         5
     conda:
@@ -51,13 +51,13 @@ rule cox_lasso_radiomics_whole_heart_all_R:
         ANALYZES_DIR + "datasets/testset.csv.gz",
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_1320_all.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_LASSO_1320_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_LASSO_1320_ALL)
     threads:
         5
     conda:
@@ -71,15 +71,14 @@ rule cox_bootstrap_lasso_radiomics_whole_heart_all_R:
         ANALYZES_DIR + "datasets/testset.csv.gz",
     output:
         ANALYZES_DIR + "cox_bootstrap_lasso_radiomics_R_1320_all.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/freq_selected_features.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/bootstrap_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/final_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL)
     threads:
-        5
+        get_ncpus() - 1
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -91,13 +90,13 @@ rule cox_lasso_radiomics_subparts_heart_all_R:
         ANALYZES_DIR + "datasets/testset.csv.gz",
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_32X_all.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_LASSO_32X_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_LASSO_32X_ALL)
     threads:
         5
     conda:
@@ -111,15 +110,14 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_all_R:
         ANALYZES_DIR + "datasets/testset.csv.gz",
     output:
         ANALYZES_DIR + "cox_bootstrap_lasso_radiomics_R_32X_all.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/freq_selected_features.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/bootstrap_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/final_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL)
     threads:
-        5
+        get_ncpus() - 1
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -134,13 +132,13 @@ rule cox_lasso_radiomics_whole_heart_features_hclust_corr_R:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_1320_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_LASSO_1320_FE_HCLUST)
     threads:
         5
     conda:
@@ -155,15 +153,14 @@ rule cox_bootstrap_lasso_radiomics_whole_heart_features_hclust_corr_R:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_bootstrap_lasso_radiomics_R_1320_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/freq_selected_features.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/bootstrap_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/final_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST)
     threads:
-        5
+        get_ncpus() - 1
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -176,13 +173,13 @@ rule cox_lasso_radiomics_subparts_heart_features_hclust_corr_R:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_lasso_radiomics_R_32X_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv_mean_error.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/regularization_path.png", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/cv.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_LASSO_32X_FE_HCLUST)
     threads:
         5
     conda:
@@ -197,15 +194,14 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_features_hclust_corr_R:
         ANALYZES_DIR + "features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "cox_bootstrap_lasso_radiomics_R_32X_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/cv_mean_error.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_plots/{model}/regularization_path.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/cv.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/coefs.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/freq_selected_features.png", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/bootstrap_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/final_selected_features.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST)
     threads:
-        5
+        get_ncpus() - 1
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -215,10 +211,10 @@ rule multiple_scores_baseline_analysis_R:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = BASELINE_MODELS_LASSO)
     output: 
         ANALYZES_DIR + "multiple_scores_baseline_models_R.log",
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
     threads:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     conda:
@@ -231,10 +227,10 @@ rule multiple_scores_cox_lasso_radiomics_all_R:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
     output: 
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_all.log",
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_ALL)
     threads:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     conda:
@@ -247,10 +243,10 @@ rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
         ANALYZES_DIR + "features_hclust_corr.csv",
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
     output: 
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_R_results/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
     threads:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     conda:

@@ -97,7 +97,7 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
                (df_dataset["has_radiomics"] == 1) & (df_dataset["1320_original_firstorder_Entropy"] > 0)
         return df_dataset.loc[mask, :]
     elif name_filter_dataset == "sampling":
-        return df_dataset.groupby(event_col, group_keys = False).apply(lambda x: x.sample(frac = 0.1))
+        return df_dataset.groupby(event_col, group_keys = False).apply(lambda x: x.sample(frac = 0.2))
     else:
         raise NotImplementedError(f"name_filter_dataset: {name_filter_dataset} not supported.")
 
