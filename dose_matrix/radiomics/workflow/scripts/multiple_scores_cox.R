@@ -24,7 +24,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Coxph doses volumes indicators of heart (1320)
@@ -36,7 +36,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
     # Coxph doses volumes indicators of heart Lasso (1320)
@@ -48,7 +48,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     log_info("Multiple scores baseline models learning R: Done")
@@ -79,7 +79,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
     # Coxph Lasso radiomics firstorder 1320
@@ -91,7 +91,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Coxph Lasso all radiomics 32X
@@ -103,7 +103,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
     
     # Coxph Lasso all radiomics 1320
@@ -115,7 +115,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "coxph_R_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     log_info("Multiple scores cox lasso radiomics learning R: Done")

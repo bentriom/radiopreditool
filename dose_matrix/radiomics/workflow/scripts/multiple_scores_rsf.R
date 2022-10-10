@@ -31,7 +31,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
         results <- as.data.frame(results)
         df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
         rownames(df_results) <- index_results
-        filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+        filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
         write.csv(df_results, file = filename_results, row.names = TRUE)
     }
 
@@ -44,7 +44,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Model 1320 radiomics firstorder covariates
@@ -56,7 +56,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Model 32X all radiomics covariates
@@ -68,7 +68,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     # Model 1320 all radiomics covariates
@@ -80,7 +80,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     results <- as.data.frame(results)
     df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
     rownames(df_results) <- index_results
-    filename_results <- paste0(analyzes_dir, "rsf_results/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+    filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 }
 
@@ -92,6 +92,7 @@ if (length(args) > 1) {
     analyzes_dir <- get.analyzes_dir_from_config(config)
     event_col <- config$EVENT_COL
     duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
+    nb_estim <- as.numeric(config$NB_ESTIM_SCORE_MODELS)
     file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
     file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
     file_features <- "all"
