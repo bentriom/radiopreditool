@@ -51,7 +51,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
-    log_info("Multiple scores baseline models learning R: Done")
+    log_info("Done")
 }
 
 multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
@@ -118,7 +118,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
-    log_info("Multiple scores cox lasso radiomics learning R: Done")
+    log_info("Done")
 }
 
 

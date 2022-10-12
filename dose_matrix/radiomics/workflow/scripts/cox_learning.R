@@ -38,6 +38,7 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
     covariates = c(cols_dosesvol, clinical_vars)
     log_info("Model heart doses volumes lasso (1320)")
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
+    log_info("Done")
 }
 
 cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, 
@@ -99,6 +100,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
     } else {
         stop("Subdivision type of features unrecognized")
     }
+    log_info("Done")
 }
 
 # Script args

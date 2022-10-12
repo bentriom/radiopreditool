@@ -81,6 +81,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
     else {  
         stop("Subdivision type of features unrecognized")
     }
+    log_info("Done")
 }
 
 # Script args

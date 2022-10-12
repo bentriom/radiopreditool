@@ -11,7 +11,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     rsf_logfile <- paste0(analyzes_dir, "multiple_scores_rsf_", suffix_model, ".log")
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
-    log_info("Multiple scores")
+    log_info("Multiple scores Random Survival Forests")
     # Dataset
     df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
     # Select subset of features due to feature elimination
@@ -82,6 +82,8 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     rownames(df_results) <- index_results
     filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
+    
+    log_info("Done")
 }
 
 # Script args
