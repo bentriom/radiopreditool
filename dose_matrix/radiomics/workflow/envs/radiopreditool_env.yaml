@@ -1,6 +1,7 @@
 name: radiopreditool
 channels:
   - simpleitk
+  - plotly
   - bioconda
   - conda-forge
   - defaults
@@ -18,6 +19,7 @@ dependencies:
   - scikit-learn
   - fastcluster
   - python-kaleido
+  - plotly
   - pip:
     - pyradiomics
     - scikit-survival
