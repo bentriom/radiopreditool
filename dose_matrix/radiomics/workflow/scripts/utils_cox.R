@@ -144,9 +144,12 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     coxnet_X <- lasso_data$X 
     coxnet_surv_y <- lasso_data$surv_y
     # Lasso selection
-    if (is.null(list.lambda)) { 
-    coxnet_model <- cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
-                              nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+    if (is.null(list.lambda)) {
+        if (cv.parallel) cl <- parallel::makeCluster(nfolds)
+        if (cv.parallel) doParallel::registerDoParallel(cl)
+        coxnet_model <- cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
+                                  nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+        if (cv.parallel) parallel::stopCluster(cl)
     } else {
         coxnet_model <- glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
                                nfolds = nfolds, parallel = cv.parallel, type.measure = "C")

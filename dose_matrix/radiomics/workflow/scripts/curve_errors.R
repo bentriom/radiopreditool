@@ -103,7 +103,8 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     pred.times <- seq(1, 60, 1)
     pec_M = floor(0.7 * nrow(infos$data))
     pec_B = B
-    registerDoParallel(nworkers)
+    cl <- parallel::makeCluster(nworkers)
+    doParallel::registerDoParallel(cl)
     print(paste("PEC, B =", pec_B))
     compared_models <- list("Cox mean dose" = coxmean, 
                        "Cox Lasso doses-volumes" = coxlassodv, 
@@ -123,6 +124,7 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
          axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
     dev.off()
     }
+    parallel::stopCluster(cl)
     print(paste("Cindex, B =", pec_B))
     print(class(infos$data))
     print(dim(infos$data))
@@ -137,6 +139,7 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     plot(fitcindex, what = "BootCvErr", xlim = c(0, 60),
          axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
     dev.off()
+
 }
 
 args = commandArgs(trailingOnly = TRUE)
