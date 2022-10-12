@@ -136,7 +136,9 @@ get.coefs.cox <- function(object, method) {
 
 # Lasso selection + coxph model
 selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda = NULL,  
-                             best.lambda.method = "lambda.min", cv.parallel = T, type.measure = "C") {
+                             best.lambda.method = "lambda.min", cv.parallel = T, 
+                             type.measure = "C", logfile = NULL) {
+    if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
@@ -145,8 +147,13 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     coxnet_surv_y <- lasso_data$surv_y
     # Lasso selection
     if (is.null(list.lambda)) {
-        if (cv.parallel) cl <- parallel::makeCluster(nfolds)
-        if (cv.parallel) doParallel::registerDoParallel(cl)
+        if (cv.parallel) { 
+            log_info(paste("CV lasso: creating a cluster with", nfolds, "workers"))
+            cl <- parallel::makeCluster(nfolds)
+            doParallel::registerDoParallel(cl)
+            log_info(paste(colnames(showConnections()), collapse = " "))
+            log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
+        }
         coxnet_model <- cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
                                   nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
         if (cv.parallel) parallel::stopCluster(cl)
@@ -191,25 +198,41 @@ select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) 
 bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda.method = "lambda.1se", 
                              nfolds = 5, boot.parallel = "multicore", boot.ncpus = get.nworkers(), 
                              type.measure = "C", bolasso.threshold = 0.8, selected_features = NULL,
-                             bootstrap_selected_features = NULL) {
+                             bootstrap_selected_features = NULL, logfile = NULL) {
+    log_appender(appender_file(logfile, append = TRUE))
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
     lasso_data_full <- coxlasso_data(data, covariates, event_col, duration_col)
     if (is.null(selected_features)) {
         # Launch bootstrap
-        resBoot <- boot(data, sample.coxnet, R = B, parallel = boot.parallel, ncpus = boot.ncpus, 
-                        lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, nfolds = nfolds, 
-                        best.lambda.method = best.lambda.method, type.measure = type.measure, pred.times = pred.times)
+        # resBoot <- boot(data, sample.coxnet, R = B, parallel = boot.parallel, ncpus = boot.ncpus, 
+        #                 lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, nfolds = nfolds, 
+        #                 best.lambda.method = best.lambda.method, type.measure = type.measure, pred.times = pred.times)$t
+        log_info(paste("Bootstrap lasso: creating a cluster with", boot.ncpus, "workers"))
+        cl <- parallel::makeCluster(boot.ncpus)
+        doParallel::registerDoParallel(cl)
+        log_info(paste(colnames(showConnections()), collapse = " "))
+        log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
+        resBoot <- foreach(i = 1:B, .combine = 'rbind', 
+                           .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", "coxlasso_data", 
+                                       "get.coefs.cox", "get.surv.formula"), 
+                           .packages = c("glmnet", "Hmisc", "survival", "pec")) %dopar% {
+            idx_boot <- sample(nrow(data), replace = T)
+            sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
+                          best.lambda.method = best.lambda.method, nfolds = nfolds, 
+                          type.measure = type.measure, pred.times = pred.times)
+        }
+        parallel::stopCluster(cl)
         # Computation of the adjusted C-index over the whole dataset
         select_coxmodel_app <- selection.coxnet(formula, data, nfolds = nfolds, cv.parallel = F)
         idx_surv <- length(pred.times)
         cox.survprob.all <- predictSurvProb(select_coxmodel_app, newdata = data.table::as.data.table(data), times = pred.times)
         cindex.app <- rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
-        optimism = mean(resBoot$t[,1] - resBoot$t[,2])
+        optimism = mean(resBoot[,1] - resBoot[,2])
         cindex.adjust <- cindex.app - optimism
         # Select the features and fit Cox model
-        bootstrap_selected_features <- resBoot$t[,-c(1,2)]
+        bootstrap_selected_features <- resBoot[,-c(1,2)]
         colnames(bootstrap_selected_features) <- covariates
         selected_features <- select.bolasso.features(bootstrap_selected_features, bolasso.threshold)
     }
@@ -218,7 +241,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     # bootstrap.coxnet model
     if (is.null(selected_features)) {
         out <- list("cindex_adjusted" = cindex.adjust, "optimism" = optimism, "cindex_app" = cindex.app,  
-                    "cindex_bootstrap" = resBoot$t[,1], "cindex_orig" = resBoot$t[,2],
+                    "cindex_bootstrap" = resBoot[,1], "cindex_orig" = resBoot[,2],
                     "bootstrap_selected_features" = bootstrap_selected_features, "selected_features" = selected_features, 
                     "coxph.fit" = coxmodel)
     } else {
@@ -283,10 +306,11 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         if (load_results) {
             best.lambda <- read.csv(paste0(save_results_dir, "best_params.csv"))[1, "penalty"]
             list.lambda <- read.csv(paste0(save_results_dir, "path_lambda.csv"))[["lambda"]]
-            coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, list.lambda = list.lambda, type.measure = "C")
+            coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, 
+                                         list.lambda = list.lambda, type.measure = "C", logfile = coxlasso_logfile)
         } else {
             coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, nfolds = cv_nfolds, 
-                                         cv.parallel = T, type.measure = "C")
+                                         cv.parallel = T, type.measure = "C", logfile = coxlasso_logfile)
             cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$coxnet.fit$nzero), penalty = coxmodel$coxnet.fit$lambda, 
                                     mean_score = coxmodel$coxnet.fit$cvm, std_score = as.numeric(coxmodel$coxnet.fit$cvsd))
             cv.params <- cv.params[order(cv.params$mean_score, decreasing = TRUE), ]
@@ -299,17 +323,17 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                           file = paste0(save_results_dir, "path_lambda.csv"))
             }
         }
-        if (!run_parallel)
-            log_info(paste("Best lambda:", best.lambda))
+        if (!run_parallel) log_info(paste("Best lambda:", best.lambda))
     } else if (penalty == "bootstrap_lasso") {
         if (load_results) {
             selected_features <- read.csv(paste0(save_results_dir, "final_selected_features.csv"))[["selected_features"]]
             bootstrap_selected_features <- read.csv(paste0(save_results_dir, "bootstrap_selected_features.csv"), header = T)
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
                                          best.lambda = "lambda.1se", selected_features = selected_features, 
-                                         bootstrap_selected_features = bootstrap_selected_features)
+                                         bootstrap_selected_features = bootstrap_selected_features, logfile = coxlasso_logfile)
         } else {
-            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, best.lambda = "lambda.1se")
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, 
+                                         best.lambda = "lambda.1se", logfile = coxlasso_logfile)
             if (save_results) {
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
                           file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
