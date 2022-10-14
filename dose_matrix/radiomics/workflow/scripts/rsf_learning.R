@@ -2,14 +2,15 @@
 options(show.error.locations = TRUE, error=traceback)
 
 suppressPackageStartupMessages({
-library("yaml", quietly = TRUE)
-library("caret", quietly = TRUE)
-library("survival", quietly = TRUE)
-library("randomForestSRC", quietly = TRUE)
-library("pec", quietly = TRUE)
-library("Hmisc", quietly = TRUE)
-library("logger", quietly = TRUE)
-library("parallel", quietly = TRUE)
+    library("yaml", quietly = TRUE)
+    library("caret", quietly = TRUE)
+    library("survival", quietly = TRUE)
+    library("randomForestSRC", quietly = TRUE)
+    library("pec", quietly = TRUE)
+    library("Hmisc", quietly = TRUE)
+    library("logger", quietly = TRUE)
+    library("parallel", quietly = TRUE)
+    library("hms", quietly = TRUE)
 })
 
 source("workflow/scripts/utils_rsf.R")
@@ -23,6 +24,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info("Random Survival Forest learning")
+    start_time = Sys.time()
     # Dataset
     df_trainset <- read.csv(file_trainset, header = TRUE)
     df_testset <- read.csv(file_testset, header = TRUE)
@@ -81,7 +83,8 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
     else {  
         stop("Subdivision type of features unrecognized")
     }
-    log_info("Done")
+    log_info("Done. Time:")
+    log_info(format(Sys.time() - start_time))
 }
 
 # Script args

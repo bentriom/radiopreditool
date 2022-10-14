@@ -1,5 +1,8 @@
 
-suppressPackageStartupMessages({library("yaml", quietly = TRUE)})
+suppressPackageStartupMessages({
+    library("yaml", quietly = TRUE)
+    library("hms", quietly = TRUE)
+})
 options(show.error.locations = TRUE, error=traceback)
 
 source("workflow/scripts/utils_cox.R")
@@ -11,6 +14,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info(paste0("Multiple scores baseline models learning R (",nworkers," workers)"))
+    start_time = Sys.time()
     # Dataset
     df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
@@ -51,7 +55,8 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
-    log_info("Done")
+    log_info("Done. Time:")
+    log_info(format(Sys.time() - start_time))
 }
 
 multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
@@ -61,6 +66,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info(paste0("Multiple scores cox lasso radiomics learning R (",nworkers," workers)"))
+    start_time = Sys.time()
     # Dataset
     df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
     features <- `if`(file_features == "all", colnames(df_trainset0), as.character(read.csv(file_features)[,1]))
@@ -119,6 +125,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     write.csv(df_results, file = filename_results, row.names = TRUE)
 
     log_info("Done")
+    log_info(format(Sys.time() - start_time))
 }
 
 

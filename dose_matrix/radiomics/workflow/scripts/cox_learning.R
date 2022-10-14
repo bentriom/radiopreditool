@@ -1,16 +1,19 @@
 
-suppressPackageStartupMessages({library("yaml", quietly = TRUE)})
+suppressPackageStartupMessages({
+    library("yaml", quietly = TRUE)
+    library("hms", quietly = TRUE)
+})
 options(show.error.locations = TRUE, error=traceback)
 
 source("workflow/scripts/utils_cox.R")
 
 baseline_models_learning <- function(file_trainset, file_testset, event_col, analyzes_dir, duration_col) {
     dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
-    nworkers <- get.nworkers()
     logfile <- paste0(analyzes_dir, "baseline_models_R.log")
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info("Baseline models learning R")
+    start_time = Sys.time()
     # Dataset
     df_trainset <- read.csv(file_trainset, header = TRUE)
     df_testset <- read.csv(file_testset, header = TRUE)
@@ -37,18 +40,18 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
     covariates = c(cols_dosesvol, clinical_vars)
     log_info("Model heart doses volumes lasso (1320)")
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile)
-    log_info("Done")
+    log_info("Done. Time:")
+    log_info(format(Sys.time() - start_time))
 }
 
 cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, 
                                    duration_col, suffix_model, subdivision_type, penalty = "lasso", n.boot = 200) {
     dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
-    nworkers <- get.nworkers()
     logfile <- paste0(analyzes_dir, "cox_", penalty, "_radiomics_R_", subdivision_type, "_", suffix_model, ".log")
     if (file.exists(logfile)) { file.remove(logfile) }
     log_appender(appender_file(logfile, append = TRUE))
     log_info("Cox lasso radiomics learning R")
-    
+    start_time = Sys.time() 
     # Dataset
     df_trainset <- read.csv(file_trainset, header = TRUE)
     df_testset <- read.csv(file_testset, header = TRUE)
@@ -96,7 +99,8 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
     } else {
         stop("Subdivision type of features unrecognized")
     }
-    log_info("Done")
+    log_info("Done. Time:")
+    log_info(format(Sys.time() - start_time))
 }
 
 # Script args
