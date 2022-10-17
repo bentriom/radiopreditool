@@ -197,7 +197,7 @@ select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) 
 # Bootstrap error estimation the coxnet model
 bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda.method = "lambda.1se", 
                              nfolds = 5, boot.parallel = "multicore", boot.ncpus = get.nworkers(), 
-                             type.measure = "C", bolasso.threshold = 0.8, selected_features = NULL,
+                             type.measure = "C", bolasso.threshold = 0.75, selected_features = NULL,
                              bootstrap_selected_features = NULL, logfile = NULL) {
     log_appender(appender_file(logfile, append = TRUE))
     covariates <- all.vars(formula[[3]])
