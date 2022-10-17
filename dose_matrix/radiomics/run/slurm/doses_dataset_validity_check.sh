@@ -50,9 +50,9 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="config/slurm/slurm_pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="config/slurm/slurm_pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="config/slurm/slurm_pathol_cardiaque_drugs.yaml" )
+#declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="config/slurm/slurm_pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="config/slurm/slurm_pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="config/slurm/slurm_pathol_cardiaque_drugs.yaml" )
 
-SNAKEMAKE_CONFIG_FILE=${LIST_CONFIG_FILE[${MODEL_NAME}]}
+SNAKEMAKE_CONFIG_FILE="config/slurm/${MODEL_NAME}.yaml"
 SNAKEMAKE_SBATCH="'sbatch --partition=cpu_long --mem=175G --ntasks=1 --cpus-per-task={threads} --time=16:00:00 --output=log/${MODEL_NAME}/%x-%j.out'"
 THREADS_ARGS="--set-threads list_newdosi_checks=40 --set-resources list_newdosi_checks:partition=mem list_newdosi_checks:mem=800G"
 #TARGET_RULES="/workdir/bentrioum/results/radiopreditool/radiomics/metadata/report_checks.txt"
