@@ -107,38 +107,41 @@ normalize_data <- function(df_train, covariates, event_col, duration_col, df_tes
 # From dataframe to glmnet objects
 coxlasso_data <- function(df, covariates, event_col, duration_col) {
     X <- as.matrix(df[covariates])
-    surv_y <- Surv(df[[duration_col]], df[[event_col]])
+    surv_y <- survival::Surv(df[[duration_col]], df[[event_col]])
     list("X" = X, "surv_y" = surv_y)
 }
 
 # S3 method for selection.coxnet
 predictSurvProb.selection.coxnet <- function(object, newdata, times, ...) {
-    predictSurvProb(object$coxph.fit, newdata = newdata, times = times, ...)
+    pec::predictSurvProb(object$coxph.fit, newdata = newdata, times = times, ...)
 }
 
 # S3 method for bootstrap.coxnet
 predictSurvProb.bootstrap.coxnet <- function(object, newdata, times, ...) {
-    predictSurvProb(object$coxph.fit, newdata = newdata, times = times, ...)
+    pec::predictSurvProb(object$coxph.fit, newdata = newdata, times = times, ...)
+}
+
+get.best.lambda <- function(object, method) {
+    if (is(object, "cv.glmnet")) {
+        if (is.character(method)) return(object[[method]])
+    }
+    return(NULL)
 }
 
 # Select the best lambda from cv.glmnet / glmnet object
 # To be implemented : method is a function
-get.coefs.cox <- function(object, method) {
-    # It means it's a loaded object in my case
-    if (is(object, "glmnet"))
-        return(coef(object, s = tail(object$lambda, 1))[,1])
+get.coefs.cox <- function(object, lambda) {
+    # It means it's a loaded object in my case : get the last lambda
+    if (is(object, "glmnet")) return(glmnet::coef.glmnet(object, s = tail(object$lambda, 1))[,1])
     # Best lambda method allowed by glmnet
-    if (is.character(method)) {
-        if (is(object, "cv.glmnet"))
-            return(coef(object, s = method)[,1])
-    }
+    if (is(object, "cv.glmnet")) return(glmnet::coef.glmnet(object, s = lambda)[,1])
 }
 
 # Lasso selection + coxph model
 selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda = NULL,  
-                             best.lambda.method = "lambda.min", cv.parallel = T, 
+                             best.lambda.method = "lambda.1se", cv.parallel = T, 
                              type.measure = "C", logfile = NULL) {
-    if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
+    if (!is.null(logfile)) logger::log_appender(logger::appender_file(logfile, append = TRUE))
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
@@ -148,25 +151,27 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     # Lasso selection
     if (is.null(list.lambda)) {
         if (cv.parallel) { 
-            log_info(paste("CV lasso: creating a cluster with", nfolds, "workers"))
+            logger::log_info(paste("CV lasso: creating a cluster with", nfolds, "workers"))
             cl <- parallel::makeCluster(nfolds)
             doParallel::registerDoParallel(cl)
-            log_info(paste(colnames(showConnections()), collapse = " "))
-            log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
+            logger::log_info(paste(colnames(showConnections()), collapse = " "))
+            logger::log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
         }
-        coxnet_model <- cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
-                                  nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+        coxnet_model <- glmnet::cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
+                                          nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
         if (cv.parallel) parallel::stopCluster(cl)
     } else {
-        coxnet_model <- glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
-                               nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+        coxnet_model <- glmnet::glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
+                                       nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
     }
-    best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda.method)
+    best.lambda <- get.best.lambda(coxnet_model, best.lambda.method)
+    best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda)
     nonnull.covariates <- names(best.coefs.cox[abs(best.coefs.cox) > 0])
     # Coxph on selected models
     formula_nonnull <- get.surv.formula(event_col, nonnull.covariates, duration_col = duration_col)
-    coxmodel <- coxph(formula_nonnull, data = data, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
-    out <- list("selected_features" = nonnull.covariates, "coxnet.fit" = coxnet_model, best.lambda.method = best.lambda.method,  
+    coxmodel <- survival::coxph(formula_nonnull, data = data, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
+    out <- list("call" = match.call(), "selected_features" = nonnull.covariates, "coxnet.fit" = coxnet_model, 
+                "best.lambda.method" = best.lambda.method, "best.lambda" = best.lambda, 
                 "coxph.fit" = coxmodel, "coxph.formula" = formula_nonnull, "surv_y" = coxnet_surv_y)
     class(out) <- "selection.coxnet"
     out
@@ -182,10 +187,10 @@ sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, best.l
     ind_selected_features <- rep(0, length(covariates))
     ind_selected_features[covariates %in% select_coxmodel$selected_features] <- 1
     idx_surv <- length(pred.times)
-    cox.survprob.boot <- predictSurvProb(select_coxmodel, newdata = data.table::as.data.table(bstrap_data), times = pred.times)
-    cox.survprob.all <- predictSurvProb(select_coxmodel, newdata = data.table::as.data.table(data), times = pred.times)
-    cindex.boot <- rcorr.cens(cox.survprob.boot[,idx_surv], S = select_coxmodel$surv_y)[["C Index"]]
-    cindex.orig <- rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
+    cox.survprob.boot <- predictSurvProb.selection.coxnet(select_coxmodel, newdata = data.table::as.data.table(bstrap_data), times = pred.times)
+    cox.survprob.all <- predictSurvProb.selection.coxnet(select_coxmodel, newdata = data.table::as.data.table(data), times = pred.times)
+    cindex.boot <- Hmisc::rcorr.cens(cox.survprob.boot[,idx_surv], S = select_coxmodel$surv_y)[["C Index"]]
+    cindex.orig <- Hmisc::rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
     c(cindex.boot, cindex.orig, ind_selected_features)
 }
 
@@ -214,10 +219,11 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
         doParallel::registerDoParallel(cl)
         log_info(paste(colnames(showConnections()), collapse = " "))
         log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
+        # survival::Surv doesn't work in foreach.. must export survival
         resBoot <- foreach(i = 1:B, .combine = 'rbind', 
-                           .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", "coxlasso_data", 
-                                       "get.coefs.cox", "get.surv.formula"), 
-                           .packages = c("glmnet", "Hmisc", "survival", "pec")) %dopar% {
+                           .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
+                                       "coxlasso_data", "get.coefs.cox", "get.surv.formula"), .packages = c("survival")
+                           ) %dopar% {
             idx_boot <- sample(nrow(data), replace = T)
             sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                           best.lambda.method = best.lambda.method, nfolds = nfolds, 
@@ -329,11 +335,11 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             selected_features <- read.csv(paste0(save_results_dir, "final_selected_features.csv"))[["selected_features"]]
             bootstrap_selected_features <- read.csv(paste0(save_results_dir, "bootstrap_selected_features.csv"), header = T)
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
-                                         best.lambda = "lambda.1se", selected_features = selected_features, 
+                                         best.lambda.method = "lambda.1se", selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features, logfile = coxlasso_logfile)
         } else {
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, 
-                                         best.lambda = "lambda.1se", logfile = coxlasso_logfile)
+                                         best.lambda.method = "lambda.1se", logfile = coxlasso_logfile)
             if (save_results) {
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
                           file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
@@ -461,7 +467,9 @@ plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
     save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
     df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
-    ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + coord_flip()
+    if (nrow(df.coefs) > 30) df.coefs <- df.coefs[1:30, ]
+    ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + 
+           ggtitle("Selected features (30 best)") + coord_flip()
     ggsave(paste0(save_results_dir, "freq_selected_features.png"), device = "png", dpi = 480)
 }
 
