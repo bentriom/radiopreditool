@@ -222,7 +222,8 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
         # survival::Surv doesn't work in foreach.. must export survival
         resBoot <- foreach(i = 1:B, .combine = 'rbind', 
                            .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
-                                       "coxlasso_data", "get.coefs.cox", "get.surv.formula"), .packages = c("survival")
+                                       "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
+                           .packages = c("survival")
                            ) %dopar% {
             idx_boot <- sample(nrow(data), replace = T)
             sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
