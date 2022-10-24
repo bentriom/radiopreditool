@@ -219,7 +219,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
                              nfolds = 5, boot.parallel = "foreach", boot.ncpus = get.nworkers(), 
                              type.measure = "C", bolasso.threshold = 0.75, selected_features = NULL,
                              bootstrap_selected_features = NULL, logfile = NULL) {
-    stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "slurm"))
+    stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "rslurm"))
     log_appender(appender_file(logfile, append = TRUE))
     log_info(paste("Boot parallel method:", boot.parallel))
     covariates <- all.vars(formula[[3]])
