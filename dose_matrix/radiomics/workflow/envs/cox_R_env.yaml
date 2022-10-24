@@ -16,4 +16,5 @@ dependencies:
   - r-survival
   - r-tidyverse
   - r-randomforestsrc
+  - r-rslurm
 
