@@ -12,6 +12,7 @@ library("doParallel", quietly = TRUE)
 library("ggplot2", quietly = TRUE)
 library("reshape2", quietly = TRUE)
 library("randomForestSRC", quietly = TRUE)
+library("rslurm", quietly = TRUE)
 })
 # Not available in conda
 # if(!require("bolasso")) {
@@ -94,12 +95,14 @@ normalize_data <- function(df_train, covariates, event_col, duration_col, df_tes
     if (!is.null(discrete_vars)) {
         means_unique_train <- as.numeric(lapply(df_train[discrete_vars], function(x) { mean(unique(x)) } ))
         scales_unique_train <- as.numeric(lapply(df_train[discrete_vars], function(x) { max(x) - min(x) } ))
-        df_train[, discrete_vars] <- scale(df_train[,discrete_vars], center = means_unique_train, scale = scales_unique_train)
+        df_train[, discrete_vars] <- scale(df_train[,discrete_vars], 
+                                           center = means_unique_train, scale = scales_unique_train)
     }
     if (!is.null(df_test)) {
         df_test[, continuous_vars] <- scale(df_test[continuous_vars], center = means_train, scale = stds_train)
         if (!is.null(discrete_vars))
-            df_test[, discrete_vars] <- scale(df_test[,discrete_vars], center = means_unique_train, scale = scales_unique_train)
+            df_test[, discrete_vars] <- scale(df_test[,discrete_vars], 
+                                              center = means_unique_train, scale = scales_unique_train)
     }
     list("train" = df_train, "test" = df_test) 
 }
@@ -155,7 +158,8 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
             cl <- parallel::makeCluster(nfolds)
             doParallel::registerDoParallel(cl)
             logger::log_info(paste(colnames(showConnections()), collapse = " "))
-            logger::log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
+            logger::log_info(paste(apply(showConnections(), 1, 
+                                   function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
         }
         coxnet_model <- glmnet::cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
                                           nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
@@ -178,8 +182,8 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
 }
 
 # Task for bootstrapping Coxnet selection
-sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, best.lambda.method, 
-                          nfolds, type.measure, pred.times) {
+sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, 
+                          best.lambda.method, nfolds, type.measure, pred.times) {
     bstrap_data <- data[indices, ]
     select_coxmodel <- selection.coxnet(formula, bstrap_data, best.lambda.method = best.lambda.method, 
                                         nfolds = nfolds, cv.parallel = F)
@@ -199,38 +203,71 @@ select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) 
     colnames(bootstrap_selected_features)[freq_features >= threshold]
 }
 
+slurm_job_boot_coxnet <- function(nb_coxnet, data, indices, lasso_data_full, formula, alpha, 
+                                  best.lambda.method, nfolds, type.measure, pred.times) {
+  resBoot <- foreach(i = 1:B, .combine = 'rbind') %do% {
+    idx_boot <- sample(nrow(data), replace = T)
+    sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
+                  best.lambda.method = best.lambda.method, nfolds = nfolds, 
+                  type.measure = type.measure, pred.times = pred.times)
+  }
+  return(resBoot)
+}
+
 # Bootstrap error estimation the coxnet model
 bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda.method = "lambda.1se", 
-                             nfolds = 5, boot.parallel = "multicore", boot.ncpus = get.nworkers(), 
+                             nfolds = 5, boot.parallel = "foreach", boot.ncpus = get.nworkers(), 
                              type.measure = "C", bolasso.threshold = 0.75, selected_features = NULL,
                              bootstrap_selected_features = NULL, logfile = NULL) {
+    stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "slurm"))
     log_appender(appender_file(logfile, append = TRUE))
+    log_info(paste("Boot parallel method:", boot.parallel))
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
     lasso_data_full <- coxlasso_data(data, covariates, event_col, duration_col)
     if (is.null(selected_features)) {
         # Launch bootstrap
-        # resBoot <- boot(data, sample.coxnet, R = B, parallel = boot.parallel, ncpus = boot.ncpus, 
-        #                 lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, nfolds = nfolds, 
-        #                 best.lambda.method = best.lambda.method, type.measure = type.measure, pred.times = pred.times)$t
-        log_info(paste("Bootstrap lasso: creating a cluster with", boot.ncpus, "workers"))
-        cl <- parallel::makeCluster(boot.ncpus)
-        doParallel::registerDoParallel(cl)
-        log_info(paste(colnames(showConnections()), collapse = " "))
-        log_info(paste(apply(showConnections(), 1, function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
-        # survival::Surv doesn't work in foreach.. must export survival
-        resBoot <- foreach(i = 1:B, .combine = 'rbind', 
-                           .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
-                                       "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
-                           .packages = c("survival")
-                           ) %dopar% {
+        if (boot.parallel == "boot.multicore") {
+          resBoot <- boot(data, sample.coxnet, R = B, parallel = "multicore", ncpus = boot.ncpus, 
+                          lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
+                          nfolds = nfolds, best.lambda.method = best.lambda.method, 
+                          type.measure = type.measure, pred.times = pred.times)$t
+        } else if (boot.parallel == "foreach") { 
+          log_info(paste("Bootstrap lasso: creating a cluster with", boot.ncpus, "workers"))
+          cl <- parallel::makeCluster(boot.ncpus)
+          doParallel::registerDoParallel(cl)
+          log_info(paste(colnames(showConnections()), collapse = " "))
+          log_info(paste(apply(showConnections(), 1, 
+                               function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
+          # survival::Surv doesn't work in foreach.. must export survival
+          resBoot <- foreach(i = 1:B, .combine = 'rbind', 
+                             .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
+                                         "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
+                             .packages = c("survival")
+                             ) %dopar% {
             idx_boot <- sample(nrow(data), replace = T)
             sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                           best.lambda.method = best.lambda.method, nfolds = nfolds, 
                           type.measure = type.measure, pred.times = pred.times)
+          }
+          parallel::stopCluster(cl)
+        } else if (boot.parallel == "rslurm") {
+          suppressPackageStartupMessages(library("rslurm", quietly = TRUE))
+          coxnet_per_job <- 5
+          nb_coxnet_jobs <- c(rep(coxnet_per_job, B %/% coxnet_per_job), B %/% coxnet_per_job)
+          sopt <- list(time = "03:00:00", "ntasks" = 1, "cpus-per-task" = 1)
+          sjob <- slurm_apply(function(nb_coxnet) slurm_job_boot_coxnet(nb_coxnet, data, idx_boot, 
+                              lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
+                              best.lambda.method = best.lambda.method, nfolds = nfolds, 
+                              type.measure = type.measure, pred.times = pred.times), 
+                              data.frame(nbr_coxnet = nb_coxnet_jobs), 
+                              global_objects = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
+                                                "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
+                              slurm_options = sopt)
+          listResJobs <- get_slurm_out(sjob, outtype = "raw", wait = T)
+          cleanup_files(sjob)
         }
-        parallel::stopCluster(cl)
         # Computation of the adjusted C-index over the whole dataset
         select_coxmodel_app <- selection.coxnet(formula, data, nfolds = nfolds, cv.parallel = F)
         idx_surv <- length(pred.times)
@@ -339,8 +376,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                                          best.lambda.method = "lambda.1se", selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features, logfile = coxlasso_logfile)
         } else {
-            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, 
-                                         best.lambda.method = "lambda.1se", logfile = coxlasso_logfile)
+            boot.parallel <- `if`(is.na(Sys.getenv("SLURM_NTASKS")), "foreach", "rslurm")
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, boot.parallel = boot.parallel, 
+                                         B = n.boot, best.lambda.method = "lambda.1se", logfile = coxlasso_logfile)
             if (save_results) {
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
                           file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
@@ -354,10 +392,12 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     coxlasso.survprob.test <- predictSurvProb(coxmodel, newdata = data.table::as.data.table(df_model_test), times = pred.times)
     formula_ipcw <- get.ipcw.surv.formula(event_col, filtered_covariates)
     # C-index ipcw (censored free, marginal = KM)
-    coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.train[,idx_surv])), formula = formula_ipcw, 
-                                                data = df_model_train, cens.model = "cox")$AppCindex[["Best coxlasso"]]
-    coxlasso.cindex.ipcw.test <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.test[,idx_surv])), formula = formula_ipcw, 
-                                               data = df_model_test, cens.model = "cox")$AppCindex[["Best coxlasso"]]
+    coxlasso.cindex.ipcw.train <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.train[,idx_surv])), 
+                                              formula = formula_ipcw, 
+                                              data = df_model_train, cens.model = "cox")$AppCindex[["Best coxlasso"]]
+    coxlasso.cindex.ipcw.test <- pec::cindex(list("Best coxlasso" = as.matrix(coxlasso.survprob.test[,idx_surv])), 
+                                             formula = formula_ipcw, 
+                                             data = df_model_test, cens.model = "cox")$AppCindex[["Best coxlasso"]]
     # Harrell's C-index
     coxlasso.cindex.harrell.train <- rcorr.cens(coxlasso.survprob.train[,idx_surv], S = surv_y_train)[["C Index"]]
     coxlasso.cindex.harrell.test <- rcorr.cens(coxlasso.survprob.test[,idx_surv], S = surv_y_test)[["C Index"]]
@@ -423,7 +463,8 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
     best.coefs.cox <- `if`(is(cox_object, "glmnet") | is(cox_object, "cv.glmnet"), coef(cox_object, s = best.lambda)[,1], coef(cox_object))
     names.nonnull.coefs <- pretty.labels(names(best.coefs.cox[abs(best.coefs.cox) > 0]))
     df.coefs = data.frame(labels = pretty.labels(names(best.coefs.cox)), coefs = best.coefs.cox)
-    ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + geom_bar(stat = "identity") + coord_flip() 
+    ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + 
+    geom_bar(stat = "identity") + coord_flip() 
     ggsave(paste0(save_results_dir, "coefs.png"), device = "png", dpi = 480)
     # Regularization path + mean error for Cox Lasso
     if (is(cox_object, "cv.glmnet")) {
@@ -438,8 +479,10 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
         geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
         geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
         geom_point(data = cv.params.unique, aes(x = penalty, y = mean_score), color = "purple") +
-        geom_text(data = cv.params.unique[mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), size = 3, vjust = -1) +
-        geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), size = 3, vjust = 2) +
+        geom_text(data = cv.params.unique[mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), 
+                  size = 3, vjust = -1) +
+        geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), 
+                  size = 3, vjust = 2) +
         scale_x_log10() +
         labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
         ggsave(paste0(save_results_dir, "cv_mean_error.png"), device = "png", dpi = 480)
