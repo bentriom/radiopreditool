@@ -1,0 +1,29 @@
+MODEL_NAME: pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5_boot_5
+RADIOMICS_NAME: 32X_1320_bw_0.5
+DOSES_DATASET_DIR: /Volumes/LaCie/dosimetrie_csv/
+DOSES_DATASET_SUBDIRS:
+    - CURIE
+    - GR
+    - TOULOUSE
+    - REIMS
+    - NICE
+RESULTS_DIR: /Volumes/LaCie/local_results/
+RADIOMICS_PARAMS_FILE: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/config/radiomics/radiomics_pathol_cardiaque_bw_0.5.yaml
+# 309 - 310: lung
+# 320 - 324: heart
+# 370 - 380: cerveau
+# 413 - 420: breast 
+# 702 - 704: thyroid
+LABELS_SUPER_T_VOI: [1320]
+LABELS_T_VOI: [320, 321, 322, 323, 324]
+FCCSS_CLINICAL_DATASET: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01102021/base_fccss_igr_curie_011021_update_070622.csv.gz
+FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis", "ALKYL", "ANTHRA", 
+                           'iccc_10.b', 'iccc_03.d', 'iccc_03.e', 'iccc_09.b', 'iccc_11.b', 'iccc_09.d', 
+                           'iccc_03.a', 'iccc_02.e', 'iccc_02.c', 'iccc_08.c', 'iccc_10.c', 'iccc_02.b', 
+                           'iccc_03.c', 'iccc_08.a', 'iccc_03.b', 'iccc_02.a', 'iccc_09.a', 'iccc_05.a', 
+                           'iccc_04.a', 'iccc_06.a']
+EVENT_COL: "Pathologie_cardiaque_3_new"
+DATE_EVENT_COL: "date_pathol_cardiaque_3_new"
+NB_ESTIM_SCORE_MODELS: 10
+N_BOOTSTRAP: 5
+
