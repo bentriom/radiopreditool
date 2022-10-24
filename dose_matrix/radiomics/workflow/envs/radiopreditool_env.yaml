@@ -1,5 +1,6 @@
 name: radiopreditool
 channels:
+  - sebp
   - simpleitk
   - plotly
   - bioconda
@@ -7,6 +8,7 @@ channels:
   - defaults
 dependencies:
   - python=3.9
+  - pip
   - mamba
   - snakemake
   - pandas 
@@ -17,10 +19,10 @@ dependencies:
   - simpleitk
   - lifelines
   - scikit-learn
+  - scikit-survival
   - fastcluster
   - python-kaleido
   - plotly
   - pip:
     - pyradiomics
-    - scikit-survival
 
