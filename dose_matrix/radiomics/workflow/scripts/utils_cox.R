@@ -152,6 +152,7 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     coxnet_X <- lasso_data$X 
     coxnet_surv_y <- lasso_data$surv_y
     # Lasso selection
+    # If we have to estimate the lambda parameter
     if (is.null(list.lambda)) {
         if (cv.parallel) { 
             logger::log_info(paste("CV lasso: creating a cluster with", nfolds, "workers"))
@@ -164,7 +165,9 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
         coxnet_model <- glmnet::cv.glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha,  
                                           nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
         if (cv.parallel) parallel::stopCluster(cl)
-    } else {
+    } 
+    # We know the best lamba (and the regularization path)
+    else {
         coxnet_model <- glmnet::glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
                                        nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
     }
@@ -181,7 +184,13 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     out
 }
 
-# Task for bootstrapping Coxnet selection
+# Returns selected variables names by a bootstrap Coxnet based on a threshold
+select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) {
+    freq_features <- colSums(bootstrap_selected_features) / nrow(bootstrap_selected_features)
+    colnames(bootstrap_selected_features)[freq_features >= threshold]
+}
+
+# Task of Coxnet selection for one bootstrap sample
 sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, 
                           best.lambda.method, nfolds, type.measure, pred.times) {
     bstrap_data <- data[indices, ]
@@ -198,15 +207,11 @@ sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha,
     c(cindex.boot, cindex.orig, ind_selected_features)
 }
 
-select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) {
-    freq_features <- colSums(bootstrap_selected_features) / nrow(bootstrap_selected_features)
-    colnames(bootstrap_selected_features)[freq_features >= threshold]
-}
-
+# Task for a slurm job: several sample.coxnet calls
 slurm_job_boot_coxnet <- function(nb_coxnet, data, indices, lasso_data_full, formula, alpha, 
                                   best.lambda.method, nfolds, type.measure, pred.times) {
-  resBoot <- foreach(i = 1:B, .combine = 'rbind') %do% {
-    idx_boot <- sample(nrow(data), replace = T)
+  resBoot <- foreach(i = 1:nb_coxnet, .combine = 'rbind') %do% {
+    idx_boot <- unique(sample(nrow(data), replace = T))
     sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                   best.lambda.method = best.lambda.method, nfolds = nfolds, 
                   type.measure = type.measure, pred.times = pred.times)
@@ -246,7 +251,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
                                          "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
                              .packages = c("survival")
                              ) %dopar% {
-            idx_boot <- sample(nrow(data), replace = T)
+            idx_boot <- unique(sample(nrow(data), replace = T))
             sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                           best.lambda.method = best.lambda.method, nfolds = nfolds, 
                           type.measure = type.measure, pred.times = pred.times)
@@ -255,18 +260,27 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
         } else if (boot.parallel == "rslurm") {
           suppressPackageStartupMessages(library("rslurm", quietly = TRUE))
           coxnet_per_job <- 5
-          nb_coxnet_jobs <- c(rep(coxnet_per_job, B %/% coxnet_per_job), B %/% coxnet_per_job)
-          sopt <- list(time = "03:00:00", "ntasks" = 1, "cpus-per-task" = 1)
+          nb_coxnet_jobs <- rep(coxnet_per_job, B %/% coxnet_per_job)
+          if (B %% coxnet_per_job > 0) nb_coxnet_jobs <- c(nb_coxnet_jobs, B %% coxnet_per_job)
+          log_info(paste("Number of slurm jobs:", length(nb_coxnet_jobs)))
+          log_info(do.call(paste, as.list(nb_coxnet_jobs)))
+          sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
+                       partition = "cpu_med", mem = "20G")
           sjob <- slurm_apply(function(nb_coxnet) slurm_job_boot_coxnet(nb_coxnet, data, idx_boot, 
                               lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                               best.lambda.method = best.lambda.method, nfolds = nfolds, 
                               type.measure = type.measure, pred.times = pred.times), 
-                              data.frame(nbr_coxnet = nb_coxnet_jobs), 
-                              global_objects = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
-                                                "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
+                              data.frame(nb_coxnet = nb_coxnet_jobs), 
+                              nodes = length(nb_coxnet_jobs), cpus_per_node = 1, processes_per_node = 1, 
+                              global_objects = c("slurm_job_boot_coxnet", "sample.coxnet", "selection.coxnet", 
+                                                 "predictSurvProb.selection.coxnet", "coxlasso_data", 
+                                                 "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
                               slurm_options = sopt)
+          log_info("Jobs are submitted")
           listResJobs <- get_slurm_out(sjob, outtype = "raw", wait = T)
-          cleanup_files(sjob)
+          resBoot <- do.call("rbind", listResJobs)
+          cleanup_files(sjob, wait = T)
+          log_info("End of all submitted jobs")
         }
         # Computation of the adjusted C-index over the whole dataset
         select_coxmodel_app <- selection.coxnet(formula, data, nfolds = nfolds, cv.parallel = F)
@@ -275,7 +289,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
         cindex.app <- rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
         optimism = mean(resBoot[,1] - resBoot[,2])
         cindex.adjust <- cindex.app - optimism
-        # Select the features and fit Cox model
+        # Select the features and fit Cox model
         bootstrap_selected_features <- resBoot[,-c(1,2)]
         colnames(bootstrap_selected_features) <- covariates
         selected_features <- select.bolasso.features(bootstrap_selected_features, bolasso.threshold)
