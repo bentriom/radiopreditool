@@ -390,7 +390,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                                          best.lambda.method = "lambda.1se", selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features, logfile = coxlasso_logfile)
         } else {
-            boot.parallel <- `if`(is.na(Sys.getenv("SLURM_NTASKS")), "foreach", "rslurm")
+            boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, boot.parallel = boot.parallel, 
                                          B = n.boot, best.lambda.method = "lambda.1se", logfile = coxlasso_logfile)
             if (save_results) {
