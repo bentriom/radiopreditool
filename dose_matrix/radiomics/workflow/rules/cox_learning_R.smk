@@ -78,7 +78,7 @@ rule cox_bootstrap_lasso_radiomics_whole_heart_all_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL)
     threads:
-        get_ncpus() - 1
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -117,7 +117,7 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_all_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL)
     threads:
-        get_ncpus() - 1
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -160,7 +160,7 @@ rule cox_bootstrap_lasso_radiomics_whole_heart_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST)
     threads:
-        get_ncpus() - 1
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -201,7 +201,7 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST)
     threads:
-        get_ncpus() - 1
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
