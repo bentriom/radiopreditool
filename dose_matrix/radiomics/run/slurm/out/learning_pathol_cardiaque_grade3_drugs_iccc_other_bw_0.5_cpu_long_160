@@ -1,0 +1,34 @@
+-j 160 --model pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5 --rules cox_bootstrap_lasso_radiomics_subparts_heart_all_R
++ cd /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/
++ mkdir -p log/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/
++ rm log/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/snakejob.cox_bootstrap_lasso_radiomics_subparts_heart_all_R.0.sh-2482583.out
++ echo Thu Oct 27 11:32:15 CEST 2022
+Thu Oct 27 11:32:15 CEST 2022
++ export OMP_PLACES=cores
++ OMP_PLACES=cores
++ echo pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5
+pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5
++ snakemake --use-conda --configfile config/slurm/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml --cluster 'sbatch --partition=cpu_long --mem=175G --ntasks=1 --cpus-per-task={threads} --time=16:00:00 --output=log/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/%x-%j.out' --jobs 160 --rerun-incomplete cox_bootstrap_lasso_radiomics_subparts_heart_all_R
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cluster nodes: 160
+Job stats:
+job                                                   count    min threads    max threads
+--------------------------------------------------  -------  -------------  -------------
+cox_bootstrap_lasso_radiomics_subparts_heart_all_R        1              1              1
+total                                                     1              1              1
+
+Select jobs to execute...
+
+[Thu Oct 27 11:47:03 2022]
+rule cox_bootstrap_lasso_radiomics_subparts_heart_all_R:
+    input: /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/datasets/trainset.csv.gz, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/datasets/testset.csv.gz
+    output: /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/cox_bootstrap_lasso_radiomics_R_32X_all.log, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_firstorder_bootstrap_lasso_all/coefs.png, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_full_bootstrap_lasso_all/coefs.png, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_firstorder_bootstrap_lasso_all/freq_selected_features.png, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_full_bootstrap_lasso_all/freq_selected_features.png, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_firstorder_bootstrap_lasso_all/bootstrap_selected_features.csv, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_full_bootstrap_lasso_all/bootstrap_selected_features.csv, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_firstorder_bootstrap_lasso_all/final_selected_features.csv, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_full_bootstrap_lasso_all/final_selected_features.csv, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_firstorder_bootstrap_lasso_all/metrics.csv, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_full_bootstrap_lasso_all/metrics.csv, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_firstorder_bootstrap_lasso_all/model.rds, /workdir/bentrioum/results/radiopreditool/radiomics/analyzes/pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5/coxph_R/32X_radiomics_full_bootstrap_lasso_all/model.rds
+    jobid: 0
+    resources: tmpdir=/tmp
+
+Submitted job 0 with external jobid 'Submitted batch job 2487208'.
+[Thu Oct 27 13:48:01 2022]
+Finished job 0.
+1 of 1 steps (100%) done
+Complete log: /gpfs/workdir/bentrioum/radiopreditool/dose_matrix/radiomics/.snakemake/log/2022-10-27T113454.551986.snakemake.log

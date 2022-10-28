@@ -2,7 +2,7 @@
 
 NJOBS=45
 NTHREADS=1
-TIME="16:00:00"
+TIME="17:00:00"
 PARTITION="cpu_long"
 MEMORY_PER_NODE="175G"
 MODEL_NAME="pathol_cardiaque"
@@ -83,7 +83,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 #declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="slurm_pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="slurm_pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="slurm_pathol_cardiaque_drugs.yaml" ["pathol_cardiaque_drugs_iccc_other"]="slurm_pathol_cardiaque_drugs_iccc_other.yaml" ["pathol_cardiaque_grade3_chimio"]="slurm_pathol_cardiaque_grade3_chimio.yaml" ["pathol_cardiaque_grade3_drugs"]="slurm_pathol_cardiaque_grade3_drugs.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml" )
 
 SNAKEMAKE_CONFIG_FILE="config/slurm/${MODEL_NAME}.yaml"
-SNAKEMAKE_SBATCH="'sbatch --partition=cpu_long --mem=175G --ntasks=1 --cpus-per-task={threads} --time=14:00:00 --output=log/${MODEL_NAME}/%x-%j.out'"
+SNAKEMAKE_SBATCH="'sbatch --partition=cpu_long --mem=175G --ntasks=1 --cpus-per-task={threads} --time=16:00:00 --output=log/${MODEL_NAME}/%x-%j.out'"
 #THREADS_ARGS="--set-threads rsf_features_hclust_corr_analysis=20 rsf_analysis=20"
 THREADS_ARGS=""
 
