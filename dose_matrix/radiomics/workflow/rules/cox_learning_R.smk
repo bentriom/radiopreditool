@@ -9,8 +9,10 @@ COX_RADIOMICS_LASSO_1320_FE_HCLUST = ["1320_radiomics_firstorder_lasso_features_
                                       "1320_radiomics_full_lasso_features_hclust_corr"]
 COX_RADIOMICS_LASSO_32X_FE_HCLUST = [ "32X_radiomics_firstorder_lasso_features_hclust_corr", \
                                       "32X_radiomics_full_lasso_features_hclust_corr"]
-COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL = ["1320_radiomics_firstorder_bootstrap_lasso_all", "1320_radiomics_full_bootstrap_lasso_all"]
-COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL = ["32X_radiomics_firstorder_bootstrap_lasso_all", "32X_radiomics_full_bootstrap_lasso_all"]
+COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL = ["1320_radiomics_firstorder_bootstrap_lasso_all", \
+                                          "1320_radiomics_full_bootstrap_lasso_all"]
+COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL = ["32X_radiomics_firstorder_bootstrap_lasso_all", \
+                                         "32X_radiomics_full_bootstrap_lasso_all"]
 COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST = ["1320_radiomics_firstorder_bootstrap_lasso_features_hclust_corr", \
                                       "1320_radiomics_full_bootstrap_lasso_features_hclust_corr"]
 COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST = [ "32X_radiomics_firstorder_bootstrap_lasso_features_hclust_corr", \
@@ -78,7 +80,7 @@ rule cox_bootstrap_lasso_radiomics_whole_heart_all_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL)
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -117,7 +119,7 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_all_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL)
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -160,7 +162,7 @@ rule cox_bootstrap_lasso_radiomics_whole_heart_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST)
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -201,7 +203,7 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/metrics.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R/{model}/model.rds", model = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST)
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else (get_ncpus() - 1)
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -212,9 +214,10 @@ rule multiple_scores_baseline_analysis_R:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = BASELINE_MODELS_LASSO)
-    output: 
+    output:
         ANALYZES_DIR + "multiple_scores_baseline_models_R.log",
-        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
     threads:
         min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
     conda:
@@ -228,11 +231,11 @@ rule multiple_scores_cox_lasso_radiomics_all_R:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
-    output: 
+    output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_all.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_ALL)
     threads:
-        min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
@@ -244,11 +247,11 @@ rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
-    output: 
+    output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
     threads:
-        min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
+        1 if "SLURM_CPUS_PER_TASK" in os.environ else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
         "../envs/cox_R_env.yaml"
     shell:

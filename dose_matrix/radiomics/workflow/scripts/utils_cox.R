@@ -171,8 +171,8 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     } 
     # We know the best lamba (and the regularization path)
     else {
-        coxnet_model <- glmnet::glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
-                                       nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
+      coxnet_model <- glmnet::glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
+                                     nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
     }
     best.lambda <- get.best.lambda(coxnet_model, best.lambda.method)
     best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda)
@@ -203,14 +203,16 @@ sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha,
     ind_selected_features <- rep(0, length(covariates))
     ind_selected_features[covariates %in% select_coxmodel$selected_features] <- 1
     idx_surv <- length(pred.times)
-    cox.survprob.boot <- predictSurvProb.selection.coxnet(select_coxmodel, newdata = data.table::as.data.table(bstrap_data), times = pred.times)
-    cox.survprob.all <- predictSurvProb.selection.coxnet(select_coxmodel, newdata = data.table::as.data.table(data), times = pred.times)
+    cox.survprob.boot <- predictSurvProb.selection.coxnet(select_coxmodel, times = pred.times, 
+                                                          newdata = data.table::as.data.table(bstrap_data))
+    cox.survprob.all <- predictSurvProb.selection.coxnet(select_coxmodel,times = pred.times, 
+                                                         newdata = data.table::as.data.table(data))
     cindex.boot <- Hmisc::rcorr.cens(cox.survprob.boot[,idx_surv], S = select_coxmodel$surv_y)[["C Index"]]
     cindex.orig <- Hmisc::rcorr.cens(cox.survprob.all[,idx_surv], S = lasso_data_full$surv_y)[["C Index"]]
     c(cindex.boot, cindex.orig, ind_selected_features)
 }
 
-# Task for a slurm job: several sample.coxnet calls
+# Task for a slurm job in bootstrap lasso: several sample.coxnet calls
 slurm_job_boot_coxnet <- function(nb_coxnet, data, indices, lasso_data_full, formula, alpha, 
                                   best.lambda.method, nfolds, type.measure, pred.times) {
   resBoot <- foreach(i = 1:nb_coxnet, .combine = 'rbind') %do% {
@@ -313,7 +315,6 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     class(out) <- "bootstrap.coxnet"
     out
 }
-
 
 model_cox.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, 
                          model_name, coxlasso_logfile, penalty = "lasso") {
@@ -482,6 +483,47 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     results_test
 }
 
+# Run multiple scores estimation for a Cox model with presaved train / test sets in parallel
+parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, duration_col, analyzes_dir, 
+                                         model_name, logfile, penalty = "lasso", parallel.method = "mclapply") {
+  stopifnot(parallel.method %in% c("mclapply", "rslurm"))
+  index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+  if (parallel.method == "mclapply") {
+    nworkers <- get.nworkers()
+    results <- mclapply(0:(nb_estim-1), function (i)  model_cox.id(i, covariates, event_col, duration_col, 
+                                        analyzes_dir, model_name, logfile, penalty = "none"), mc.cores = nworkers)
+    results <- as.data.frame(results)
+  } else if (parallel.method == "rslurm") {
+    nb_max_slurm_jobs <- 40
+    log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
+    log_info(do.call(paste, as.list(nb_params_jobs)))
+    sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
+                 partition = "cpu_med", mem = "20G")
+    sjob <- slurm_apply(function (i)  model_cox.id(i, covariates, event_col, duration_col, 
+                        analyzes_dir, model_name, logfile, penalty = "none"), 
+                        data.frame(i = 0:(nb_estim-1)), 
+                        nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
+                        global_objects = c("model_cox.id", "model_cox", 
+                                           "select_best_lambda", "get.best.lambda", "get.coefs.cox", 
+                                           "preprocess_data_cox", "normalize_data", "coxlasso_data",
+                                           "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
+                                           "selection.coxnet", "select.bolasso.features", "sample.coxnet",
+                                           "slurm_job_boot_coxnet", "bootstrap.coxnet",
+                                           "get.surv.formula", "get.ipcw.surv.formula"),
+                        slurm_options = sopt)
+    log_info("Jobs are submitted")
+    list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
+    results <- do.call("rbind", list_results)
+    cleanup_files(sjob, wait = T)
+    log_info("End of all submitted jobs")
+  }
+  df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+  rownames(df_results) <- index_results
+  filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+  write.csv(df_results, file = filename_results, row.names = TRUE)
+}
+
+# Plots of cox models : coefficients, regularization path, CV error for lambda estimation
 plot_cox <- function(cox_object, analyzes_dir, model_name) {
     save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     # Coefficients of best Cox

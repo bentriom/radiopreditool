@@ -43,7 +43,7 @@ get.ncpus <- function() {
     ncpus
 }
 
-get.nworkers <- function() get.ncpus()-1
+get.nworkers <- function() get.ncpus()
 
 # Pretty label names
 pretty.label <- function(label) {

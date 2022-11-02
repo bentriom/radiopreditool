@@ -33,7 +33,7 @@ def create_image_mask_example(zero_img = False, num_mask = 1):
     return image, mask
 
 # Data fccss specific 
-def get_ctr_numcent(dosi_filename):    
+def get_ctr_numcent(dosi_filename):
     split_filename = dosi_filename.split("_")
     ctr_patient = int(split_filename[1])
     str_numcent_patient = split_filename[2].split(".")[0]
@@ -41,7 +41,7 @@ def get_ctr_numcent(dosi_filename):
     numcent_patient = int(str_numcent_patient)
     return ctr_patient, numcent_patient
 
-def get_date(dosi_filename):    
+def get_date(dosi_filename):
     split_filename = dosi_filename.split("_")
     str_date_treatment = split_filename[3].split(".")[0]
     # Date is missing for some files
@@ -140,7 +140,7 @@ def event_balance(structured_y):
 # Log
 def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation_msg = True):
     formatter = logging.Formatter('[%(asctime)s] %(message)s', datefmt = '%m/%d/%Y %H:%M:%S')
-    handler = logging.FileHandler(log_file, mode = mode_file) 
+    handler = logging.FileHandler(log_file, mode = mode_file)
     handler.setFormatter(formatter)
     logger = logging.getLogger(name)
     logger.setLevel(level)
