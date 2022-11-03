@@ -15,4 +15,5 @@ dependencies:
   - r-doparallel
   - r-foreach
   - r-rms
+  - r-rslurm
 
