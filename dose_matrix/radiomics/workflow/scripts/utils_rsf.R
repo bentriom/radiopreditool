@@ -178,7 +178,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
                         global_objects = c("model_rsf.id", "model_rsf", 
                                            "get.surv.formula", "get.ipcw.surv.formula", "bootstrap.undersampling", 
-                                           "predictSurvProbOOB", "create.params.df", "cv.rsf", "get.param.cv.error")  
+                                           "predictSurvProbOOB", "create.params.df", "cv.rsf", "get.param.cv.error"), 
                         slurm_options = sopt)
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
