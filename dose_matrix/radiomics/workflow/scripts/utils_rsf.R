@@ -261,7 +261,8 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
                           params.df, folds, bootstrap.strategy, error.metric, pred.times.folds, rsf_logfile), 
                           data.frame(idx.row.param = 1:nbr.params), 
                           nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
-                          global_objects = c("get.param.cv.error", "get.ipcw.surv.formula", "bootstrap.undersampling"),
+                          global_objects = c("get.param.cv.error", "get.ipcw.surv.formula", 
+                                             "get.clinical_features", "bootstrap.undersampling"),
                           slurm_options = sopt)
       log_info("Jobs are submitted")
       list.cv.errors <- get_slurm_out(sjob, outtype = "raw", wait = T)
