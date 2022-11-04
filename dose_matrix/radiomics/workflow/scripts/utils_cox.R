@@ -194,8 +194,8 @@ select.bolasso.features <- function(bootstrap_selected_features, threshold = 1) 
 }
 
 # Task of Coxnet selection for one bootstrap sample
-sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha, 
-                          best.lambda.method, nfolds, type.measure, pred.times) {
+sample.selection.coxnet <- function(data, indices, lasso_data_full, formula, alpha, 
+                                    best.lambda.method, nfolds, type.measure, pred.times) {
     bstrap_data <- data[indices, ]
     select_coxmodel <- selection.coxnet(formula, bstrap_data, best.lambda.method = best.lambda.method, 
                                         nfolds = nfolds, cv.parallel = F)
@@ -212,21 +212,21 @@ sample.coxnet <- function(data, indices, lasso_data_full, formula, alpha,
     c(cindex.boot, cindex.orig, ind_selected_features)
 }
 
-# Task for a slurm job in bootstrap lasso: several sample.coxnet calls
-slurm_job_boot_coxnet <- function(nb_coxnet, data, indices, lasso_data_full, formula, alpha, 
+# Task for a slurm job in bootstrap lasso: several sample.selection.coxnet calls
+slurm_job_boot_coxnet <- function(nb_coxnet, data, lasso_data_full, formula, alpha, 
                                   best.lambda.method, nfolds, type.measure, pred.times) {
   resBoot <- foreach(i = 1:nb_coxnet, .combine = 'rbind') %do% {
-    idx_boot <- unique(sample(nrow(data), replace = T))
-    sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
-                  best.lambda.method = best.lambda.method, nfolds = nfolds, 
-                  type.measure = type.measure, pred.times = pred.times)
+    idx_boot <- sample(nrow(data), replace = T)
+    sample.selection.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
+                            best.lambda.method = best.lambda.method, nfolds = nfolds, 
+                            type.measure = type.measure, pred.times = pred.times)
   }
   return(resBoot)
 }
 
 # Bootstrap error estimation for the coxnet model
 bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best.lambda.method = "lambda.1se", 
-                             nfolds = 5, boot.parallel = "foreach", boot.ncpus = get.nworkers(), 
+                             nfolds = 5, boot.parallel = "foreach", boot.ncpus = get.nworkers(), coxnet_per_job = 5, 
                              type.measure = "C", bolasso.threshold = 0.75, selected_features = NULL,
                              bootstrap_selected_features = NULL, logfile = NULL) {
     stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "rslurm"))
@@ -237,9 +237,12 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     event_col <- all.vars(formula[[2]])[2]
     lasso_data_full <- coxlasso_data(data, covariates, event_col, duration_col)
     if (is.null(selected_features)) {
+        functions_to_export <- c("slurm_job_boot_coxnet", "sample.selection.coxnet", "selection.coxnet", 
+                                 "predictSurvProb.selection.coxnet", "coxlasso_data", 
+                                 "get.coefs.cox", "get.surv.formula", "get.best.lambda")
         # Launch bootstrap
         if (boot.parallel == "boot.multicore") {
-          resBoot <- boot(data, sample.coxnet, R = B, parallel = "multicore", ncpus = boot.ncpus, 
+          resBoot <- boot(data, sample.selection.coxnet, R = B, parallel = "multicore", ncpus = boot.ncpus, 
                           lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                           nfolds = nfolds, best.lambda.method = best.lambda.method, 
                           type.measure = type.measure, pred.times = pred.times)$t
@@ -251,34 +254,29 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
           log_info(paste(apply(showConnections(), 1, 
                                function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
           # survival::Surv doesn't work in foreach.. must export survival
-          resBoot <- foreach(i = 1:B, .combine = 'rbind', 
-                             .export = c("sample.coxnet", "selection.coxnet", "predictSurvProb.selection.coxnet", 
-                                         "coxlasso_data", "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
-                             .packages = c("survival")
-                             ) %dopar% {
-            idx_boot <- unique(sample(nrow(data), replace = T))
-            sample.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
-                          best.lambda.method = best.lambda.method, nfolds = nfolds, 
-                          type.measure = type.measure, pred.times = pred.times)
+          resBoot <- foreach(i = 1:B, .combine = 'rbind', .export = functions_to_export, 
+                             .packages = c("survival")) %dopar% {
+            idx_boot <- sample(nrow(data), replace = T)
+            sample.selection.coxnet(data, idx_boot, lasso_data_full = lasso_data_full, 
+                                    formula = formula, alpha = alpha, 
+                                    best.lambda.method = best.lambda.method, nfolds = nfolds, 
+                                    type.measure = type.measure, pred.times = pred.times)
           }
           parallel::stopCluster(cl)
         } else if (boot.parallel == "rslurm") {
-          coxnet_per_job <- 5
           nb_coxnet_jobs <- rep(coxnet_per_job, B %/% coxnet_per_job)
           if (B %% coxnet_per_job > 0) nb_coxnet_jobs <- c(nb_coxnet_jobs, B %% coxnet_per_job)
           log_info(paste("Number of slurm jobs:", length(nb_coxnet_jobs)))
           log_info(do.call(paste, as.list(nb_coxnet_jobs)))
           sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                        partition = "cpu_med", mem = "20G")
-          sjob <- slurm_apply(function(nb_coxnet) slurm_job_boot_coxnet(nb_coxnet, data, idx_boot, 
+          sjob <- slurm_apply(function(nb_coxnet) slurm_job_boot_coxnet(nb_coxnet, data, 
                               lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
                               best.lambda.method = best.lambda.method, nfolds = nfolds, 
                               type.measure = type.measure, pred.times = pred.times), 
                               data.frame(nb_coxnet = nb_coxnet_jobs), 
                               nodes = length(nb_coxnet_jobs), cpus_per_node = 1, processes_per_node = 1, 
-                              global_objects = c("slurm_job_boot_coxnet", "sample.coxnet", "selection.coxnet", 
-                                                 "predictSurvProb.selection.coxnet", "coxlasso_data", 
-                                                 "get.coefs.cox", "get.surv.formula", "get.best.lambda"), 
+                              global_objects = functions_to_export, 
                               slurm_options = sopt)
           log_info("Jobs are submitted")
           listResJobs <- get_slurm_out(sjob, outtype = "raw", wait = T)
@@ -507,7 +505,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                                            "select_best_lambda", "get.best.lambda", "get.coefs.cox", 
                                            "preprocess_data_cox", "normalize_data", "coxlasso_data",
                                            "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
-                                           "selection.coxnet", "select.bolasso.features", "sample.coxnet",
+                                           "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
                                            "slurm_job_boot_coxnet", "bootstrap.coxnet",
                                            "get.surv.formula", "get.ipcw.surv.formula"),
                         slurm_options = sopt)
