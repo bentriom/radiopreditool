@@ -492,6 +492,11 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                                         analyzes_dir, model_name, logfile, penalty = "none"), mc.cores = nworkers)
     results <- as.data.frame(results)
   } else if (parallel.method == "rslurm") {
+    functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox", 
+                             "preprocess_data_cox", "normalize_data", "coxlasso_data",
+                             "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
+                             "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
+                             "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
@@ -500,13 +505,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                         analyzes_dir, model_name, logfile, penalty = "none"), 
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
-                        global_objects = c("model_cox.id", "model_cox", 
-                                           "select_best_lambda", "get.best.lambda", "get.coefs.cox", 
-                                           "preprocess_data_cox", "normalize_data", "coxlasso_data",
-                                           "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
-                                           "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
-                                           "slurm_job_boot_coxnet", "bootstrap.coxnet",
-                                           "get.surv.formula", "get.ipcw.surv.formula"),
+                        global_objects = functions_to_export,
                         slurm_options = sopt)
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)

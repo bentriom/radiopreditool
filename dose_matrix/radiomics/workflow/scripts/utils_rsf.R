@@ -168,6 +168,9 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
     results <- as.data.frame(results)
   } else if (parallel.method == "rslurm") {
     nb_max_slurm_jobs <- 40
+    functions_to_export <- c("model_rsf.id", "model_rsf", "get.surv.formula", "get.ipcw.surv.formula", 
+                             "bootstrap.undersampling", "predictSurvProbOOB", 
+                             "create.params.df", "cv.rsf", "get.param.cv.error")
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
@@ -175,9 +178,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                         analyzes_dir, model_name, logfile, penalty = "none"), 
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
-                        global_objects = c("model_rsf.id", "model_rsf", 
-                                           "get.surv.formula", "get.ipcw.surv.formula", "bootstrap.undersampling", 
-                                           "predictSurvProbOOB", "create.params.df", "cv.rsf", "get.param.cv.error"), 
+                        global_objects = functions_to_export,
                         slurm_options = sopt)
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
@@ -254,6 +255,8 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
       cv.params.df <- as.data.frame(t(as.data.frame(cv.params.df)))
     } else if (parallel.method == "rslurm") {
       nb_max_slurm_jobs <- 40
+      functions_to_export <- c("get.param.cv.error", "get.ipcw.surv.formula", "get.surv.formula",
+                               "get.clinical_features", "bootstrap.undersampling")
       log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
       sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                    partition = "cpu_med", mem = "20G")
@@ -261,8 +264,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
                           params.df, folds, bootstrap.strategy, error.metric, pred.times.folds, rsf_logfile), 
                           data.frame(idx.row.param = 1:nbr.params), 
                           nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
-                          global_objects = c("get.param.cv.error", "get.ipcw.surv.formula", "get.surv.formula",
-                                             "get.clinical_features", "bootstrap.undersampling"),
+                          global_objects = functions_to_export,
                           slurm_options = sopt)
       log_info("Jobs are submitted")
       list.cv.errors <- get_slurm_out(sjob, outtype = "raw", wait = T)
