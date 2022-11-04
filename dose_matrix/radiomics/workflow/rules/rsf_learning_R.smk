@@ -22,7 +22,7 @@ rule rsf_subparts_heart_analysis:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_all 32X"
 
@@ -34,7 +34,7 @@ rule rsf_subparts_heart_vimp:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_32X_ALL)}"
 
@@ -50,7 +50,7 @@ rule rsf_whole_heart_analysis:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_all 1320"
 
@@ -62,7 +62,7 @@ rule rsf_whole_heart_vimp:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_1320_ALL)}"
 
@@ -78,7 +78,7 @@ rule multiple_scores_rsf:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     shell:
         f"Rscript workflow/scripts/multiple_scores_rsf.R {CONFIGFILE_PATH} rsf_radiomics_all"
 
@@ -97,7 +97,7 @@ rule rsf_subparts_heart_features_hclust_corr_analysis:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_features_hclust_corr 32X"
 
@@ -109,7 +109,7 @@ rule rsf_subparts_heart_features_hclust_corr_vimp:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_32X_FE_HCLUST)}"
 
@@ -127,7 +127,7 @@ rule rsf_whole_heart_features_hclust_corr_analysis:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_features_hclust_corr 1320"
 
@@ -139,7 +139,7 @@ rule rsf_whole_heart_features_hclust_corr_vimp:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else get_ncpus()
+        1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_1320_FE_HCLUST)}"
 
@@ -155,7 +155,7 @@ rule multiple_scores_rsf_features_hclust_corr:
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
-        1 if "SLURM_CPUS_PER_TASK" in os.environ else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     shell:
         f"Rscript workflow/scripts/multiple_scores_rsf.R {CONFIGFILE_PATH} rsf_radiomics_features_hclust_corr"
 

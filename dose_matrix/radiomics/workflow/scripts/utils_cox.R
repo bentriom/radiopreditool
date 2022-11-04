@@ -494,7 +494,6 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   } else if (parallel.method == "rslurm") {
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-    log_info(do.call(paste, as.list(nb_params_jobs)))
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_cox.id(i, covariates, event_col, duration_col, 

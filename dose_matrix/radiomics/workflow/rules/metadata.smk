@@ -32,7 +32,7 @@ rule entropy_analysis:
     output:
         METADATA_DIR + "entropy_newdosi.csv.gz"
     threads:
-        get_ncpus() - 1
+        get_ncpus()
     run:
         entropy_analysis.compute_entropy(DOSES_DATASET_SUBDIRS, NII_DIR, METADATA_DIR)
 

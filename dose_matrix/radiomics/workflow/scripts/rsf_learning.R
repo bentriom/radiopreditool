@@ -24,6 +24,7 @@ rsf_learning <- function(file_trainset, file_testset, file_features, event_col,
     if (file.exists(rsf_logfile)) { file.remove(rsf_logfile) }
     log_appender(appender_file(rsf_logfile, append = TRUE))
     log_info("Random Survival Forest learning")
+    log_info(paste("rf.cores =", getOption("rf.cores"), "mc.cores =", getOption("mc.cores")))
     start_time = Sys.time()
     # Dataset
     df_trainset <- read.csv(file_trainset, header = TRUE)

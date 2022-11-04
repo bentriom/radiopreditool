@@ -149,9 +149,12 @@ def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation
         logger.info(f"Logger {name} created at {datetime.now()}")
     return logger
 
+def is_slurm_run():
+    return ("SLURM_CPUS_PER_TASK" in os.environ) or ("SLURM_NTASKS" in os.environ)
+
 def get_ncpus():
-    if "SLURM_CPUS_PER_TASK" in os.environ:
-        return int(os.environ["SLURM_CPUS_PER_TASK"])
+    if is_slurm_run():
+        return 40
     elif "LOCAL_SNAKEMAKE_NCPUS" in os.environ:
         return int(os.environ["LOCAL_SNAKEMAKE_NCPUS"])
     else:
