@@ -74,12 +74,13 @@ slurm_job_boot_estim_error <- function(nb_estim, data, list_models, ipcw.formula
 }
 
 # Bootstrap error estimation
-bootstrap.estim.error <- function(data, ipcw.formula, list_models, cens.model = "cox", 
+bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir, cens.model = "cox", 
                                   B = 100, times = seq(1, 60, by = 1), logfile = NULL, 
                                   boot.parallel = "foreach", boot.ncpus = get.nworkers(), estim_per_job = 5) {
   stopifnot(boot.parallel %in% c("foreach", "rslurm"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
   if (is.null(logfile)) log_appender(appender_stdout)
+  dir.create(paste0(analyzes_dir, "error_curves/"), showWarnings = FALSE)
   log_info(paste("Boot parallel method:", boot.parallel))
   covariates <- all.vars(ipcw.formula[[3]])
   duration_col <- all.vars(ipcw.formula[[2]])[1]
@@ -129,9 +130,41 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, cens.model = 
   resBoot <- Map(function(model_metrics) {
                  apply(model_metrics, 1, function(list_metric) { do.call(rbind, list_metric) })
                  }, resBoot)
-  out <- list("matrix_bootstrap_error" = resBoot)
+  resBoot$pred.times <- times
+  out <- list("bootstrap_errors" = resBoot)
   class(out) <- "bootstrap.estim.error"
   out
+}
+
+plot_error_curves <- function(resBoot, analyzes_dir, model_name) {
+  save_results_dir <- paste0(analyzes_dir, "error_curves/", model_name, "/")
+  dir.create(save_results_dir, showWarnings = F)
+  model_errors <- resBoot[[model_name]]
+  matrix_ipcw_cindex <- model_errors[["IPCW C-index tau"]]
+  matrix_bs <- model_errors[["Brier score tau"]]
+  pred.times <- resBoot$pred.times
+  df_plot_ipcw_cindex = data.frame(mean_score = rowMeans(matrix_ipcw_cindex),
+                                   std_score = apply(matrix_ipcw_cindex, 1, sd),
+                                   times = pred.times)
+  df_plot_bs = data.frame(mean_score = rowMeans(matrix_bs), 
+                          std_score = apply(matrix_bs, 1, sd),
+                          times = pred.times)
+  # IPCW C-index curve
+  ggplot(df_plot_ipcw_cindex, aes(x = times, y = mean_score)) +
+  geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), fill = "blue", alpha = 0.5) +
+  geom_line(color = "red") + 
+  geom_point(data = df_plot_ipcw_cindex, aes(x = times, y = mean_score), color = "purple") +
+  ylim(0, NA) +
+  labs(x = "Time (years)", y = "Bootstrap mean of IPCW C-index")
+  ggsave(paste0(save_results_dir, "ipcw_cindex.png"), device = "png", dpi = 480)
+  # Brier score curve
+  ggplot(df_plot_bs, aes(x = times, y = mean_score)) +
+  geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), fill = "blue", alpha = 0.5) +
+  geom_line(color = "red") + 
+  geom_point(data = df_plot_bs, aes(x = times, y = mean_score), color = "purple") +
+  ylim(0, NA) +
+  labs(x = "Time (years)", y = "Bootstrap mean of Brier score")
+  ggsave(paste0(save_results_dir, "brier_score.png"), device = "png", dpi = 480)
 }
 
 # Curve estimation error for several models
@@ -213,7 +246,7 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
 
     # Self-made bootstrap error estimation
     boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
-    boot_error <- bootstrap.estim.error(infos$data, formula_ipcw, compared_models, 
+    boot_error <- bootstrap.estim.error(infos$data, formula_ipcw, compared_models, analyzes_dir, 
                                         B = 100, times = pred.times, 
                                         logfile = NULL, boot.parallel = boot.parallel)
     
