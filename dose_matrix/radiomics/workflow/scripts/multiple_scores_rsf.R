@@ -34,7 +34,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
         cols_dosesvol <- grep("dv_\\w+_1320", features, value = TRUE)
         covariates <- c(cols_dosesvol, clinical_vars)
         parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                     model_name, logfile, parallel.method = parallel.method)
+                                     model_name, rsf_logfile, parallel.method = parallel.method)
     }
 
     # Model 32X radiomics firstorder covariates
@@ -43,7 +43,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", features, value = TRUE)
     covariates <- c(clinical_vars, cols_32X)
     parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, parallel.method = parallel.method)
+                                 model_name, rsf_logfile, parallel.method = parallel.method)
 
     # Model 1320 radiomics firstorder covariates
     log_info("Model 1320 radiomics firstorder")
@@ -51,7 +51,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     cols_1320 <- grep("^X1320_original_firstorder_", features, value = TRUE)
     covariates <- c(clinical_vars, cols_1320)
     parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, parallel.method = parallel.method)
+                                 model_name, rsf_logfile, parallel.method = parallel.method)
 
     # Model 32X all radiomics covariates
     log_info("Model 32X radiomics full")
@@ -59,7 +59,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     cols_32X <- filter.gl(grep("^X32[0-9]{1}_original_", features, value = TRUE))
     covariates <- c(clinical_vars, cols_32X)
     parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, parallel.method = parallel.method)
+                                 model_name, rsf_logfile, parallel.method = parallel.method)
 
     # Model 1320 all radiomics covariates
     log_info("Model 1320 radiomics full")
@@ -67,7 +67,7 @@ multiple_scores_rsf <- function(nb_estim, file_features, event_col, analyzes_dir
     cols_1320 <- filter.gl(grep("^X1320_original_", features, value = TRUE))
     covariates <- c(clinical_vars, cols_1320)
     parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, parallel.method = parallel.method)
+                                 model_name, rsf_logfile, parallel.method = parallel.method)
     
     log_info("Done. Time:")
     log_info(format(Sys.time() - start_time))

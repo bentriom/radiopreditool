@@ -219,7 +219,7 @@ rule multiple_scores_baseline_analysis_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
                model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
     threads:
-        min(get_ncpus() - 1, NB_ESTIM_SCORE_MODELS)
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
         "../envs/cox_R_env.yaml"
     shell:

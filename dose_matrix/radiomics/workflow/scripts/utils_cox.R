@@ -492,8 +492,8 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                                         analyzes_dir, model_name, logfile, penalty = "none"), mc.cores = nworkers)
     results <- as.data.frame(results)
   } else if (parallel.method == "rslurm") {
-    functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox", 
-                             "preprocess_data_cox", "normalize_data", "coxlasso_data",
+    functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox",
+                             "preprocess_data_cox", "normalize_data", "coxlasso_data", "get.clinical_features",
                              "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
                              "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
@@ -502,14 +502,14 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_cox.id(i, covariates, event_col, duration_col, 
-                        analyzes_dir, model_name, logfile, penalty = "none"), 
+                        analyzes_dir, model_name, logfile, penalty = penalty), 
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
                         global_objects = functions_to_export,
                         slurm_options = sopt)
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
-    results <- do.call("rbind", list_results)
+    results <- t(do.call("rbind", list_results))
     cleanup_files(sjob, wait = T)
     log_info("End of all submitted jobs")
   }

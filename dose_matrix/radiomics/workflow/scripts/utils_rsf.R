@@ -175,20 +175,20 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_rsf.id(i, covariates, event_col, duration_col, 
-                        analyzes_dir, model_name, logfile, penalty = "none"), 
+                        analyzes_dir, model_name, logfile),
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
                         global_objects = functions_to_export,
                         slurm_options = sopt)
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
-    results <- do.call("rbind", list_results)
+    results <- t(do.call("rbind", list_results))
     cleanup_files(sjob, wait = T)
     log_info("End of all submitted jobs")
   }
   df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
   rownames(df_results) <- index_results
-  filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+  filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
   write.csv(df_results, file = filename_results, row.names = TRUE)
 }
 

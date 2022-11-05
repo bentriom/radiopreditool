@@ -10,9 +10,9 @@ source("workflow/scripts/utils_cox.R")
 multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, duration_col) {
     dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
-    logfile <- paste0(analyzes_dir, "multiple_scores_baseline_models_R.log")
-    if (file.exists(logfile)) { file.remove(logfile) }
-    log_appender(appender_file(logfile, append = TRUE))
+    cox_logfile <- paste0(analyzes_dir, "multiple_scores_baseline_models_R.log")
+    if (file.exists(cox_logfile)) { file.remove(cox_logfile) }
+    log_appender(appender_file(cox_logfile, append = TRUE))
     log_info(paste0("Multiple scores baseline models learning R (",nworkers," workers)"))
     start_time = Sys.time()
     # Dataset
@@ -26,7 +26,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     covariates <- c("X1320_original_firstorder_Mean", clinical_vars)
     log_info("Multiple scores heart mean dose (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "none", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "none", parallel.method = parallel.method)
 
     # Coxph doses volumes indicators of heart (1320)
     model_name = "1320_dosesvol"
@@ -34,7 +34,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     covariates = c(cols_dosesvol, clinical_vars)
     log_info("Multiple scores heart doses volumes (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "none", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "none", parallel.method = parallel.method)
    
     # Coxph doses volumes indicators of heart Lasso (1320)
     model_name = "1320_dosesvol_lasso"
@@ -42,7 +42,7 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     covariates = c(cols_dosesvol, clinical_vars)
     log_info("Multiple scores heart doses volumes lasso (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "lasso", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "lasso", parallel.method = parallel.method)
 
     log_info("Done. Time:")
     log_info(format(Sys.time() - start_time))
@@ -51,9 +51,9 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
 multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, analyzes_dir, duration_col, suffix_model) {
     dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
-    logfile <- paste0(analyzes_dir, "multiple_scores_cox_lasso_radiomics_R_",suffix_model,".log")
-    if (file.exists(logfile)) { file.remove(logfile) }
-    log_appender(appender_file(logfile, append = TRUE))
+    cox_logfile <- paste0(analyzes_dir, "multiple_scores_cox_lasso_radiomics_R_",suffix_model,".log")
+    if (file.exists(cox_logfile)) { file.remove(cox_logfile) }
+    log_appender(appender_file(cox_logfile, append = TRUE))
     log_info(paste0("Multiple scores cox lasso radiomics learning R (",nworkers," workers)"))
     start_time = Sys.time()
     # Dataset
@@ -65,6 +65,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     df_trainset0 <- df_trainset0[,features]
     clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
     index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+    parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
     # Coxph Lasso radiomics firstorder 32X
     model_name = paste0("32X_radiomics_firstorder_lasso_", suffix_model)
@@ -72,7 +73,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics firstorder lasso (32X)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "lasso", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "lasso", parallel.method = parallel.method)
    
     # Coxph Lasso radiomics firstorder 1320
     model_name = paste0("1320_radiomics_firstorder_lasso_", suffix_model)
@@ -80,7 +81,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     covariates = c(cols_1320, clinical_vars)
     log_info("Multiple scores radiomics firstorder lasso (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "lasso", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "lasso", parallel.method = parallel.method)
 
     # Coxph Lasso all radiomics 32X
     model_name = paste0("32X_radiomics_full_lasso_", suffix_model)
@@ -88,7 +89,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics full lasso (32X)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "lasso", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "lasso", parallel.method = parallel.method)
    
     # Coxph Lasso all radiomics 1320
     model_name = paste0("1320_radiomics_full_lasso_", suffix_model)
@@ -96,7 +97,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col, an
     covariates = c(cols_1320, clinical_vars)
     log_info("Multiple scores radiomics full lasso (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, logfile, penalty = "lasso", parallel.method = parallel.method)
+                                 model_name, cox_logfile, penalty = "lasso", parallel.method = parallel.method)
 
     log_info("Done")
     log_info(format(Sys.time() - start_time))
