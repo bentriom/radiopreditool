@@ -277,7 +277,7 @@ for results_dir, model in list_models:
     df_results_multiple.sort_values(by = ["mean_harrell"], ascending = False, inplace = True)
     fig = px.scatter(df_results_multiple, x = "model", y = "mean_harrell", color = "model type",
                      color_discrete_map = map_model_type, error_y = "std_harrell")
-    fig.update_xaxes(tickangle = -60)
+    fig.update_xaxes(tickangle = -60, tickmode = "linear")
     fig.update_yaxes(range = [0.6, 0.8], title = "Mean Harrell's C-index")
     fig.update_xaxes(categoryorder = "total descending", title = "Model", tickfont = {'size': 19})
     fig.update_layout(legend = {'font' : {'size' : 15}})
@@ -288,7 +288,7 @@ for results_dir, model in list_models:
     df_results_multiple.sort_values(by = ["mean_ipcw"], ascending = False, inplace = True)
     fig = px.scatter(df_results_multiple, x = "model", y = "mean_ipcw", color = "model type",
                      color_discrete_map = map_model_type, error_y = "std_ipcw")
-    fig.update_xaxes(tickangle = -60)
+    fig.update_xaxes(tickangle = -60, tickmode = "linear")
     fig.update_yaxes(range = [0.6, 0.8], title = "Mean IPCW C-index")
     fig.update_xaxes(categoryorder = "total descending", title = "Model", tickfont = {'size': 19})
     fig.update_layout(legend = {'font' : {'size' : 15}})
@@ -335,7 +335,7 @@ for results_dir, model in list_models:
     df_results_test.sort_values(by = ["cindex_harrell"], ascending = False, inplace = True)
     fig = px.scatter(df_results_test, x = "model", y = "cindex_harrell", color = "model type",
                      color_discrete_map = map_model_type)
-    fig.update_xaxes(tickangle = -60)
+    fig.update_xaxes(tickangle = -60, tickmode = "linear")
     fig.update_yaxes(range = [0.6, 0.8], title = "Harrell's C-index test set")
     fig.update_xaxes(categoryorder = "total descending", title = "Model", tickfont = {'size': 19})
     fig.update_layout(legend = {'font' : {'size' : 15}})
@@ -346,7 +346,7 @@ for results_dir, model in list_models:
     df_results_test.sort_values(by = ["cindex_ipcw"], ascending = False, inplace = True)
     fig = px.scatter(df_results_test, x = "model", y = "cindex_ipcw", color = "model type",
                      color_discrete_map = map_model_type)
-    fig.update_xaxes(tickangle = -60)
+    fig.update_xaxes(tickangle = -60, tickmode = "linear")
     fig.update_yaxes(range = [0.6, 0.8], title = "IPCW C-index test set")
     fig.update_xaxes(categoryorder = "total descending", title = "Model", tickfont = {'size': 19})
     fig.update_layout(legend = {'font' : {'size' : 15}})
