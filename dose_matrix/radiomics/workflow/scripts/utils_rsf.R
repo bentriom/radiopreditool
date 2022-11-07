@@ -161,6 +161,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                                          model_name, logfile, parallel.method = "mclapply") {
   stopifnot(parallel.method %in% c("mclapply", "rslurm"))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+  if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
   if (parallel.method == "mclapply") {
     nworkers <- get.nworkers()
     results <- mclapply(0:(nb_estim-1), function (i)  model_rsf.id(i, covariates, event_col, duration_col, 

@@ -231,12 +231,12 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
                              bootstrap_selected_features = NULL, logfile = NULL) {
     stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "rslurm"))
     if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
-    log_info(paste("Boot parallel method:", boot.parallel))
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
     lasso_data_full <- coxlasso_data(data, covariates, event_col, duration_col)
     if (is.null(selected_features)) {
+        log_info(paste("Bootstrap lasso: parallel method is", boot.parallel))
         functions_to_export <- c("slurm_job_boot_coxnet", "sample.selection.coxnet", "selection.coxnet", 
                                  "predictSurvProb.selection.coxnet", "coxlasso_data", 
                                  "get.coefs.cox", "get.surv.formula", "get.best.lambda")
@@ -328,6 +328,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                       analyzes_dir, model_name, coxlasso_logfile,
                       penalty = "lasso", do_plot = T, cv_nfolds = 5, n.boot = 200, 
                       save_results = T, load_results = F, level = INFO, id_set = "") {
+    stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
     log_threshold(level)
     log_appender(appender_file(coxlasso_logfile, append = TRUE))
     run_parallel <- load_results & !save_results
@@ -485,11 +486,13 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
 parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, duration_col, analyzes_dir, 
                                          model_name, logfile, penalty = "lasso", parallel.method = "mclapply") {
   stopifnot(parallel.method %in% c("mclapply", "rslurm"))
+  stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
+  if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   if (parallel.method == "mclapply") {
     nworkers <- get.nworkers()
     results <- mclapply(0:(nb_estim-1), function (i)  model_cox.id(i, covariates, event_col, duration_col, 
-                                        analyzes_dir, model_name, logfile, penalty = "none"), mc.cores = nworkers)
+                                        analyzes_dir, model_name, logfile, penalty = penalty), mc.cores = nworkers)
     results <- as.data.frame(results)
   } else if (parallel.method == "rslurm") {
     functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox",

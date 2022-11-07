@@ -19,6 +19,9 @@ COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST = [ "32X_radiomics_firstorder_bootst
                                       "32X_radiomics_full_bootstrap_lasso_features_hclust_corr"]
 COX_RADIOMICS_LASSO_ALL = COX_RADIOMICS_LASSO_32X_ALL + COX_RADIOMICS_LASSO_1320_ALL
 COX_RADIOMICS_LASSO_FE_HCLUST =  COX_RADIOMICS_LASSO_32X_FE_HCLUST + COX_RADIOMICS_LASSO_1320_FE_HCLUST
+COX_RADIOMICS_BOOTSTRAP_LASSO_ALL = COX_RADIOMICS_BOOTSTRAP_LASSO_32X_ALL + COX_RADIOMICS_BOOTSTRAP_LASSO_1320_ALL
+COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST =  COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST + \
+                                           COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST
 COX_RADIOMICS_LASSO = COX_RADIOMICS_LASSO_ALL + COX_RADIOMICS_LASSO_FE_HCLUST
 
 # Baseline models
@@ -225,7 +228,6 @@ rule multiple_scores_baseline_analysis_R:
     shell:
         f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} baseline_models"
 
-
 rule multiple_scores_cox_lasso_radiomics_all_R:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
@@ -233,7 +235,8 @@ rule multiple_scores_cox_lasso_radiomics_all_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
     output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_all.log",
-        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_ALL)
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_LASSO_ALL)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
@@ -249,11 +252,45 @@ rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
         expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
     output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
         "../envs/cox_R_env.yaml"
     shell:
         f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_lasso_radiomics_features_hclust_corr"
+
+rule multiple_scores_cox_bootstrap_lasso_radiomics_all_R:
+    input:
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
+    output:
+        ANALYZES_DIR + "multiple_scores_cox_bootstrap_lasso_radiomics_R_all.log",
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    conda:
+        "../envs/cox_R_env.yaml"
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_bootstrap_lasso_radiomics_all"
+
+rule multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R:
+    input:
+        ANALYZES_DIR + "features_hclust_corr.csv",
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
+    output:
+        ANALYZES_DIR + "multiple_scores_cox_bootstrap_lasso_radiomics_R_features_hclust_corr.log",
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    conda:
+        "../envs/cox_R_env.yaml"
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_bootstrap_lasso_radiomics_features_hclust_corr"
 
