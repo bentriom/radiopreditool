@@ -582,9 +582,10 @@ plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
     save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
     df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
+    df.coefs = df.coefs[order(-df.coefs$coefs), ]
     if (nrow(df.coefs) > 30) df.coefs <- df.coefs[1:30, ]
     ggplot(df.coefs, aes(x = reorder(labels, coefs), y = coefs)) + geom_bar(stat = "identity") + 
-           ggtitle("Selected features (30 best)") + coord_flip()
+    ggtitle("Number of times the features are selecteds (30 best)") + coord_flip()
     ggsave(paste0(save_results_dir, "freq_selected_features.png"), device = "png", dpi = 480)
 }
 
