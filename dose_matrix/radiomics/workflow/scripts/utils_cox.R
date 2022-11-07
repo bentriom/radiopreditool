@@ -174,6 +174,7 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
       coxnet_model <- glmnet::glmnet(coxnet_X, coxnet_surv_y, family = "cox", alpha = alpha, lambda = list.lambda,  
                                      nfolds = nfolds, parallel = cv.parallel, type.measure = "C")
     }
+    log_info(paste("Best lambda method:", best.lambda.method))
     best.lambda <- get.best.lambda(coxnet_model, best.lambda.method)
     best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda)
     nonnull.covariates <- names(best.coefs.cox[abs(best.coefs.cox) > 0])
@@ -297,6 +298,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
         colnames(bootstrap_selected_features) <- covariates
         selected_features <- select.bolasso.features(bootstrap_selected_features, bolasso.threshold)
     }
+    log_info(paste("Best lambda method:", best.lambda.method))
     log_info(paste("Selected features:", do.call(paste, as.list(selected_features))))
     formula_selected <- get.surv.formula(event_col, selected_features, duration_col = duration_col)
     coxmodel <- coxph(formula_selected, data = data, x = TRUE, y = TRUE, control = coxph.control(iter.max = 500))
@@ -304,7 +306,8 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     if (is.null(selected_features)) {
         out <- list("cindex_adjusted" = cindex.adjust, "optimism" = optimism, "cindex_app" = cindex.app,  
                     "cindex_bootstrap" = resBoot[,1], "cindex_orig" = resBoot[,2],
-                    "bootstrap_selected_features" = bootstrap_selected_features, "selected_features" = selected_features, 
+                    "bootstrap_selected_features" = bootstrap_selected_features, 
+                    "selected_features" = selected_features, 
                     "coxph.fit" = coxmodel)
     } else {
         out <- list("coxph.fit" = coxmodel, "selected_features" = selected_features, 
@@ -374,7 +377,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, 
                                          list.lambda = list.lambda, type.measure = "C", logfile = coxlasso_logfile)
         } else {
-            coxmodel <- selection.coxnet(formula_model, df_model_train, alpha = 1, nfolds = cv_nfolds, 
+            coxmodel <- selection.coxnet(formula_model, df_model_train, 
+                                         alpha = 1, nfolds = cv_nfolds, best.lambda.method = "lambda.1se",
                                          cv.parallel = T, type.measure = "C", logfile = coxlasso_logfile)
             cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$coxnet.fit$nzero), 
                                     penalty = coxmodel$coxnet.fit$lambda, 
@@ -402,8 +406,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                                          logfile = coxlasso_logfile)
         } else {
             boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
-            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, boot.parallel = boot.parallel, 
-                                         B = n.boot, best.lambda.method = "lambda.1se", logfile = coxlasso_logfile)
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
+                                         boot.parallel = boot.parallel,
+                                         best.lambda.method = "lambda.min", logfile = coxlasso_logfile)
             if (save_results) {
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
                           file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
