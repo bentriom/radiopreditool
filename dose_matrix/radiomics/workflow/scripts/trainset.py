@@ -25,7 +25,7 @@ from radiomics import featureextractor
 from lifelines import CoxPHFitter
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.decomposition import PCA
 
 ## Create datasets
@@ -102,7 +102,8 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         raise NotImplementedError(f"name_filter_dataset: {name_filter_dataset} not supported.")
 
 # Create dataset based on availaible dosiomics, clinical variables and survival data
-def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col, params_file, name_filter_dataset = None):
+def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables,
+                   event_col, date_event_col, params_file, name_filter_dataset = None):
     logger = setup_logger("dataset", analyzes_dir + "dataset.log")
     logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
     os.makedirs(analyzes_dir + "datasets", exist_ok = True)
@@ -122,7 +123,8 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_fccss["survival_date"] = df_survival.apply(lambda x: survival_date(event_col, date_event_col, x), axis = 1)
     df_fccss["datetime_date_diag"] = df_fccss["date_diag"].apply(lambda x: datetime.strptime(x, "%d/%m/%Y"))
     surv_duration_col = "survival_time_years"
-    df_fccss[surv_duration_col] = df_fccss[["survival_date", "datetime_date_diag"]].apply(lambda x: (x["survival_date"] - x["datetime_date_diag"]).total_seconds() / (365.25 * 24 * 3600), axis = 1)
+    df_fccss[surv_duration_col] = df_fccss[["survival_date", "datetime_date_diag"]].apply(
+        lambda x: (x["survival_date"] - x["datetime_date_diag"]).total_seconds() / (365.25 * 24 * 3600), axis = 1)
     cols_radiomics = df_radiomics.columns.to_list()
     cols_radiomics.remove("ctr"), cols_radiomics.remove("numcent")
     # Create dataset by merging fccss and radiomics
@@ -144,8 +146,8 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     logger.info(f"Full dataset without NA: {df_dataset.dropna().shape}")
     logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
     df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
-    
-# Split train / test
+
+# One-time split train / test
 def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
                   end_name_sets = "", test_size = 0.3, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
@@ -159,8 +161,8 @@ def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_va
     df_X_train, df_X_test, df_y_train, df_y_test = train_test_split(df_X, df_y,
                                                                     random_state = seed, shuffle = True,
                                                                     test_size = test_size, stratify = df_y[event_col])
-    df_trainset = df_X_train.merge(df_y_train, how = "inner", on = ["ctr", "numcent"]) 
-    df_testset = df_X_test.merge(df_y_test, how = "inner", on = ["ctr", "numcent"]) 
+    df_trainset = df_X_train.merge(df_y_train, how = "inner", on = ["ctr", "numcent"])
+    df_testset = df_X_test.merge(df_y_test, how = "inner", on = ["ctr", "numcent"])
     df_trainset_omit = df_trainset.dropna()
     df_testset_omit = df_testset.dropna()
     df_trainset_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1,:]
@@ -173,24 +175,70 @@ def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_va
     nsamples_test = df_testset.shape[0]
     nsamples_train_omit = df_trainset_omit.shape[0]
     nsamples_test_omit = df_testset_omit.shape[0]
-    logger.info(f"Balance train/test event: {df_trainset[event_col].sum()/nsamples_train} {df_testset[event_col].sum()/nsamples_test}")
-    logger.info(f"Balance train/test event and omitting NAs: {df_trainset_omit[event_col].sum()/nsamples_train_omit} {df_testset_omit[event_col].sum()/nsamples_test_omit}")
-    logger.info(f"Balance train/test treated by RT: {df_trainset[col_treated_by_rt].sum()/nsamples_train} {df_testset[col_treated_by_rt].sum()/nsamples_test}")
-    logger.info(f"Balance train/test that has radiomics features: {df_trainset['has_radiomics'].sum()/nsamples_train} {df_testset['has_radiomics'].sum()/nsamples_test}")
+    logger.info(f"Balance train/test event: {df_trainset[event_col].sum()/nsamples_train:.4f}"
+                                          f"{df_testset[event_col].sum()/nsamples_test:.4f}")
+    logger.info(f"Balance train/test event, omitting NAs: {df_trainset_omit[event_col].sum()/nsamples_train_omit:.4f}"
+                                                       f" {df_testset_omit[event_col].sum()/nsamples_test_omit:.4f}")
+    logger.info(f"Balance train/test treated by RT: {df_trainset[col_treated_by_rt].sum()/nsamples_train:.4f}"
+                                                 f" {df_testset[col_treated_by_rt].sum()/nsamples_test:.4f}")
+    logger.info(f"Balance train/test with radiomics features: {df_trainset['has_radiomics'].sum()/nsamples_train:.4f}"
+                                                           f" {df_testset['has_radiomics'].sum()/nsamples_test:.4f}")
     # Save
     if col_treated_by_rt not in clinical_variables:
-        df_dataset.drop(columns = col_treated_by_rt, inplace = True)
         df_trainset.drop(columns = col_treated_by_rt, inplace = True)
         df_testset.drop(columns = col_treated_by_rt, inplace = True)
     df_trainset.to_csv(analyzes_dir + f"datasets/trainset{end_name_sets}.csv.gz", index = False)
     df_testset.to_csv(analyzes_dir + f"datasets/testset{end_name_sets}.csv.gz", index = False)
+
+# Stratified K fold cross-validation splits
+def kfold_multiple_splits_dataset(nb_estim, file_radiomics, file_fccss_clinical,
+                                  analyzes_dir, clinical_variables, event_col, date_event_col, seed = None):
+    logger = setup_logger("trainset", analyzes_dir + "trainset.log")
+    logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
+    surv_duration_col = "survival_time_years"
+    df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
+    cols_y = [event_col, surv_duration_col]
+    col_treated_by_rt = "radiotherapie_1K"
+    df_X = df_dataset[[c for c in df_dataset.columns if c not in cols_y]]
+    df_y = df_dataset[["ctr", "numcent"] + cols_y]
+    skf = StratifiedKFold(n_splits = nb_estim)
+    for i, (train_index, test_index) in enumerate(skf.split(df_X, df_y[event_col])):
+        df_trainset = df_dataset.loc[train_index, :]
+        df_testset = df_dataset.loc[test_index, :]
+        df_trainset_omit = df_trainset.dropna()
+        df_testset_omit = df_testset.dropna()
+        df_trainset_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1,:]
+        df_testset_radiomics = df_testset.loc[df_testset["has_radiomics"] == 1,:]
+        logger.info(f"Trainset n°{i}: {df_trainset.shape}")
+        logger.info(f"Trainset with radiomics features: {df_trainset_radiomics.shape}")
+        logger.info(f"Testset: {df_testset.shape} ({df_testset.shape[0]/df_dataset.shape[0]*100:.2f}%)")
+        logger.info(f"Testset with radiomics features: {df_testset_radiomics.shape}")
+        nsamples_train = df_trainset.shape[0]
+        nsamples_test = df_testset.shape[0]
+        nsamples_train_omit = df_trainset_omit.shape[0]
+        nsamples_test_omit = df_testset_omit.shape[0]
+        logger.info(f"Balance train/test event: {df_trainset[event_col].sum()/nsamples_train:.4f}"
+                                             f" {df_testset[event_col].sum()/nsamples_test:.4f}")
+        logger.info(f"Balance train/test event, omitting NAs: {df_trainset_omit[event_col].sum()/nsamples_train_omit:.4f}"
+                                                           f" {df_testset_omit[event_col].sum()/nsamples_test_omit:.4f}")
+        logger.info(f"Balance train/test treated by RT: {df_trainset[col_treated_by_rt].sum()/nsamples_train:.4f}"
+                                                     f" {df_testset[col_treated_by_rt].sum()/nsamples_test:.4f}")
+        logger.info(f"Balance train/test with radiomics features: {df_trainset['has_radiomics'].sum()/nsamples_train:.4f}"
+                                                               f" {df_testset['has_radiomics'].sum()/nsamples_test:.4f}")
+        # Save
+        if col_treated_by_rt not in clinical_variables:
+            df_trainset.drop(columns = col_treated_by_rt, inplace = True)
+            df_testset.drop(columns = col_treated_by_rt, inplace = True)
+        df_trainset.to_csv(analyzes_dir + f"datasets/trainset_{i}.csv.gz", index = False)
+        df_testset.to_csv(analyzes_dir + f"datasets/testset_{i}.csv.gz", index = False)
 
 ## Feature elimination: eliminate sparse and redundant columns
 
 # Filter 1: eliminate radiomics with too much missing values
 def filter_nan_values_radiomics(df_covariates_nan_values, features_radiomics, threshold):
     nbr_newdosi_patients = df_covariates_nan_values.shape[0]
-    prop_values_cols = df_covariates_nan_values.apply(lambda col_series: 1 - sum(pd.isnull(col_series))/nbr_newdosi_patients)
+    prop_values_cols = df_covariates_nan_values.apply(
+                            lambda col_series: 1 - sum(pd.isnull(col_series))/nbr_newdosi_patients)
     filter_1_cols_radiomics = list(prop_values_cols[prop_values_cols > threshold].index.values)
     return filter_1_cols_radiomics
 
@@ -218,13 +266,14 @@ def plot_dendrogram(model, **kwargs):
     dendrogram(linkage_matrix, **kwargs)
 
 def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir = "./", name = ""):
-    hclust = AgglomerativeClustering(n_clusters = None, linkage = "complete", 
+    hclust = AgglomerativeClustering(n_clusters = None, linkage = "complete",
                                      affinity = "precomputed", distance_threshold = 1 - threshold)
     distance_matrix = df_covariates_hclust.corr(method = "kendall").apply(lambda x: 1 - abs(x)).to_numpy()
     y_clusters = hclust.fit_predict(distance_matrix)
     if do_plot:
         fig = plt.figure(figsize=(8,10))
-        plt.title(f"Hierarchical Clustering Dendrogram (threshold: {threshold} - features: {hclust.n_clusters_}/{distance_matrix.shape[0]})")
+        plt.title(f"Hierarchical Clustering Dendrogram "
+                  f"(threshold: {threshold} - features: {hclust.n_clusters_}/{distance_matrix.shape[0]})")
         # plot the top three levels of the dendrogram
         plot_dendrogram(hclust, orientation = "right", labels = pretty_labels(df_covariates_hclust.columns), leaf_font_size = 8)
         plt.axvline(1 - threshold)
@@ -234,8 +283,10 @@ def get_nbr_features_hclust(df_covariates_hclust, threshold, do_plot = False):
     _, y_clusters = hclust_corr(df_covariates_hclust, threshold, do_plot)
     return len(np.unique(y_clusters))
 
-def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir, name = ""):
-    all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold, do_plot = True, analyzes_dir = analyzes_dir, name = name) 
+def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold,
+                             event_col, surv_duration_col, analyzes_dir, name = ""):
+    all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold,
+                                                     do_plot = True, analyzes_dir = analyzes_dir, name = name)
     filter_2_cols_radiomics = []
     id_clusters = np.unique(y_clusters)
     df_survival = df_trainset.copy().dropna()
@@ -262,20 +313,21 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold, 
             selected_feature = cox_rejected_features[np.argmin(cox_rejected_coefs)]
         filter_2_cols_radiomics.append(selected_feature)
     plt.text(1.1, 0, '\n'.join(pretty_labels(filter_2_cols_radiomics)))
-    plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight', 
+    plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight',
                     facecolor = "white", transparent = False)
     plt.close()
     return filter_2_cols_radiomics
 
 def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir):
     all_filter_2_cols = []
-    labels = get_all_labels(df_covariates_hclust) 
+    labels = get_all_labels(df_covariates_hclust)
     logger = logging.getLogger("feature_elimination_hclust_corr")
     logger.info(f"Hclust on labels: {labels}")
     for label in labels:
         cols_from_label = [feature for feature in df_covariates_hclust.columns if re.match(f"{label}_.*", feature)]
         df_covariates_hclust_label = df_covariates_hclust[cols_from_label]
-        all_filter_2_cols += filter_corr_hclust_label(df_trainset, df_covariates_hclust_label, corr_threshold, event_col, surv_duration_col, analyzes_dir, name = label)
+        all_filter_2_cols += filter_corr_hclust_label(df_trainset, df_covariates_hclust_label, corr_threshold,
+                                                      event_col, surv_duration_col, analyzes_dir, name = label)
     return all_filter_2_cols
 
 # Feature elimination pipeline with hclust on kendall's tau corr
@@ -369,12 +421,12 @@ def pca_viz(file_dataset, event_col, analyzes_dir, duration_col = "survival_time
     list_cols_labels = ["No event"] + [f"Event within {t-timestep}-{t} years" for t in ranges_events]
     nbr_classes = len(list_cols)
     # PCA on all labels
-    fig = px.bar(df_dataset[list_cols].sum(), 
+    fig = px.bar(df_dataset[list_cols].sum(),
                  title = f"Patients with censored time >= {year_max} years")
     fig.write_image(analyzes_dir + "pca/barplot_class_event.png", width = 1200, height = 900)
     # Different sets of features for PCA according to the image mask
     labels = get_all_labels(df_dataset)
-    names_sets = ["all"] + labels 
+    names_sets = ["all"] + labels
     set_of_features_radiomics = [cox_rejected_features] + [[feature for feature in cox_rejected_features if re.match(f"{label}_.*", feature)] for label in labels]
     os.makedirs(analyzes_dir + "pca", exist_ok = True)
     # Plot settings
@@ -393,7 +445,7 @@ def pca_viz(file_dataset, event_col, analyzes_dir, duration_col = "survival_time
         X_pca = pca.fit_transform(X)
         plt.figure()
         for id_col, col_class in enumerate(list_cols):
-            idx_cluster = df_subset.loc[:, col_class] == 1 
+            idx_cluster = df_subset.loc[:, col_class] == 1
             plt.scatter(X_pca[idx_cluster, 0], X_pca[idx_cluster, 1], label = list_cols_labels[id_col],
                         alpha = list_alphas[id_col], marker = list_markers[id_col], color = list_colors[id_col])
         plt.xlabel('PCA component 1')
@@ -401,7 +453,7 @@ def pca_viz(file_dataset, event_col, analyzes_dir, duration_col = "survival_time
         plt.title(f"PCA {name_set} ({round(sum(pca.explained_variance_ratio_), 3)} explained variance ratio)\n{df_dataset.shape[0]} patients.")
         plt.legend(loc = "upper left", bbox_to_anchor = (1.0, 1.0), fontsize = "medium");
         # plt.text(1.1 * max(X_pca[:, 0]), min(X_pca[:, 1]) - 0.2, '\n'.join(pretty_labels(features_radiomics)), size = "small")
-        plt.savefig(analyzes_dir + f"pca/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight', 
+        plt.savefig(analyzes_dir + f"pca/pca_radiomics_{name_set}.png", dpi = 480, bbox_inches='tight',
                         facecolor = "white", transparent = False)
         plt.close()
 

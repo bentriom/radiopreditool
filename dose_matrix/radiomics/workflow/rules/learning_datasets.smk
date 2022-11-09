@@ -8,7 +8,8 @@ rule create_dataset:
         ANALYZES_DIR + "datasets/dataset.csv.gz",
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
-        trainset.create_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL, RADIOMICS_PARAMS_FILE, NAME_FILTER_DATASET)
+        trainset.create_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES,
+                                EVENT_COL, DATE_EVENT_COL, RADIOMICS_PARAMS_FILE, NAME_FILTER_DATASET)
 
 rule split_dataset:
     input:
@@ -19,7 +20,8 @@ rule split_dataset:
         ANALYZES_DIR + "datasets/testset.csv.gz"
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
-        trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+        trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES,
+                               EVENT_COL, DATE_EVENT_COL)
 
 rule multiple_splits_dataset:
     input:
@@ -30,6 +32,8 @@ rule multiple_splits_dataset:
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
-        for i in range(NB_ESTIM_SCORE_MODELS):
-            trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL, end_name_sets = f"_{i}")
+        trainset.kfold_multiple_splits_dataset(NB_ESTIM_SCORE_MODELS, file_radiomics, FCCSS_CLINICAL_DATASET,
+                                               ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL)
+        # for i in range(NB_ESTIM_SCORE_MODELS):
+        #     trainset.split_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES, EVENT_COL, DATE_EVENT_COL, end_name_sets = f"_{i}")
 
