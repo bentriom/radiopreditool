@@ -499,10 +499,11 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   if (parallel.method == "mclapply") {
     nworkers <- get.nworkers()
-    results <- mclapply(0:(nb_estim-1), function (i)  model_cox.id(i, covariates, event_col, duration_col, 
-                                        analyzes_dir, model_name, logfile, 
-                                        load_results = F, save_results = F, penalty = penalty), mc.cores = nworkers)
+    results <- lapply(0:(nb_estim-1), function (i)  model_cox.id(i, covariates, event_col, duration_col, 
+                                      analyzes_dir, model_name, logfile, 
+                                      load_results = F, save_results = F, penalty = penalty))
     results <- as.data.frame(results)
+    stopifnot(ncol(results) == nb_estim)
   } else if (parallel.method == "rslurm") {
     functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox",
                              "preprocess_data_cox", "normalize_data", "coxlasso_data", "get.clinical_features",
@@ -523,12 +524,12 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
     results <- t(do.call("rbind", list_results))
-    stopifnot(nrow(results) == nb_estim)
+    stopifnot(ncol(results) == nb_estim)
     cleanup_files(sjob, wait = T)
     log_info("End of all submitted jobs")
   }
   filename_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/multiple_scores_full_test_metrics.csv")
-  write.csv(results, file = filename_results, row.names = F, col.names = F)
+  write.csv(results, file = filename_results, row.names = F)
   df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
   rownames(df_results) <- index_results
   filename_df_results <- paste0(analyzes_dir, "coxph_R/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
