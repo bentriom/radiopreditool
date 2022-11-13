@@ -266,7 +266,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
           if (B %% coxnet_per_job > 0) nb_coxnet_jobs <- c(nb_coxnet_jobs, B %% coxnet_per_job)
           log_info(paste("Number of slurm jobs:", length(nb_coxnet_jobs)))
           log_info(do.call(paste, as.list(nb_coxnet_jobs)))
-          sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
+          sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
                        partition = "cpu_med", mem = "20G")
           sjob <- slurm_apply(function(nb_coxnet) slurm_job_boot_coxnet(nb_coxnet, data, 
                               lasso_data_full = lasso_data_full, formula = formula, alpha = alpha, 
@@ -506,7 +506,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-    sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
+    sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_cox.id(i, covariates, event_col, duration_col, 
                         analyzes_dir, model_name, logfile, 

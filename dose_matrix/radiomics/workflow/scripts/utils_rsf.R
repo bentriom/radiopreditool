@@ -177,7 +177,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                              "bootstrap.undersampling", "predictSurvProbOOB", "get.clinical_features",
                              "create.params.df", "cv.rsf", "get.param.cv.error")
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-    sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
+    sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_rsf.id(i, covariates, event_col, duration_col, 
                         analyzes_dir, model_name, logfile,
@@ -267,7 +267,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
       functions_to_export <- c("get.param.cv.error", "get.ipcw.surv.formula", "get.surv.formula",
                                "get.clinical_features", "bootstrap.undersampling")
       log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-      sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
+      sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
                    partition = "cpu_med", mem = "20G")
       sjob <- slurm_apply(function(idx.row.param) get.param.cv.error(idx.row.param, formula, data,
                           params.df, folds, bootstrap.strategy, error.metric, pred.times.folds, rsf_logfile), 
