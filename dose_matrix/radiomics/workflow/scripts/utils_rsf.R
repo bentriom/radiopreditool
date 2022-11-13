@@ -61,11 +61,9 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
         parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "rfsrc", "rslurm")
         cv.params <- cv.rsf(formula_model, df_model_train, params.df, event_col, rsf_logfile, nfolds = cv_nfolds, 
                             parallel.method = parallel.method, pred.times = pred.times, error.metric = "cindex")
-    }
-    if (save_results) {
-        write.csv(cv.params, file = paste0(save_results_dir, "cv.csv"), row.names = F)
         params.best <- cv.params[1,]
     }
+    if (save_results) write.csv(cv.params, file = paste0(save_results_dir, "cv.csv"), row.names = F)
     if (!run_multiple) {
         log_info("Best params:")
         log_info(toString(names(params.best)))
@@ -177,7 +175,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                              "bootstrap.undersampling", "predictSurvProbOOB", "get.clinical_features",
                              "create.params.df", "cv.rsf", "get.param.cv.error")
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-    sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
+    sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_rsf.id(i, covariates, event_col, duration_col, 
                         analyzes_dir, model_name, logfile,
@@ -267,7 +265,7 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
       functions_to_export <- c("get.param.cv.error", "get.ipcw.surv.formula", "get.surv.formula",
                                "get.clinical_features", "bootstrap.undersampling")
       log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-      sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
+      sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                    partition = "cpu_med", mem = "20G")
       sjob <- slurm_apply(function(idx.row.param) get.param.cv.error(idx.row.param, formula, data,
                           params.df, folds, bootstrap.strategy, error.metric, pred.times.folds, rsf_logfile), 
