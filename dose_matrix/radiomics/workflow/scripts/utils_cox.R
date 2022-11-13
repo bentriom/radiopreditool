@@ -76,10 +76,7 @@ preprocess_data_cox <- function(df_dataset, covariates, event_col, duration_col)
         !(duration_col %in% covariates)
     })
     ## Preprocessing sets
-    filter_train <- !duplicated(as.list(df_dataset[covariates])) & 
-                    unlist(lapply(df_dataset[covariates], 
-                                  function(col) { length(unique(col)) > 1 } ))
-    filtered_covariates <- names(filter_train)[filter_train]
+    filtered_covariates <- preliminary_filter(df_dataset, covariates, event_col)
     df_model <- df_dataset[,c(event_col, duration_col, filtered_covariates)]
     df_model <- na.omit(df_model)
     # Z normalisation
@@ -341,10 +338,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     dir.create(save_results_dir, showWarnings = F)
     ## Preprocessing sets
-    filter_train <- !duplicated(as.list(df_trainset[covariates])) & 
-                    unlist(lapply(df_trainset[covariates], 
-                                  function(col) { length(unique(col)) > 1 } ))
-    filtered_covariates <- names(filter_train)[filter_train]
+    filtered_covariates <- preliminary_filter(df_trainset, covariates, event_col)
     df_model_train <- df_trainset[,c(event_col, duration_col, filtered_covariates)]
     df_model_test <- df_testset[,c(event_col, duration_col, filtered_covariates)]
     df_model_train <- na.omit(df_model_train)

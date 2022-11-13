@@ -153,3 +153,28 @@ pretty.iccc <- function(label_iccc) {
     iccc_labels[[label_iccc]]
 }
 
+# Preliminary screening of features (independant, identical, unimodal features)
+preliminary_filter <- function(df_dataset, covariates, event_col) {
+  filter_data <- !duplicated(as.list(df_dataset[covariates])) & 
+                  unlist(lapply(df_dataset[covariates], 
+                                function(col) { length(unique(col)) > 1 } ))
+  filtered_covariates <- names(filter_data)[filter_data]
+  irrelevant_iccc_cols <- filter_dummies_iccc(df_dataset[, c(filtered_covariates, event_col)], event_col)
+  filtered_covariates <- filtered_covariates[!(filtered_covariates %in% irrelevant_iccc_cols)]
+  filtered_covariates
+}
+
+# Perfoms chi2 test to only keep dummy primary cancers variables that are dependant with any event
+# Returns the iccc columns to delete
+filter_dummies_iccc <- function(df_dataset, event_col) {
+  iccc_cols <- grep("iccc_", colnames(df_dataset), value = T)
+  irrelevant_iccc_cols <- na.omit(unlist(sapply(iccc_cols, function(iccc) {
+    table_iccc <- table(df_dataset[, c(iccc, event_col)])
+    pval <- chisq.test(table_iccc)$p.value
+    # Rejected test means the two variables are dependant
+    if (pval > 0.05) return (iccc)
+    return (NULL)
+  })))
+  irrelevant_iccc_cols
+}
+
