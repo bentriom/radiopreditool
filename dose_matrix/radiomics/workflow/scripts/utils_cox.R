@@ -236,7 +236,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     if (is.null(selected_features)) {
         log_info(paste("Bootstrap lasso: parallel method is", boot.parallel))
         functions_to_export <- c("slurm_job_boot_coxnet", "sample.selection.coxnet", "selection.coxnet", 
-                                 "predictSurvProb.selection.coxnet", "coxlasso_data", 
+                                 "predictSurvProb.selection.coxnet", "coxlasso_data", "preliminary_filter", 
                                  "get.coefs.cox", "get.surv.formula", "get.best.lambda")
         # Launch bootstrap
         if (boot.parallel == "boot.multicore") {
@@ -500,8 +500,8 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
     stopifnot(ncol(results) == nb_estim)
   } else if (parallel.method == "rslurm") {
     functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox",
-                             "preprocess_data_cox", "normalize_data", "coxlasso_data", "get.clinical_features",
-                             "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
+                             "preprocess_data_cox", "normalize_data", "coxlasso_data", "preliminary_filter",
+                             "get.clinical_features","predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
                              "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
