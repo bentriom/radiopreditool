@@ -9,11 +9,11 @@ from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, ch
 # Array preprocessing utils
 def process_array_image(doses_array):
     new_array = drop_invalid_range(doses_array)
-    
+
     return new_array
 
 def drop_invalid_range(doses_array):
-    D98 = np.nanpercentile(doses_array, 2)  
+    D98 = np.nanpercentile(doses_array, 2)
     D2 = np.nanpercentile(doses_array, 98)
     doses_array[doses_array > D2] = D2
     doses_array[doses_array < D98] = D98
@@ -36,7 +36,8 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
         open(file_mask_super_t_nii, 'w').close()
         return (0, 0, 0)
     elif len(np.unique(dosi_values[dosi_values > 0])) <= 1:
-        logger.warning(f"{patient_filename}: df_dosi {df_dosi.shape} has too few values: {np.unique(dosi_values)}. Creating empty nii files.")
+        logger.warning(f"{patient_filename}: df_dosi {df_dosi.shape} has too few values: {np.unique(dosi_values)}. "\
+                       f"Creating empty nii files.")
         open(file_dosi_nii, 'w').close()
         open(file_mask_t_nii, 'w').close()
         open(file_mask_super_t_nii, 'w').close()
@@ -75,7 +76,7 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
             sitk.WriteImage(image_mask_super_t, file_mask_super_t_nii)
 
 # Requires: list of newdosi files for one patient
-# Guarantees: 
+# Guarantees: three nifti files: doses, mask for each organ, mask for each suborgan
 def to_nii(path_csv, path_nii, list_csv_files):
     logger = logging.getLogger("csv2nii")
     relevant_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T', 'ID2013A']
@@ -90,7 +91,8 @@ def to_nii(path_csv, path_nii, list_csv_files):
         nbr_rows_before = df_dosi.shape[0]
         df_dosi = df_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
         nbr_rows_after = df_dosi.shape[0]
-        logger.warning(f"{first_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
+        logger.warning(f"{first_newdosi_file}: has NaN values in X, Y or Z. "\
+                       f"Dropping {nbr_rows_before - nbr_rows_after} rows.")
     col_super_t(df_dosi)
     df_dosi = df_dosi[relevant_cols]
     ctr_patient, numcent_patient = get_ctr_numcent(first_newdosi_file)
@@ -110,9 +112,11 @@ def to_nii(path_csv, path_nii, list_csv_files):
                 nbr_rows_before = df_other_dosi.shape[0]
                 df_other_dosi = df_other_dosi.dropna(subset = ['X', 'Y', 'Z', 'ID2013A'])
                 nbr_rows_after = df_other_dosi.shape[0]
-                logger.warning(f"{current_newdosi_file}: has NaN values in X, Y or Z. Dropping {nbr_rows_before - nbr_rows_after} rows.")
+                logger.warning(f"{current_newdosi_file}: has NaN values in X, Y or Z. "\
+                               f"Dropping {nbr_rows_before - nbr_rows_after} rows.")
             if df_dosi.shape[0] != df_other_dosi.shape[0]:
-                logger.warning(f"{first_newdosi_file} and {current_newdosi_file}: rows numbers are different. Stopping the sum.")
+                logger.warning(f"{first_newdosi_file} and {current_newdosi_file}: rows numbers are different. "\
+                               f"Stopping the sum.")
                 break
             if df_other_dosi.shape[0] <= 1:
                 logger.warning(f"{current_newdosi_file}: has <= 1 rows. Stopping the sum.")
@@ -131,12 +135,13 @@ def to_nii(path_csv, path_nii, list_csv_files):
                 df_other_dosi = df_other_dosi.sort_values(by = int_cols)
                 df_other_dosi.index = df_dosi.index
                 if not check_summable_df(df_dosi, df_other_dosi):
-                    logger.warning(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. Stopping the sum.")
+                    logger.warning(f"{first_newdosi_file} and {current_newdosi_file}: same rows number but different. "\
+                                   f"Stopping the sum.")
                     break
                 df_dosi['ID2013A'] += df_other_dosi['ID2013A']
         #date_last_treatment = date_treatment
     patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
 
     os.makedirs(path_nii, exist_ok=True)
-    save_nii(df_dosi, patient_filename, path_nii) 
+    save_nii(df_dosi, patient_filename, path_nii)
 
