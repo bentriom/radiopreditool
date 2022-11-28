@@ -221,10 +221,28 @@ rule multiple_scores_baseline_analysis_R:
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = BASELINE_MODELS_LASSO)
     output:
         ANALYZES_DIR + "multiple_scores_baseline_models_R.log",
+        # Results that summaries all cv runs
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
                model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO),
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
-               model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
+               model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = BASELINE_MODELS_COX, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = BASELINE_MODELS_COX, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = BASELINE_MODELS_LASSO, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/cv_mean_error.png",
+               model = BASELINE_MODELS_LASSO, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/regularization_path.png",
+               model = BASELINE_MODELS_LASSO, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/cv.csv",
+               model = BASELINE_MODELS_LASSO, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/best_params.csv",
+               model = BASELINE_MODELS_LASSO, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = BASELINE_MODELS_LASSO, nb_set = range(NB_ESTIM_SCORE_MODELS)),
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
@@ -239,10 +257,24 @@ rule multiple_scores_cox_lasso_radiomics_all_R:
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
     output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_all.log",
+        # Results that summaries all cv runs
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
                model = COX_RADIOMICS_LASSO_ALL),
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
-               model = COX_RADIOMICS_LASSO_ALL)
+               model = COX_RADIOMICS_LASSO_ALL),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = COX_RADIOMICS_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/cv_mean_error.png",
+               model = COX_RADIOMICS_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/regularization_path.png",
+               model = COX_RADIOMICS_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/cv.csv",
+               model = COX_RADIOMICS_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/best_params.csv",
+               model = COX_RADIOMICS_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = COX_RADIOMICS_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
@@ -258,10 +290,24 @@ rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
     output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
+        # Results that summaries all cv runs
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
                model = COX_RADIOMICS_LASSO_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
-               model = COX_RADIOMICS_LASSO_FE_HCLUST)
+               model = COX_RADIOMICS_LASSO_FE_HCLUST),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/cv_mean_error.png",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/regularization_path.png",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/cv.csv",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/best_params.csv",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
@@ -276,10 +322,22 @@ rule multiple_scores_cox_bootstrap_lasso_radiomics_all_R:
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
     output:
         ANALYZES_DIR + "multiple_scores_cox_bootstrap_lasso_radiomics_R_all.log",
+        # Results that summaries all cv runs
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
                model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL),
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
-               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/freq_selected_features.png",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/bootstrap_selected_features.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/final_selected_features.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:
@@ -295,10 +353,22 @@ rule multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R:
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
     output:
         ANALYZES_DIR + "multiple_scores_cox_bootstrap_lasso_radiomics_R_features_hclust_corr.log",
+        # Results that summaries all cv runs
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
                model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST),
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
-               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/freq_selected_features.png",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/bootstrap_selected_features.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/final_selected_features.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     conda:

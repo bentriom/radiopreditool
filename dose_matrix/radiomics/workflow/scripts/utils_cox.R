@@ -480,12 +480,12 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     }
     if (do_plot) {
         if (penalty == "none") {
-            plot_cox(coxmodel, analyzes_dir, model_name) # coxph
+            plot_cox(coxmodel, save_results_dir) # coxph
         } else if (penalty == "lasso") {
-            plot_cox(coxmodel$coxnet.fit, analyzes_dir, model_name) # selection.coxnet$coxnet
+            plot_cox(coxmodel$coxnet.fit, save_results_dir) # selection.coxnet$coxnet
         } else if (penalty == "bootstrap_lasso") {
-            plot_cox(coxmodel$coxph.fit, analyzes_dir, model_name) # bootstrap.coxnet$coxph
-            plot_bootstrap(coxmodel, analyzes_dir, model_name, n.boot) # bootstrap.coxnet
+            plot_cox(coxmodel$coxph.fit, save_results_dir) # bootstrap.coxnet$coxph
+            plot_bootstrap(coxmodel, save_results_dir, n.boot) # bootstrap.coxnet
         }
     }
     log_threshold(INFO)
@@ -539,8 +539,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
 }
 
 # Plots of cox models : coefficients, regularization path, CV error for lambda estimation
-plot_cox <- function(cox_object, analyzes_dir, model_name) {
-    save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
+plot_cox <- function(cox_object, save_results_dir) {
     # Coefficients of best Cox
     if (is(cox_object, "cv.glmnet") | is(cox_object, "glmnet")) {
         best.params <- read.csv(paste0(save_results_dir, "best_params.csv"))
@@ -594,8 +593,7 @@ plot_cox <- function(cox_object, analyzes_dir, model_name) {
 }
 
 # Plot bootstrap selected coefficients + error statistics
-plot_bootstrap <- function(object, analyzes_dir, model_name, B) {
-    save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
+plot_bootstrap <- function(object, save_results_dir, B) {
     freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
     df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
     df.coefs = df.coefs[order(-df.coefs$coefs), ]
