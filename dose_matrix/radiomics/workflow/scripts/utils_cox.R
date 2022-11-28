@@ -175,6 +175,11 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     best.lambda <- get.best.lambda(coxnet_model, best.lambda.method)
     best.coefs.cox <- get.coefs.cox(coxnet_model, best.lambda)
     nonnull.covariates <- names(best.coefs.cox[abs(best.coefs.cox) > 0])
+    print(paste("Number of covariates", length(covariates)))
+    print(paste("Number of non null covariates", length(nonnull.covariates)))
+    print(paste("Best lambda:", best.lambda))
+    print(paste("Lambda.1se coxnet:", coxnet_model$lambda.1se))
+    print(paste("Lambda.min coxnet:", coxnet_model$lambda.min))
     # Coxph on selected features
     formula_nonnull <- get.surv.formula(event_col, nonnull.covariates, duration_col = duration_col)
     coxmodel <- survival::coxph(formula_nonnull, data = data, x = T, y = T, control = coxph.control(iter.max = 500))
@@ -236,7 +241,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     if (is.null(selected_features)) {
         log_info(paste("Bootstrap lasso: parallel method is", boot.parallel))
         functions_to_export <- c("slurm_job_boot_coxnet", "sample.selection.coxnet", "selection.coxnet", 
-                                 "predictSurvProb.selection.coxnet", "coxlasso_data", "preliminary_filter", 
+                                 "predictSurvProb.selection.coxnet", "coxlasso_data", "preliminary_filter", "filter_dummies_iccc",
                                  "get.coefs.cox", "get.surv.formula", "get.best.lambda")
         # Launch bootstrap
         if (boot.parallel == "boot.multicore") {
@@ -279,7 +284,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
           log_info("Jobs are submitted")
           listResJobs <- get_slurm_out(sjob, outtype = "raw", wait = T)
           resBoot <- do.call("rbind", listResJobs)
-          stopifnot(nrow(resBoot[,-c(1,2)]) == B)
+          if (nrow(resBoot[,-c(1,2)]) != B) stop(paste("Bootstrap matrix nrow:", nrow(resBoot[,-c(1,2)]), "- B:", B))
           cleanup_files(sjob, wait = T)
           log_info("End of all submitted jobs")
         }
@@ -368,6 +373,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         coxmodel <- coxph(formula_model, data = df_model_train, x = T, y = T, 
                           control = coxph.control(iter.max = 500))
     } else if (penalty == "lasso") {
+        best.lambda.method <- "lambda.1se"
         if (load_results) {
             best.lambda <- read.csv(paste0(save_results_dir, "best_params.csv"))[1, "penalty"]
             list.lambda <- read.csv(paste0(save_results_dir, "path_lambda.csv"))[["lambda"]]
@@ -375,7 +381,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                                          list.lambda = list.lambda, type.measure = "C", logfile = coxlasso_logfile)
         } else {
             coxmodel <- selection.coxnet(formula_model, df_model_train, 
-                                         alpha = 1, nfolds = cv_nfolds, best.lambda.method = "lambda.1se",
+                                         alpha = 1, nfolds = cv_nfolds, best.lambda.method = best.lambda.method,
                                          cv.parallel = T, type.measure = "C", logfile = coxlasso_logfile)
             cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$coxnet.fit$nzero), 
                                     penalty = coxmodel$coxnet.fit$lambda, 
@@ -393,19 +399,20 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         }
         if (!run_multiple) log_info(paste("Best lambda:", best.lambda))
     } else if (penalty == "bootstrap_lasso") {
+        best.lambda.method <- "lambda.1se"
         if (load_results) {
             selected_features <- read.csv(paste0(save_results_dir, "final_selected_features.csv"))[["selected_features"]]
             bootstrap_selected_features <- read.csv(paste0(save_results_dir, "bootstrap_selected_features.csv"), 
                                                     header = T)
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, 
-                                         best.lambda.method = "lambda.min", selected_features = selected_features, 
+                                         best.lambda.method = best.lambda.method, selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features, 
                                          logfile = coxlasso_logfile)
         } else {
             boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
                                          boot.parallel = boot.parallel,
-                                         best.lambda.method = "lambda.min", logfile = coxlasso_logfile)
+                                         best.lambda.method = best.lambda.method, logfile = coxlasso_logfile)
             if (save_results) {
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
                           file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
@@ -499,10 +506,10 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
     results <- as.data.frame(results)
     stopifnot(ncol(results) == nb_estim)
   } else if (parallel.method == "rslurm") {
-    functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox",
-                             "preprocess_data_cox", "normalize_data", "coxlasso_data", "preliminary_filter",
+    functions_to_export <- c("model_cox.id", "model_cox", "select_best_lambda", "get.best.lambda", "get.coefs.cox", 
+                             "preprocess_data_cox", "normalize_data", "coxlasso_data", "preliminary_filter", "filter_dummies_iccc",
                              "get.clinical_features","predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
-                             "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
+                             "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet", "slurm_job_boot_coxnet",
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
