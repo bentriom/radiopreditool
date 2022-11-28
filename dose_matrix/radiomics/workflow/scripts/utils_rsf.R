@@ -18,7 +18,7 @@ source("workflow/scripts/utils_radiopreditool.R")
 
 model_rsf.id <- function(id_set, covariates, event_col, duration_col, 
                          analyzes_dir, model_name, rsf_logfile,
-                         load_results = F, save_results = F) {
+                         load_results = F, save_results = T, save_rds = F) {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = T)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = T)
     log_appender(appender_file(rsf_logfile, append = T))
@@ -29,12 +29,13 @@ model_rsf.id <- function(id_set, covariates, event_col, duration_col,
 }
 
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
-                      analyzes_dir, model_name, rsf_logfile, id_set = "",
-                      load_results = F, save_results = T, run_multiple = F, level = INFO, 
+                      analyzes_dir, model_name, rsf_logfile, id_set = "", level = INFO,
+                      load_results = F, save_results = T, run_multiple = F, save_rds = T,
                       cv_nfolds = 5, ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
     log_threshold(level)
     log_appender(appender_file(rsf_logfile, append = T))
     save_results_dir <- paste0(analyzes_dir, "rsf/", model_name, "/")
+    if (id_set != "") save_results_dir <- paste0(save_results_dir, id_set, "/")
     dir.create(save_results_dir, showWarnings = F)
     ## Preprocessing sets
     filtered_covariates <- preliminary_filter(df_trainset, covariates, event_col)
@@ -150,7 +151,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {
         write.csv(df_results, file = paste0(save_results_dir, "metrics.csv"), row.names = T)
-        saveRDS(rsf.best, file = paste0(save_results_dir, "model.rds"))
+        if (save_rds) saveRDS(rsf.best, file = paste0(save_results_dir, "model.rds"))
     }
     log_threshold(INFO)
     results_test
@@ -180,7 +181,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_rsf.id(i, covariates, event_col, duration_col, 
                         analyzes_dir, model_name, logfile,
-                        load_results = F, save_results = F),
+                        load_results = F, save_results = T, save_rds = F),
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
                         global_objects = functions_to_export,

@@ -68,13 +68,15 @@ rule rsf_whole_heart_vimp:
 
 rule multiple_scores_rsf:
     input:
-        ANALYZES_DIR + "features_hclust_corr.csv",
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_ALL)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_ALL)
     output:
         ANALYZES_DIR + "multiple_scores_rsf_all.log",
-        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = RSF_RADIOMICS_ALL)
+        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = RSF_RADIOMICS_ALL),
+        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = RSF_RADIOMICS_ALL)
     conda:
         "../envs/rsf_R_env.yaml"
     threads:
@@ -147,11 +149,14 @@ rule multiple_scores_rsf_features_hclust_corr:
     input:
         ANALYZES_DIR + "features_hclust_corr.csv",
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_FE_HCLUST)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_FE_HCLUST)
     output:
         ANALYZES_DIR + "multiple_scores_rsf_features_hclust_corr.log",
-        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv", model = RSF_RADIOMICS_FE_HCLUST)
+        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = RSF_RADIOMICS_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = RSF_RADIOMICS_FE_HCLUST)
     conda:
         "../envs/rsf_R_env.yaml"
     threads:

@@ -212,14 +212,18 @@ rule cox_bootstrap_lasso_radiomics_subparts_heart_features_hclust_corr_R:
     shell:
         f"Rscript workflow/scripts/cox_learning.R {CONFIGFILE_PATH} cox_bootstrap_lasso_radiomics_features_hclust_corr 32X"
 
+# Run cross-validation of models
+
 rule multiple_scores_baseline_analysis_R:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = BASELINE_MODELS_LASSO)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = BASELINE_MODELS_LASSO)
     output:
         ANALYZES_DIR + "multiple_scores_baseline_models_R.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
                model = BASELINE_MODELS_COX + BASELINE_MODELS_LASSO)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
@@ -231,11 +235,13 @@ rule multiple_scores_baseline_analysis_R:
 rule multiple_scores_cox_lasso_radiomics_all_R:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_ALL)
     output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_all.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_LASSO_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
                model = COX_RADIOMICS_LASSO_ALL)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
@@ -248,11 +254,13 @@ rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
     input:
         ANALYZES_DIR + "features_hclust_corr.csv",
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
     output:
         ANALYZES_DIR + "multiple_scores_cox_lasso_radiomics_R_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_LASSO_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
                model = COX_RADIOMICS_LASSO_FE_HCLUST)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
@@ -264,11 +272,13 @@ rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
 rule multiple_scores_cox_bootstrap_lasso_radiomics_all_R:
     input:
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
     output:
         ANALYZES_DIR + "multiple_scores_cox_bootstrap_lasso_radiomics_R_all.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
                model = COX_RADIOMICS_BOOTSTRAP_LASSO_ALL)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
@@ -281,11 +291,13 @@ rule multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R:
     input:
         ANALYZES_DIR + "features_hclust_corr.csv",
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
     output:
         ANALYZES_DIR + "multiple_scores_cox_bootstrap_lasso_radiomics_R_features_hclust_corr.log",
         expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
                model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)
     threads:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
