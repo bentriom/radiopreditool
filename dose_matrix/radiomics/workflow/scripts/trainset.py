@@ -111,9 +111,9 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_radiomics["has_radiomics"] = 1
     df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
     fill_missing(df_fccss)
-    logger.info(f"df_radiomics: {df_radiomics.shape}")
+    logger.info(f"df_radiomics (fccss patients + others): {df_radiomics.shape}")
     mask_na = df_radiomics.isna().any(axis = 1)
-    logger.info(f"In radiomics, number of patients with NA: f{sum(mask_na)}")
+    logger.info(f"In df_radiomics, number of patients with NA: {sum(mask_na)}")
     logger.info(f"df_fccss: {df_fccss.shape}")
     # Create survival time col
     logger.info("Creating survival columns")
@@ -142,9 +142,9 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     df_dataset = df_dataset.loc[~mask_negative_times, ]
     # Fill columns about radiotherapie
     fill_features_no_rt(df_dataset, col_treated_by_rt, params_file)
-    logger.info(f"Full dataset: {df_dataset.shape}")
-    logger.info(f"Full dataset without NA: {df_dataset.dropna().shape}")
-    logger.info(f"Full dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
+    logger.info(f"Full fccss dataset: {df_dataset.shape}")
+    logger.info(f"Full fccss dataset without NA: {df_dataset.dropna().shape}")
+    logger.info(f"Full fccss dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
     df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
 
 # One-time split train / test
