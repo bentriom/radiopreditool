@@ -386,7 +386,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         } else {
             coxmodel <- selection.coxnet(formula_model, df_model_train, 
                                          alpha = 1, nfolds = cv_nfolds, best.lambda.method = best.lambda.method,
-                                         cv.parallel = T, type.measure = "C", logfile = coxlasso_logfile)
+                                         cv.parallel = F, type.measure = "C", logfile = coxlasso_logfile)
             cv.params <- data.frame(non_zero_coefs = as.numeric(coxmodel$coxnet.fit$nzero), 
                                     penalty = coxmodel$coxnet.fit$lambda, 
                                     mean_score = coxmodel$coxnet.fit$cvm, 
@@ -502,11 +502,12 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = T))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
+  # ggsave() doesn't work with mclapply... what a language
   if (parallel.method == "mclapply") {
     nworkers <- get.nworkers()
     results <- lapply(0:(nb_estim-1), function (i)  model_cox.id(i, covariates, event_col, duration_col, 
                                       analyzes_dir, model_name, logfile, n_boot = n_boot, 
-                                      load_results = F, save_results = F, do_plot = T, save_rds = F, penalty = penalty))
+                                      load_results = F, save_results = T, do_plot = F, save_rds = F, penalty = penalty))
     results <- as.data.frame(results)
     stopifnot(ncol(results) == nb_estim)
   } else if (parallel.method == "rslurm") {
