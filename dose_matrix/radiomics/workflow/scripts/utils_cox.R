@@ -321,20 +321,22 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
 }
 
 model_cox.id <- function(id_set, covariates, event_col, duration_col, 
-                         analyzes_dir, model_name, coxlasso_logfile, n.boot = 200,
-                         load_results = F, save_results = T, save_rds = F, penalty = "lasso") {
+                         analyzes_dir, model_name, coxlasso_logfile, n_boot = 200,
+                         load_results = F, save_results = T, do_plot = F, save_rds = F, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = T)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = T)
     log_appender(appender_file(coxlasso_logfile, append = T))
+    print(ls())
+    print(paste("nboot:", n_boot))
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-              model_name, coxlasso_logfile, penalty = penalty, n.boot = n.boot,
-              do_plot = F, load_results = load_results, save_results = save_results, run_multiple = T,
+              model_name, coxlasso_logfile, penalty = penalty, n_boot = n_boot,
+              do_plot = do_plot, load_results = load_results, save_results = save_results, run_multiple = T,
               level = INFO, id_set = id_set)
 }
 
 model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
                       analyzes_dir, model_name, coxlasso_logfile,
-                      penalty = "lasso", cv_nfolds = 5, n.boot = 200,
+                      penalty = "lasso", cv_nfolds = 5, n_boot = 200,
                       do_plot = T, load_results = F, save_results = T, save_rds = T, run_multiple = F,
                       level = INFO, id_set = "") {
     stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
@@ -360,7 +362,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
         log_info("NAs are omitted")
         log_info(paste("Trained:", nrow(df_model_train), "samples"))
         log_info(paste("Testset: ", nrow(df_model_test), " samples"))
-        log_info(paste("Number of bootstrap samples (for bootstrap model only):", n.boot))
+        log_info(paste("Number of bootstrap samples (for bootstrap model only):", n_boot))
     }
     final.time <- floor(min(max(df_model_train[[duration_col]]), max(df_model_test[[duration_col]]), 60))
     pred.times <- seq(1, final.time, by = 1)
@@ -370,6 +372,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     X_train <- coxlasso_data_train$X; surv_y_train <- coxlasso_data_train$surv_y
     coxlasso_data_test <- coxlasso_data(df_model_test, filtered_covariates, event_col, duration_col)
     X_test <- coxlasso_data_test$X; surv_y_test <- coxlasso_data_test$surv_y   
+    print(paste("n_boot:", n_boot))
     if (penalty == "none") {
         coxmodel <- coxph(formula_model, data = df_model_train, x = T, y = T, 
                           control = coxph.control(iter.max = 500))
@@ -405,13 +408,13 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             selected_features <- read.csv(paste0(save_results_dir, "final_selected_features.csv"))[["selected_features"]]
             bootstrap_selected_features <- read.csv(paste0(save_results_dir, "bootstrap_selected_features.csv"), 
                                                     header = T)
-            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot, 
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n_boot, 
                                          best.lambda.method = best.lambda.method, selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features, 
                                          logfile = coxlasso_logfile)
         } else {
             boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
-            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n.boot,
+            coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n_boot,
                                          boot.parallel = boot.parallel,
                                          best.lambda.method = best.lambda.method, logfile = coxlasso_logfile)
             if (save_results) {
@@ -485,7 +488,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             plot_cox(coxmodel$coxnet.fit, save_results_dir) # selection.coxnet$coxnet
         } else if (penalty == "bootstrap_lasso") {
             plot_cox(coxmodel$coxph.fit, save_results_dir) # bootstrap.coxnet$coxph
-            plot_bootstrap(coxmodel, save_results_dir, n.boot) # bootstrap.coxnet
+            plot_bootstrap(coxmodel, save_results_dir, n_boot) # bootstrap.coxnet
         }
     }
     log_threshold(INFO)
@@ -494,7 +497,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
 
 # Run multiple scores estimation for a Cox model with presaved train / test sets in parallel
 parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, 
-                                         logfile, penalty = "lasso", parallel.method = "mclapply", n.boot = 200) {
+                                         logfile, penalty = "lasso", parallel.method = "mclapply", n_boot = 200) {
   stopifnot(parallel.method %in% c("mclapply", "rslurm"))
   stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = T))
@@ -502,8 +505,8 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   if (parallel.method == "mclapply") {
     nworkers <- get.nworkers()
     results <- lapply(0:(nb_estim-1), function (i)  model_cox.id(i, covariates, event_col, duration_col, 
-                                      analyzes_dir, model_name, logfile, 
-                                      load_results = F, save_results = F, penalty = penalty))
+                                      analyzes_dir, model_name, logfile, n_boot = n_boot, 
+                                      load_results = F, save_results = F, do_plot = T, save_rds = F, penalty = penalty))
     results <- as.data.frame(results)
     stopifnot(ncol(results) == nb_estim)
   } else if (parallel.method == "rslurm") {
@@ -511,13 +514,14 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                              "preprocess_data_cox", "normalize_data", "coxlasso_data", "preliminary_filter", "filter_dummies_iccc",
                              "get.clinical_features","predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
                              "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet", "slurm_job_boot_coxnet",
+                             "plot_cox", "plot_bootstrap", "pretty.labels", "pretty.label", "pretty.iccc",
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
     sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
     sjob <- slurm_apply(function (i)  model_cox.id(i, covariates, event_col, duration_col,
-                        analyzes_dir, model_name, logfile, n.boot = n.boot,
+                        analyzes_dir, model_name, logfile, n_boot = n_boot,
                         load_results = F, save_results = T, do_plot = T, save_rds = F, penalty = penalty),
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 

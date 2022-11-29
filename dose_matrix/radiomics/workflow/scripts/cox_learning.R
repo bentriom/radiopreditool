@@ -45,7 +45,7 @@ baseline_models_learning <- function(file_trainset, file_testset, event_col, ana
 }
 
 cox_radiomics_learning <- function(file_trainset, file_testset, file_features, event_col, analyzes_dir, 
-                                   duration_col, suffix_model, subdivision_type, penalty = "lasso", n.boot = 200) {
+                                   duration_col, suffix_model, subdivision_type, penalty = "lasso", n_boot = 200) {
     dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
     logfile <- paste0(analyzes_dir, "cox_", penalty, "_radiomics_R_", subdivision_type, "_", suffix_model, ".log")
     if (file.exists(logfile)) { file.remove(logfile) }
@@ -71,7 +71,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
         covariates = c(cols_32X_firstorder, clinical_vars)
         log_info("Model radiomics firstorder lasso (32X)")
         model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-                  model_name, logfile, penalty = penalty, n.boot = n.boot)
+                  model_name, logfile, penalty = penalty, n_boot = n_boot)
     
         # Coxph Lasso all radiomics 32X
         model_name = paste0("32X_radiomics_full_", penalty, "_", suffix_model)
@@ -79,7 +79,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
         covariates = c(cols_32X, clinical_vars)
         log_info("Model radiomics full lasso (32X)")
         model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-                  model_name, logfile, penalty = penalty, n.boot = n.boot)
+                  model_name, logfile, penalty = penalty, n_boot = n_boot)
     } else if (subdivision_type == "1320") {
         # Coxph Lasso radiomics firstorder 1320
         model_name = paste0("1320_radiomics_firstorder_", penalty, "_", suffix_model)
@@ -87,7 +87,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
         covariates = c(cols_1320_firstorder, clinical_vars)
         log_info("Model radiomics firstorder lasso (1320)")
         model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-                  model_name, logfile, penalty = penalty, n.boot = n.boot)
+                  model_name, logfile, penalty = penalty, n_boot = n_boot)
 
         # Coxph Lasso all radiomics 1320
         model_name = paste0("1320_radiomics_full_", penalty, "_", suffix_model)
@@ -95,7 +95,7 @@ cox_radiomics_learning <- function(file_trainset, file_testset, file_features, e
         covariates = c(cols_1320, clinical_vars)
         log_info("Model radiomics full lasso (1320)")
         model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
-                  model_name, logfile, penalty = penalty, n.boot = n.boot)
+                  model_name, logfile, penalty = penalty, n_boot = n_boot)
     } else {
         stop("Subdivision type of features unrecognized")
     }
@@ -112,7 +112,7 @@ if (length(args) > 1) {
     analyzes_dir <- get.analyzes_dir_from_config(config)
     event_col <- config$EVENT_COL
     duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
-    n.boot <- `if`(is.null(config$N_BOOTSTRAP), 200, as.numeric(config$N_BOOTSTRAP))
+    n_boot <- `if`(is.null(config$N_BOOTSTRAP), 200, as.numeric(config$N_BOOTSTRAP))
     file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
     file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
     file_features <- "all"
@@ -123,14 +123,14 @@ if (length(args) > 1) {
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "all", subdivision_type)
     } else if (run_type == "cox_bootstrap_lasso_radiomics_all") {
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, 
-                               "all", subdivision_type, penalty = "bootstrap_lasso", n.boot = n.boot)
+                               "all", subdivision_type, penalty = "bootstrap_lasso", n_boot = n_boot)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type)
     } else if (run_type == "cox_bootstrap_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, 
-                               "features_hclust_corr", subdivision_type, penalty = "bootstrap_lasso", n.boot = n.boot)
+                               "features_hclust_corr", subdivision_type, penalty = "bootstrap_lasso", n_boot = n_boot)
     } else {
         stop(paste("Run type unrecognized:", run_type))
     }

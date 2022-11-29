@@ -105,7 +105,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, file_features, event_col,
 }
 
 multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, file_features, event_col, 
-                                                    analyzes_dir, duration_col, suffix_model, n.boot) {
+                                                    analyzes_dir, duration_col, suffix_model, n_boot) {
     dir.create(paste0(analyzes_dir, "coxph_R/"), showWarnings = FALSE)
     nworkers <- get.nworkers()
     cox_logfile <- paste0(analyzes_dir, "multiple_scores_cox_bootstrap_lasso_radiomics_R_",suffix_model,".log")
@@ -130,7 +130,7 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, file_features, eve
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics firstorder bootstrap lasso (32X)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
-                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n.boot = n.boot)
+                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n_boot = n_boot)
    
     # Coxph Bootstrap Lasso radiomics firstorder 1320
     model_name = paste0("1320_radiomics_firstorder_bootstrap_lasso_", suffix_model)
@@ -138,7 +138,7 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, file_features, eve
     covariates = c(cols_1320, clinical_vars)
     log_info("Multiple scores radiomics firstorder bootstrap lasso (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,model_name, cox_logfile, 
-                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n.boot = n.boot)
+                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n_boot = n_boot)
 
     # Coxph Bootstrap Lasso all radiomics 32X
     model_name = paste0("32X_radiomics_full_bootstrap_lasso_", suffix_model)
@@ -146,7 +146,7 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, file_features, eve
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics full bootstrap lasso (32X)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
-                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n.boot = n.boot)
+                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n_boot = n_boot)
    
     # Coxph Bootstrap Lasso all radiomics 1320
     model_name = paste0("1320_radiomics_full_bootstrap_lasso_", suffix_model)
@@ -154,7 +154,7 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, file_features, eve
     covariates = c(cols_1320, clinical_vars)
     log_info("Multiple scores radiomics full bootstrap lasso (1320)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
-                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n.boot = n.boot)
+                                 penalty = "bootstrap_lasso", parallel.method = parallel.method, n_boot = n_boot)
 
     log_info("Done")
     log_info(format(Sys.time() - start_time))
@@ -169,7 +169,7 @@ if (length(args) > 1) {
     event_col <- config$EVENT_COL
     duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
     nb_estim <- as.numeric(config$NB_ESTIM_SCORE_MODELS)
-    n.boot <- `if`(is.null(config$N_BOOTSTRAP), 200, as.numeric(config$N_BOOTSTRAP))
+    n_boot <- `if`(is.null(config$N_BOOTSTRAP), 200, as.numeric(config$N_BOOTSTRAP))
     file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
     file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
     file_features <- "all"
@@ -180,7 +180,7 @@ if (length(args) > 1) {
         multiple_scores_cox_radiomics(nb_estim, file_features, event_col, analyzes_dir, duration_col, "all")
     } else if (run_type == "cox_bootstrap_lasso_radiomics_all") {
         multiple_scores_cox_bootstrap_radiomics(nb_estim, file_features, event_col, analyzes_dir, 
-                                                duration_col, "all", n.boot)
+                                                duration_col, "all", n_boot)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         multiple_scores_cox_radiomics(nb_estim, file_features, event_col, 
@@ -188,7 +188,7 @@ if (length(args) > 1) {
     } else if (run_type == "cox_bootstrap_lasso_radiomics_features_hclust_corr") {
         file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
         multiple_scores_cox_bootstrap_radiomics(nb_estim, file_features, event_col, 
-                                                analyzes_dir, duration_col, "features_hclust_corr", n.boot)
+                                                analyzes_dir, duration_col, "features_hclust_corr", n_boot)
     } else {
         stop(paste("Run type unrecognized:", run_type))
     }
