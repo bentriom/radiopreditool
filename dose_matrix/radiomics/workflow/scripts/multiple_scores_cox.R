@@ -129,6 +129,8 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, file_features, eve
     cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", colnames(df_trainset0), value = TRUE)
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics firstorder bootstrap lasso (32X)")
+    print("Before the call of parallel_multiple_scores_cox(), I print n_boot")
+    print(paste("n_boot:", n_boot))
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
                                  penalty = "bootstrap_lasso", parallel.method = parallel.method, n_boot = n_boot)
    
@@ -170,6 +172,8 @@ if (length(args) > 1) {
     duration_col <- `if`(is.null(config$DURATION_COL), "survival_time_years", config$DURATION_COL)
     nb_estim <- as.numeric(config$NB_ESTIM_SCORE_MODELS)
     n_boot <- `if`(is.null(config$N_BOOTSTRAP), 200, as.numeric(config$N_BOOTSTRAP))
+    print("In the main, I print n_boot")
+    print(paste("n_boot:", n_boot))
     file_trainset = paste0(analyzes_dir, "datasets/trainset.csv.gz")
     file_testset = paste0(analyzes_dir, "datasets/testset.csv.gz")
     file_features <- "all"
@@ -179,6 +183,8 @@ if (length(args) > 1) {
     } else if (run_type == "cox_lasso_radiomics_all") {
         multiple_scores_cox_radiomics(nb_estim, file_features, event_col, analyzes_dir, duration_col, "all")
     } else if (run_type == "cox_bootstrap_lasso_radiomics_all") {
+        print("Before the call of multiple_scores_cox_bootstrap_radiomics(), I print n_boot")
+        print(paste("n_boot:", n_boot))
         multiple_scores_cox_bootstrap_radiomics(nb_estim, file_features, event_col, analyzes_dir, 
                                                 duration_col, "all", n_boot)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {

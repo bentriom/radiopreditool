@@ -170,7 +170,8 @@ filter_dummies_iccc <- function(df_dataset, event_col) {
   iccc_cols <- grep("iccc_", colnames(df_dataset), value = T)
   irrelevant_iccc_cols <- na.omit(unlist(sapply(iccc_cols, function(iccc) {
     table_iccc <- table(df_dataset[, c(iccc, event_col)])
-    pval <- chisq.test(table_iccc)$p.value
+    if (any(table_iccc <= 5)) pval <- fisher.test(table_iccc)$p.value
+    else pval <- chisq.test(table_iccc)$p.value
     # Rejected test means the two variables are dependant
     if (pval > 0.05) return (iccc)
     return (NULL)
