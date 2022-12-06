@@ -26,29 +26,31 @@ loglik_ratio_best_lambda <- function(cox_object, cv.params) {
     lambda.ref <- cox_object$lambda.min
     deviance.params <- data.frame(penalty = cox_object$lambda, deviance = deviance(cox_object$glmnet.fit))
     cv.params.merge <- merge(cv.params, deviance.params, by = "penalty")
+    print(dim(cv.params.merge))
     rownames(cv.params.merge) <- cv.params.merge$penalty
     deviance.ref <- cv.params.merge[as.character(lambda.ref), "deviance"]
-    nonzeros.ref <- cv.params.merge[as.character(lambda.ref), "non_zero_coefs"]
+    nonzero.ref <- cv.params.merge[as.character(lambda.ref), "non_zero_coefs"]
     cv.params.unique <- cv.params.merge[order(-cv.params.merge$non_zero_coefs, cv.params.merge$penalty), ]
     cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
     cv.params.unique <- cv.params.unique[(cv.params.unique$penalty > lambda.ref) &
-                                         (cv.params.unique$non_zeros_coefs < nonzeros.ref), ]
+                                         (cv.params.unique$non_zero_coefs < nonzero.ref), ]
     log_info("Best lambda selection")
-    log_info(paste("lambda ref:", lambda.ref, nonzeros.ref))
+    log_info(paste("Lambda ref:", lambda.ref, nonzero.ref))
+    log_info(paste("Nzeros of lambda ref:", nonzero.ref, " - Deviance ref:", deviance.ref))
     # write.csv(cv.params, file = "test_cv_params.csv")
     # write.csv(cv.params.unique, file = "test_cv_params_unique.csv")
     lambda.new <- lambda.ref
     if (nrow(cv.params.unique) < 1) return (lambda.ref)
     for (i in 1:nrow(cv.params.unique)) {
         deviance.new <- cv.params.unique[i, "deviance"]
-        nonzeros.new <- cv.params.unique[i, "non_zero_coefs"]
+        nonzero.new <- cv.params.unique[i, "non_zero_coefs"]
         loglik.ratio <- deviance.new - deviance.ref
-        df <- nonzeros.ref - nonzeros.new
+        df <- nonzero.ref - nonzero.new
         pvalue <- 1 - pchisq(loglik.ratio, df)
-        log_info(paste("- compared to", cv.params.unique[i, "penalty"], nonzeros.new))
+        log_info(paste("- compared to", cv.params.unique[i, "penalty"], nonzero.new))
         if (is.na(pvalue) | is.null(pvalue)) {
-            log_warn(paste("- lambda ref, nzeros:", lambda.ref, nonzeros.ref))
-            log_warn(paste("- lambda new to test, nzeros:", cv.params.unique[i, 'penalty'], nonzeros.new))
+            log_warn(paste("- lambda ref, nzeros:", lambda.ref, nonzero.ref))
+            log_warn(paste("- lambda new to test, nzeros:", cv.params.unique[i, 'penalty'], nonzero.new))
             log_warn(paste("- df:", df))
             log_warn(paste("- deviance ref:", deviance.ref))
             log_warn(paste("- deviance new:", deviance.new))
@@ -147,6 +149,7 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
                              best.lambda.method = "lambda.1se", cv.parallel = T, 
                              type.measure = "C", logfile = NULL) {
     if (!is.null(logfile)) logger::log_appender(logger::appender_file(logfile, append = T))
+    else logger::log_appender(logger::appender_stdout)
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
@@ -242,6 +245,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
                              bootstrap_selected_features = NULL, logfile = NULL) {
     stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "rslurm"))
     if (!is.null(logfile)) log_appender(appender_file(logfile, append = T))
+    else log_appender(appender_stdout)
     covariates <- all.vars(formula[[3]])
     duration_col <- all.vars(formula[[2]])[1]
     event_col <- all.vars(formula[[2]])[2]
@@ -336,7 +340,8 @@ model_cox.id <- function(id_set, covariates, event_col, duration_col,
                          load_results = F, save_results = T, do_plot = F, save_rds = F, penalty = "lasso") {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = T)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = T)
-    log_appender(appender_file(coxlasso_logfile, append = T))
+    if (!is.null(coxlasso_logfile)) log_appender(appender_file(coxlasso_logfile, append = T))
+    else log_appender(appender_stdout)
     print("Accessible variables")
     print(ls())
     print("Now i'm going to print n_boot and penalty")
@@ -357,7 +362,8 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                       level = INFO, id_set = "") {
     stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
     log_threshold(level)
-    log_appender(appender_file(coxlasso_logfile, append = T))
+    if (!is.null(coxlasso_logfile)) log_appender(appender_file(coxlasso_logfile, append = T))
+    else log_appender(appender_stdout)
     save_results_dir <- paste0(analyzes_dir, "coxph_R/", model_name, "/")
     dir.create(save_results_dir, showWarnings = F)
     if (id_set != "") save_results_dir <- paste0(save_results_dir, id_set, "/")
@@ -386,9 +392,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     idx_surv <- length(pred.times)
     ## Model and predictions
     coxlasso_data_train <- coxlasso_data(df_model_train, filtered_covariates, event_col, duration_col)
-    X_train <- coxlasso_data_train$X; surv_y_train <- coxlasso_data_train$surv_y
+    surv_y_train <- coxlasso_data_train$surv_y
     coxlasso_data_test <- coxlasso_data(df_model_test, filtered_covariates, event_col, duration_col)
-    X_test <- coxlasso_data_test$X; surv_y_test <- coxlasso_data_test$surv_y   
+    surv_y_test <- coxlasso_data_test$surv_y   
     print(paste("n_boot:", n_boot))
     if (penalty == "none") {
         coxmodel <- coxph(formula_model, data = df_model_train, x = T, y = T, 
@@ -518,6 +524,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   stopifnot(parallel.method %in% c("mclapply", "rslurm"))
   stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = T))
+  else log_appender(appender_stdout)
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   # ggsave() doesn't work with mclapply... what a language
   if (parallel.method == "mclapply") {

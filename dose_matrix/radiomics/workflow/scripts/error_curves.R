@@ -90,7 +90,7 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
                                   estim_per_job = 5) {
   stopifnot(boot.parallel %in% c("foreach", "rslurm"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
-  if (is.null(logfile)) log_appender(appender_stdout)
+  else log_appender(appender_stdout)
   dir.create(paste0(analyzes_dir, "error_curves/"), showWarnings = FALSE)
   log_info(paste("Boot parallel method:", boot.parallel))
   log_info("Setting rfsrc parallel options to 1")
