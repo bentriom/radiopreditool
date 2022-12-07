@@ -45,19 +45,21 @@ loglik_ratio_best_lambda <- function(cox_object, cv.params) {
         deviance.new <- cv.params.unique[i, "deviance"]
         nonzero.new <- cv.params.unique[i, "non_zero_coefs"]
         loglik.ratio <- deviance.new - deviance.ref
-        df <- nonzero.ref - nonzero.new
-        pvalue <- 1 - pchisq(loglik.ratio, df)
+        degrees <- nonzero.ref - nonzero.new
+        pvalue <- 1 - pchisq(loglik.ratio, degrees)
         log_info(paste("- compared to", cv.params.unique[i, "penalty"], nonzero.new))
         if (is.na(pvalue) | is.null(pvalue)) {
             log_warn(paste("- lambda ref, nzeros:", lambda.ref, nonzero.ref))
             log_warn(paste("- lambda new to test, nzeros:", cv.params.unique[i, 'penalty'], nonzero.new))
-            log_warn(paste("- df:", df))
+            log_warn(paste("- degrees:", degrees))
             log_warn(paste("- deviance ref:", deviance.ref))
             log_warn(paste("- deviance new:", deviance.new))
             log_warn(paste("- loglik:", loglik.ratio))
             log_warn(paste("- pvalue:", pvalue))
         }
-        if (pvalue < 0.05) break
+        if (pvalue < 0.01) break
+        # deviance.ref <- cv.params.unique[i, "deviance"]
+        # nonzero.ref <- cv.params.unique[i, "non_zero_coefs"]
         lambda.new <- cv.params.unique[i, "penalty"]
     }
     lambda.new
