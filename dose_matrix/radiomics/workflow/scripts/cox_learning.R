@@ -125,10 +125,10 @@ if (length(args) > 1) {
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, 
                                "all", subdivision_type, penalty = "bootstrap_lasso", n_boot = n_boot)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
-        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
+        file_features <- paste0(analyzes_dir, "screening/features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, "features_hclust_corr", subdivision_type)
     } else if (run_type == "cox_bootstrap_lasso_radiomics_features_hclust_corr") {
-        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
+        file_features <- paste0(analyzes_dir, "screening/features_hclust_corr.csv")
         cox_radiomics_learning(file_trainset, file_testset, file_features, event_col, analyzes_dir, duration_col, 
                                "features_hclust_corr", subdivision_type, penalty = "bootstrap_lasso", n_boot = n_boot)
     } else {

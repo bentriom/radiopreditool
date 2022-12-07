@@ -188,11 +188,11 @@ if (length(args) > 1) {
         multiple_scores_cox_bootstrap_radiomics(nb_estim, file_features, event_col, analyzes_dir, 
                                                 duration_col, "all", n_boot)
     } else if (run_type == "cox_lasso_radiomics_features_hclust_corr") {
-        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
+        file_features <- paste0(analyzes_dir, "screening/features_hclust_corr.csv")
         multiple_scores_cox_radiomics(nb_estim, file_features, event_col, 
                                       analyzes_dir, duration_col, "features_hclust_corr")
     } else if (run_type == "cox_bootstrap_lasso_radiomics_features_hclust_corr") {
-        file_features <- paste0(analyzes_dir, "features_hclust_corr.csv")
+        file_features <- paste0(analyzes_dir, "screening/features_hclust_corr.csv")
         multiple_scores_cox_bootstrap_radiomics(nb_estim, file_features, event_col, 
                                                 analyzes_dir, duration_col, "features_hclust_corr", n_boot)
     } else {

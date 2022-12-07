@@ -195,7 +195,7 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
     print(paste("Lambda.min coxnet:", coxnet_model$lambda.min))
     # Coxph on selected features
     formula_nonnull <- get.surv.formula(event_col, nonnull.covariates, duration_col = duration_col)
-    coxmodel <- survival::coxph(formula_nonnull, data = data, x = T, y = T, control = coxph.control(iter.max = 500))
+    coxmodel <- survival::coxph(formula_nonnull, data = data, x = T, y = T, control = coxph.control(iter.max = 1000))
     out <- list("call" = match.call(), "selected_features" = nonnull.covariates, "coxnet.fit" = coxnet_model, 
                 "coxnet.cv.params" = cv.params, "best.lambda.method" = best.lambda.method, "best.lambda" = best.lambda, 
                 "coxph.fit" = coxmodel, "coxph.formula" = formula_nonnull, "surv_y" = coxnet_surv_y)
@@ -320,7 +320,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, best
     log_info(paste("Best lambda method:", best.lambda.method))
     log_info(paste("Selected features:", do.call(paste, as.list(selected_features))))
     formula_selected <- get.surv.formula(event_col, selected_features, duration_col = duration_col)
-    coxmodel <- coxph(formula_selected, data = data, x = T, y = T, control = coxph.control(iter.max = 500))
+    coxmodel <- coxph(formula_selected, data = data, x = T, y = T, control = coxph.control(iter.max = 1000))
     # bootstrap.coxnet model
     if (is.null(selected_features)) {
         out <- list("cindex_adjusted" = cindex.adjust, "optimism" = optimism, "cindex_app" = cindex.app,  
@@ -400,7 +400,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     print(paste("n_boot:", n_boot))
     if (penalty == "none") {
         coxmodel <- coxph(formula_model, data = df_model_train, x = T, y = T, 
-                          control = coxph.control(iter.max = 500))
+                          control = coxph.control(iter.max = 1000))
     } else if (penalty == "lasso") {
         best.lambda.method <- "lambda.1se"
         if (load_results) {

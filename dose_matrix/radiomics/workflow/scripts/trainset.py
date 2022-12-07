@@ -409,7 +409,8 @@ def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
     filter_2_cols_radiomics = filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir)
     logger.info(f"After the second filter (hclust): {len(filter_2_cols_radiomics)}")
     kept_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]{3,4}_.*", feature) or feature in filter_2_cols_radiomics]
-    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + "features_hclust_corr.csv", index = False, header = None)
+    os.makedirs(analyzes_dir + "screening", exist_ok = True)
+    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + "screening/features_hclust_corr.csv", index = False, header = None)
     # df_trainset[kept_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
 
 

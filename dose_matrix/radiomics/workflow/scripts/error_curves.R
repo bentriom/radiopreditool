@@ -224,7 +224,7 @@ pec_estimation <- function(file_dataset, event_col, analyzes_dir, duration_col, 
     df_dataset <- read.csv(file_dataset, header = T)
 
     # Feature elimination
-    file_features_hclust_corr <- paste0(analyzes_dir, "features_hclust_corr.csv")
+    file_features_hclust_corr <- paste0(analyzes_dir, "screening/features_hclust_corr.csv")
     features_hclust_corr <- as.character(read.csv(file_features_hclust_corr)[,1])
     features_hclust_corr <- as.character(lapply(features_hclust_corr, function(x) { 
                                                 `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste0("X", x), x) }))
