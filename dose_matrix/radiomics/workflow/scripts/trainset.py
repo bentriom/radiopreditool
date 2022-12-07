@@ -242,7 +242,6 @@ def filter_nan_values_radiomics(df_covariates_nan_values, features_radiomics, th
     filter_1_cols_radiomics = list(prop_values_cols[prop_values_cols > threshold].index.values)
     return filter_1_cols_radiomics
 
-# Filter 2: hclust + cox analysis
 def plot_dendrogram(model, **kwargs):
     # Create linkage matrix and then plot the dendrogram
 
@@ -275,7 +274,8 @@ def hclust_corr(df_covariates_hclust, threshold, do_plot = False, analyzes_dir =
         plt.title(f"Hierarchical Clustering Dendrogram "
                   f"(threshold: {threshold} - features: {hclust.n_clusters_}/{distance_matrix.shape[0]})")
         # plot the top three levels of the dendrogram
-        plot_dendrogram(hclust, orientation = "right", labels = pretty_labels(df_covariates_hclust.columns), leaf_font_size = 8)
+        plot_dendrogram(hclust, orientation = "right",
+                        labels = pretty_labels(df_covariates_hclust.columns), leaf_font_size = 8)
         plt.axvline(1 - threshold)
     return df_covariates_hclust.columns.values, y_clusters
 
@@ -283,8 +283,11 @@ def get_nbr_features_hclust(df_covariates_hclust, threshold, do_plot = False):
     _, y_clusters = hclust_corr(df_covariates_hclust, threshold, do_plot)
     return len(np.unique(y_clusters))
 
-def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold,
-                             event_col, surv_duration_col, analyzes_dir, name = ""):
+# Eliminate features for a mask label (32X, 1320..)
+# It performs hierarchical clustering based on Kendall's tau in order to group correlated features
+# Then, univariate Cox PH is performed for each feature, and we keep the statistically significant features
+def filter_corr_hclust_label_uni(df_trainset, df_covariates_hclust, corr_threshold,
+                                 event_col, surv_duration_col, analyzes_dir, name = ""):
     all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold,
                                                      do_plot = True, analyzes_dir = analyzes_dir, name = name)
     filter_2_cols_radiomics = []
@@ -294,23 +297,26 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold,
         list_features = [f for (idx, f) in enumerate(all_features_radiomics) if y_clusters[idx] == c]
         list_pvalues = []
         list_coefs = []
+        list_hr = []
         for feature in list_features:
             cph_feature = CoxPHFitter(penalizer = 0.0001)
             df_survival.loc[:,feature] = StandardScaler().fit_transform(df_survival[[feature]])
-            cph_feature.fit(df_survival, step_size = 0.4, duration_col = surv_duration_col,
-                            event_col = event_col, formula = feature)
+            cph_feature.fit(df_survival, duration_col = surv_duration_col,
+                            event_col = event_col, formula = feature, fit_options = {"step_size": 0.4})
             pvalue = cph_feature.summary.loc[feature, "p"]
             coef = cph_feature.summary.loc[feature, "coef"]
             list_pvalues.append(pvalue)
             list_coefs.append(coef)
         bh_correction = mlt.fdrcorrection(list_pvalues, alpha = 0.05)
         mask_reject = bh_correction[0]
+        # If no significant p-values, takes the feature with the smaller p-values
         if sum(mask_reject) == 0:
             selected_feature = list_features[np.argmin(list_pvalues)]
+        # Else, takes the biggest coefficient among the significant p-values
         else:
-            cox_rejected_features = np.asarray(list_features)[mask_reject]
-            cox_rejected_coefs = abs(np.asarray(list_coefs)[mask_reject])
-            selected_feature = cox_rejected_features[np.argmin(cox_rejected_coefs)]
+            cox_significant_features = np.asarray(list_features)[mask_reject]
+            cox_significant_coefs = abs(np.asarray(list_coefs)[mask_reject])
+            selected_feature = cox_significant_features[np.argmin(cox_significant_coefs)] # why argmin ?
         filter_2_cols_radiomics.append(selected_feature)
     plt.text(1.1, 0, '\n'.join(pretty_labels(filter_2_cols_radiomics)))
     plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight',
@@ -318,7 +324,42 @@ def filter_corr_hclust_label(df_trainset, df_covariates_hclust, corr_threshold,
     plt.close()
     return filter_2_cols_radiomics
 
-def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir):
+# Eliminate features for a mask label (32X, 1320..)
+# It performs hierarchical clustering based on Kendall's tau in order to group correlated features
+# Then, multivariate Cox PH is performed, and we keep the feature with the largest hazard ratio
+def filter_corr_hclust_label_multi(df_trainset, df_covariates_hclust, corr_threshold,
+                                   event_col, surv_duration_col, analyzes_dir, name = ""):
+    all_features_radiomics, y_clusters = hclust_corr(df_covariates_hclust, corr_threshold,
+                                                     do_plot = True, analyzes_dir = analyzes_dir, name = name)
+    filter_2_cols_radiomics = []
+    id_clusters = np.unique(y_clusters)
+    df_survival = df_trainset.copy().dropna()
+    for c in id_clusters:
+        list_features = [f for (idx, f) in enumerate(all_features_radiomics) if y_clusters[idx] == c]
+        cph_features = CoxPHFitter(penalizer = 0.0001)
+        df_survival[:, list_features] = StandardScaler().fit_transform(df_survival[list_features])
+        df_survival = df_survival[list_features + [event_col, surv_duration_col]]
+        cph_features.fit(df_survival, duration_col = surv_duration_col, event_col = event_col,
+                         fit_options = {"step_size": 0.4})
+        hazard_ratios = np.exp(cph_features.summary.loc[list_features, "coef"])
+        selected_feature = list_features[np.argmax(hazard_ratios)]
+        filter_2_cols_radiomics.append(selected_feature)
+    plt.text(1.1, 0, '\n'.join(pretty_labels(filter_2_cols_radiomics)))
+    plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight',
+                    facecolor = "white", transparent = False)
+    plt.close()
+    return filter_2_cols_radiomics
+
+
+# Filter 2: performs hierarchical clustering based on correlation among variables and 
+# and selects the best representant with Cox PH analysis
+def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col,
+                           analyzes_dir, feature_select_method = "univariate_cox"):
+    assert feature_select_method in ["univariate_cox", "multivariate_cox"]
+    if feature_select_method == "univariate_cox":
+        filter_func = filter_corr_hclust_label_uni
+    elif feature_select_method == "multivariate_cox":
+        filter_func = filter_corr_hclust_label_multi
     all_filter_2_cols = []
     labels = get_all_labels(df_covariates_hclust)
     logger = logging.getLogger("feature_elimination_hclust_corr")
@@ -326,8 +367,8 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
     for label in labels:
         cols_from_label = [feature for feature in df_covariates_hclust.columns if re.match(f"{label}_.*", feature)]
         df_covariates_hclust_label = df_covariates_hclust[cols_from_label]
-        all_filter_2_cols += filter_corr_hclust_label(df_trainset, df_covariates_hclust_label, corr_threshold,
-                                                      event_col, surv_duration_col, analyzes_dir, name = label)
+        all_filter_2_cols += filter_func(df_trainset, df_covariates_hclust_label, corr_threshold,
+                                         event_col, surv_duration_col, analyzes_dir, name = label)
     return all_filter_2_cols
 
 # Feature elimination pipeline with hclust on kendall's tau corr
@@ -408,7 +449,8 @@ def pca_viz(file_dataset, event_col, analyzes_dir, duration_col = "survival_time
         cph_feature = CoxPHFitter(penalizer = 0.0001)
         df_univariate = df_dataset[[event_col, duration_col, feature]].dropna()
         df_univariate.loc[:,feature] = StandardScaler().fit_transform(df_univariate[[feature]])
-        cph_feature.fit(df_univariate, step_size = 0.4, duration_col = duration_col, event_col = event_col, formula = feature)
+        cph_feature.fit(df_univariate, duration_col = duration_col, event_col = event_col, formula = feature,
+                        fit_options = {"step_size": 0.4})
         pvalue = cph_feature.summary.loc[feature, "p"]
         list_pvalues.append(pvalue)
     logger.info("Non-rejected Cox test features are dropped (FDR correction - 0.01)")
