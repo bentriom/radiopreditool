@@ -90,7 +90,7 @@ rule rsf_subparts_heart_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
-        ANALYZES_DIR + "features_hclust_corr.csv"
+        ANALYZES_DIR + "screening/features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr_32X.log",
         expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_32X_FE_HCLUST),
@@ -120,7 +120,7 @@ rule rsf_whole_heart_features_hclust_corr_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz",
-        ANALYZES_DIR + "features_hclust_corr.csv"
+        ANALYZES_DIR + "screening/features_hclust_corr.csv"
     output:
         ANALYZES_DIR + "rsf_features_hclust_corr_1320.log",
         expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_1320_FE_HCLUST),
@@ -147,7 +147,7 @@ rule rsf_whole_heart_features_hclust_corr_vimp:
 
 rule multiple_scores_rsf_features_hclust_corr:
     input:
-        ANALYZES_DIR + "features_hclust_corr.csv",
+        ANALYZES_DIR + "screening/features_hclust_corr.csv",
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
         # expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_FE_HCLUST)

@@ -179,12 +179,14 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                  partition = "cpu_med", mem = "20G")
+    job_uuid <- stringr::str_split(uuid::UUIDgenerate(), "-")[[1]][1]
     sjob <- slurm_apply(function (i)  model_rsf.id(i, covariates, event_col, duration_col, 
                         analyzes_dir, model_name, logfile,
                         load_results = F, save_results = T, save_rds = F),
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
                         global_objects = functions_to_export,
+                        jobname = paste0("multiple_scores_rsf_", nb_estim, "_runs_", job_uuid),
                         slurm_options = sopt)
     log_info("Jobs are submitted")
     list_results <- get_slurm_out(sjob, outtype = "raw", wait = T)
@@ -269,11 +271,13 @@ cv.rsf <- function(formula, data, params.df, event_col, rsf_logfile,
       log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
       sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
                    partition = "cpu_med", mem = "20G")
+      job_uuid <- stringr::str_split(uuid::UUIDgenerate(), "-")[[1]][1]
       sjob <- slurm_apply(function(idx.row.param) get.param.cv.error(idx.row.param, formula, data,
                           params.df, folds, bootstrap.strategy, error.metric, pred.times.folds, rsf_logfile), 
                           data.frame(idx.row.param = 1:nbr.params), 
                           nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 
                           global_objects = functions_to_export,
+                          jobname = paste0("rsf_cv_", job_uuid),
                           slurm_options = sopt)
       log_info("Jobs are submitted")
       list.cv.errors <- get_slurm_out(sjob, outtype = "raw", wait = T)
