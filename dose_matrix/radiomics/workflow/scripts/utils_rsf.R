@@ -17,34 +17,36 @@ source("workflow/scripts/utils_radiopreditool.R")
 # Learning a model
 
 model_rsf.id <- function(id_set, covariates, event_col, duration_col, 
-                         analyzes_dir, model_name, rsf_logfile,
+                         analyzes_dir, model_name, rsf_logfile, screening_method = "all",
                          load_results = F, save_results = T, save_rds = F) {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = T)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = T)
     log_appender(appender_file(rsf_logfile, append = T))
     model_rsf(df_trainset, df_testset, covariates, event_col, duration_col,
-              analyzes_dir, model_name, rsf_logfile,
+              analyzes_dir, model_name, rsf_logfile, screening_method = screening_method,
               load_results = load_results, save_results = save_results, run_multiple = T,
               level = INFO, id_set = id_set)
 }
 
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, 
-                      analyzes_dir, model_name, rsf_logfile, id_set = "", level = INFO,
+                      analyzes_dir, model_name, rsf_logfile, screening_method = "all", id_set = "", level = INFO,
                       load_results = F, save_results = T, run_multiple = F, save_rds = T,
                       cv_nfolds = 5, ntrees = c(100, 300, 1000), nodesizes = c(15, 50), nsplits = c(700)) {
+    stopifnot({screening_method %in% c("all", "features_hclust_corr")})
     log_threshold(level)
     log_appender(appender_file(rsf_logfile, append = T))
     save_results_dir <- paste0(analyzes_dir, "rsf/", model_name, "/")
     if (id_set != "") save_results_dir <- paste0(save_results_dir, id_set, "/")
     dir.create(save_results_dir, showWarnings = F)
     ## Preprocessing sets
-    filtered_covariates <- preliminary_filter(df_trainset, covariates, event_col)
+    filtered_covariates <- preliminary_filter(df_trainset, covariates, event_col, screening_method, id_set, analyzes_dir)
     df_model_train <- df_trainset[,c(event_col, duration_col, filtered_covariates)]
     df_model_test <- df_testset[,c(event_col, duration_col, filtered_covariates)]
     df_model_train <- na.omit(df_model_train)
     df_model_test <- na.omit(df_model_test)
     log_info(paste0("(", id_set, ") ", "Model name: ", model_name))
     log_info(paste0("(", id_set, ") ", "Covariates (", length(filtered_covariates),"):"))
+    log_info(paste0("(", id_set, ") ", "Screening method :", screening_method))
     if (!run_multiple) {
         log_info(paste0(filtered_covariates, collapse = ", "))
         log_info(paste0("Trained:", nrow(df_model_train), "samples"))
@@ -159,7 +161,7 @@ model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_c
 
 # Run multiple scores estimation for a RSF model with presaved train / test sets in parallel
 parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, duration_col, analyzes_dir, 
-                                         model_name, logfile, parallel.method = "mclapply") {
+                                         model_name, logfile, screening_method = "all", parallel.method = "mclapply") {
   stopifnot(parallel.method %in% c("mclapply", "rslurm"))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = T))
@@ -181,7 +183,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
                  partition = "cpu_med", mem = "20G")
     job_uuid <- stringr::str_split(uuid::UUIDgenerate(), "-")[[1]][1]
     sjob <- slurm_apply(function (i)  model_rsf.id(i, covariates, event_col, duration_col, 
-                        analyzes_dir, model_name, logfile,
+                        analyzes_dir, model_name, logfile, screening_method = screening_method,
                         load_results = F, save_results = T, save_rds = F),
                         data.frame(i = 0:(nb_estim-1)), 
                         nodes = nb_max_slurm_jobs, cpus_per_node = 1, processes_per_node = 1, 

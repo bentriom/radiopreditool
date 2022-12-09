@@ -316,7 +316,7 @@ def filter_corr_hclust_label_uni(df_trainset, df_covariates_hclust, corr_thresho
         else:
             cox_significant_features = np.asarray(list_features)[mask_reject]
             cox_significant_coefs = abs(np.asarray(list_coefs)[mask_reject])
-            selected_feature = cox_significant_features[np.argmin(cox_significant_coefs)] # why argmin ?
+            selected_feature = cox_significant_features[np.argmax(cox_significant_coefs)]
         filter_2_cols_radiomics.append(selected_feature)
     plt.text(1.1, 0, '\n'.join(pretty_labels(filter_2_cols_radiomics)))
     plt.savefig(f"{analyzes_dir}corr_plots/hclust_{corr_threshold}_{name}.png", dpi = 480, bbox_inches='tight',
@@ -337,9 +337,9 @@ def filter_corr_hclust_label_multi(df_trainset, df_covariates_hclust, corr_thres
     for c in id_clusters:
         list_features = [f for (idx, f) in enumerate(all_features_radiomics) if y_clusters[idx] == c]
         cph_features = CoxPHFitter(penalizer = 0.0001)
-        df_survival[:, list_features] = StandardScaler().fit_transform(df_survival[list_features])
-        df_survival = df_survival[list_features + [event_col, surv_duration_col]]
-        cph_features.fit(df_survival, duration_col = surv_duration_col, event_col = event_col,
+        df_survival.loc[:, list_features] = StandardScaler().fit_transform(df_survival.loc[:, list_features])
+        df_survival_cluster = df_survival[list_features + [event_col, surv_duration_col]]
+        cph_features.fit(df_survival_cluster, duration_col = surv_duration_col, event_col = event_col,
                          fit_options = {"step_size": 0.4})
         hazard_ratios = np.exp(cph_features.summary.loc[list_features, "coef"])
         selected_feature = list_features[np.argmax(hazard_ratios)]
@@ -354,7 +354,7 @@ def filter_corr_hclust_label_multi(df_trainset, df_covariates_hclust, corr_thres
 # Filter 2: performs hierarchical clustering based on correlation among variables and 
 # and selects the best representant with Cox PH analysis
 def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col,
-                           analyzes_dir, feature_select_method = "univariate_cox"):
+                           analyzes_dir, feature_select_method):
     assert feature_select_method in ["univariate_cox", "multivariate_cox"]
     if feature_select_method == "univariate_cox":
         filter_func = filter_corr_hclust_label_uni
@@ -372,11 +372,12 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
     return all_filter_2_cols
 
 # Feature elimination pipeline with hclust on kendall's tau corr
-def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
+def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir, feature_select_method = "univariate_cox"):
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
     labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("[0-9]+_.*", label)])
-    dict_features_per_label = {label: [col for col in df_trainset.columns if re.match(f"{label}_", col)] for label in labels_radiomics}
+    dict_features_per_label = {label: [col for col in df_trainset.columns if re.match(f"{label}_", col)] \
+                               for label in labels_radiomics}
     df_covariates_with_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1, features_radiomics]
     logger = setup_logger("feature_elimination_hclust_corr", analyzes_dir + "feature_elimination_hclust_corr.log")
     logger.info(f"Trainset dataframe: {df_trainset.shape}")
@@ -393,7 +394,7 @@ def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
         df_corr.columns = pretty_labels(df_corr.columns)
         fig = plt.figure(figsize=(16, 6))
         heatmap = sns.heatmap(df_corr, vmin = -1, vmax = 1, annot = True, center = 0, cmap = "vlag")
-        plt.savefig(f"{analyzes_dir}corr_plots/mat_corr_{label}.png", dpi = 480, bbox_inches='tight', 
+        plt.savefig(f"{analyzes_dir}corr_plots/mat_corr_{label}.png", dpi = 480, bbox_inches='tight',
                     facecolor = "white", transparent = False)
         plt.close()
     # Second filter: eliminate very correlated features with hierarchical clustering + univariate Cox
@@ -406,11 +407,14 @@ def feature_elimination_hclust_corr(file_trainset, event_col, analyzes_dir):
     corr_threshold = 0.85
     surv_duration_col = "survival_time_years"
     logger.info(f"Hclust on dataframe: {df_covariates_hclust.shape}")
-    filter_2_cols_radiomics = filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, event_col, surv_duration_col, analyzes_dir)
+    filter_2_cols_radiomics = filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold,
+                                                     event_col, surv_duration_col, analyzes_dir, feature_select_method)
     logger.info(f"After the second filter (hclust): {len(filter_2_cols_radiomics)}")
-    kept_cols = [feature for feature in df_trainset.columns if not re.match("[0-9]{3,4}_.*", feature) or feature in filter_2_cols_radiomics]
+    kept_cols = [feature for feature in df_trainset.columns \
+                 if not re.match("[0-9]{3,4}_.*", feature) or feature in filter_2_cols_radiomics]
     os.makedirs(analyzes_dir + "screening", exist_ok = True)
-    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + "screening/features_hclust_corr.csv", index = False, header = None)
+    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + "screening/features_hclust_corr.csv",
+                                                 index = False, header = None)
     # df_trainset[kept_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
 
 

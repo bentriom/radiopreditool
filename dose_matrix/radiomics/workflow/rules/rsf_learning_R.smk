@@ -147,7 +147,7 @@ rule rsf_whole_heart_features_hclust_corr_vimp:
 
 rule multiple_scores_rsf_features_hclust_corr:
     input:
-        ANALYZES_DIR + "screening/features_hclust_corr.csv",
+        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
         # expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_FE_HCLUST)
