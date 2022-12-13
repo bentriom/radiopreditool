@@ -375,6 +375,7 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
     labels = get_all_labels(df_covariates_hclust)
     logger = logging.getLogger("feature_elimination_hclust_corr")
     logger.info(f"Hclust on labels: {labels}")
+    logger.info(f"Method for the selection of one feature within a cluster: {feature_select_method}")
     for label in labels:
         cols_from_label = [feature for feature in df_covariates_hclust.columns if re.match(f"{label}_.*", feature)]
         df_covariates_hclust_label = df_covariates_hclust[cols_from_label]
