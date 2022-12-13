@@ -284,7 +284,7 @@ rule multiple_scores_cox_lasso_radiomics_all_R:
 
 rule multiple_scores_cox_lasso_radiomics_features_hclust_corr_R:
     input:
-        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_LASSO_FE_HCLUST)
@@ -347,7 +347,7 @@ rule multiple_scores_cox_bootstrap_lasso_radiomics_all_R:
 
 rule multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R:
     input:
-        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
         expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
         # expand(ANALYZES_DIR + "coxph_R/{model}/best_params.csv", model = COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST)

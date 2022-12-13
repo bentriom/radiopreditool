@@ -161,12 +161,16 @@ preliminary_filter <- function(df_dataset, covariates, event_col,
     file_features <- paste0(analyzes_dir, "screening/features_hclust_corr")
     if (id_set == "") file_features <- paste0(file_features, ".csv")
     else file_features <- paste0(file_features, "_", id_set, ".csv")
-    features <- as.character(read.csv(file_features)[,1])
+    screened_features <- as.character(read.csv(file_features)[,1])
     # Add "X" for R colname compatibility
-    features <- as.character(lapply(features, 
+    screened_features <- as.character(lapply(screened_features, 
                                     function(x) `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste("X", x, sep = ""), x)))
-    covariates <- covariates[covariates %in% features]
+    covariates <- covariates[covariates %in% screened_features]
+    print("screened features:")
+    print(screened_features)
   }
+  print("not in:")
+  print(covariates[!(covariates %in% colnames(df_dataset))])
   # Check duplicated of columns with unique values
   filter_data <- !duplicated(as.list(df_dataset[covariates])) & 
                   unlist(lapply(df_dataset[covariates], 

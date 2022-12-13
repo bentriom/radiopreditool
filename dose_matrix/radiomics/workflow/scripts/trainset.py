@@ -145,6 +145,9 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     logger.info(f"Full fccss dataset: {df_dataset.shape}")
     logger.info(f"Full fccss dataset without NA: {df_dataset.dropna().shape}")
     logger.info(f"Full fccss dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
+    # Save
+    if col_treated_by_rt not in clinical_variables:
+        df_dataset.drop(columns = col_treated_by_rt, inplace = True)
     df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
 
 # One-time split train / test
@@ -156,6 +159,10 @@ def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_va
     df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
     cols_y = [event_col, surv_duration_col]
     col_treated_by_rt = "radiotherapie_1K"
+    if col_treated_by_rt not in clinical_variables:
+        df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
+        df_fccss = df_fccss[["ctr", "numcent", col_treated_by_rt]]
+        df_dataset = df_dataset.merge(df_fccss, how = "left", on = ["ctr", "numcent"])
     df_X = df_dataset[[c for c in df_dataset.columns if c not in cols_y]]
     df_y = df_dataset[["ctr", "numcent"] + cols_y]
     df_X_train, df_X_test, df_y_train, df_y_test = train_test_split(df_X, df_y,
@@ -199,6 +206,10 @@ def kfold_multiple_splits_dataset(nb_estim, file_radiomics, file_fccss_clinical,
     df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
     cols_y = [event_col, surv_duration_col]
     col_treated_by_rt = "radiotherapie_1K"
+    if col_treated_by_rt not in clinical_variables:
+        df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)
+        df_fccss = df_fccss[["ctr", "numcent", col_treated_by_rt]]
+        df_dataset = df_dataset.merge(df_fccss, how = "left", on = ["ctr", "numcent"])
     df_X = df_dataset[[c for c in df_dataset.columns if c not in cols_y]]
     df_y = df_dataset[["ctr", "numcent"] + cols_y]
     skf = StratifiedKFold(n_splits = nb_estim)
