@@ -5,7 +5,7 @@ NTHREADS=1
 TIME="04:00:00"
 PARTITION="cpu_med"
 MEMORY_PER_NODE="50G"
-MODEL_NAME="pathol_cardiaque"
+MODEL_NAME="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"
 POSITIONAL=()
 
 while [[ $# -gt 0 ]]

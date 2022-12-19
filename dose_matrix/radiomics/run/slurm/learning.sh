@@ -1,22 +1,39 @@
 #!/bin/bash
 
-NJOBS=45
+NJOBS=5
 NTHREADS=1
-TIME="17:00:00"
+TIME="24:00:00"
 PARTITION="cpu_long"
-MEMORY_PER_NODE="175G"
+MEMORY_PER_NODE="10G"
 MODEL_NAME="pathol_cardiaque"
 DRYRUN=""
-COX_RULES="multiple_scores_baseline_analysis_R multiple_scores_cox_lasso_radiomics_all_R \
-multiple_scores_cox_lasso_radiomics_features_hclust_corr_R"
-RSF_RULES="multiple_scores_rsf multiple_scores_rsf_features_hclust_corr"
+
+## Rules
+# VIMP rules
 VIMP_RULES="rsf_vimp"
-COX_BLASSO_RULES="cox_bootstrap_lasso_radiomics_whole_heart_all_R \
-cox_bootstrap_lasso_radiomics_whole_heart_features_hclust_corr_R \
-cox_bootstrap_lasso_radiomics_subparts_heart_all_R \
-cox_bootstrap_lasso_radiomics_subparts_heart_features_hclust_corr_R"
-#TARGET_RULES="${COX_RULES} ${RSF_RULES}"
-TARGET_RULES="${COX_BLASSO_RULES}"
+# Cox Lasso rules
+COX_RULES_ALL="multiple_scores_baseline_analysis_R multiple_scores_cox_lasso_radiomics_all_R"
+COX_RULES_FEATURES_HCLUST_CORR="multiple_scores_cox_lasso_radiomics_features_hclust_corr_R"
+COX_RULES="${COX_RULES_ALL} ${COX_RULES_FEATURES_HCLUST_CORR}"
+# RSF rules
+RSF_RULES_ALL="multiple_scores_rsf"
+RSF_RULES_FEATURES_HCLUST_CORR="multiple_scores_rsf_features_hclust_corr"
+RSF_RULES="${RSF_RULES_ALL} ${RSF_RULES_FEATURES_HCLUST_CORR}"
+# Bootstrap Cox Lasso rules
+# COX_BLASSO_RULES_ALL="cox_bootstrap_lasso_radiomics_whole_heart_all_R \
+# cox_bootstrap_lasso_radiomics_subparts_heart_all_R"
+# COX_BLASSO_RULES_FEATURES_HCLUST_CORR="cox_bootstrap_lasso_radiomics_whole_heart_features_hclust_corr_R \
+# cox_bootstrap_lasso_radiomics_subparts_heart_features_hclust_corr_R"
+COX_BLASSO_RULES_ALL="multiple_scores_cox_bootstrap_lasso_radiomics_all_R"
+COX_BLASSO_RULES_FEATURES_HCLUST_CORR="multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R"
+COX_BLASSO_RULES="${COX_BLASSO_RULES_ALL} ${COX_BLASSO_RULES_FEATURES_HCLUST_CORR}"
+# Gathering rules
+RULES_ALL="${COX_RULES_ALL} ${RSF_RULES_ALL} ${COX_BLASSO_RULES_ALL}"
+RULES_FEATURES_HCLUST_CORR="${COX_RULES_FEATURES_HCLUST_CORR} ${RSF_RULES_FEATURES_HCLUST_CORR} ${COX_BLASSO_RULES_FEATURES_HCLUST_CORR}"
+RULES="${RULES_ALL} ${RULES_FEATURES_HCLUST_CORR}"
+TARGET_RULES="$RULES"
+# TARGET_RULES="$RULES_ALL"
+# TARGET_RULES="${COX_BLASSO_RULES}"
 
 ARGS="$@"
 POSITIONAL=()
@@ -83,7 +100,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 #declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="slurm_pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="slurm_pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="slurm_pathol_cardiaque_drugs.yaml" ["pathol_cardiaque_drugs_iccc_other"]="slurm_pathol_cardiaque_drugs_iccc_other.yaml" ["pathol_cardiaque_grade3_chimio"]="slurm_pathol_cardiaque_grade3_chimio.yaml" ["pathol_cardiaque_grade3_drugs"]="slurm_pathol_cardiaque_grade3_drugs.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml" )
 
 SNAKEMAKE_CONFIG_FILE="config/slurm/${MODEL_NAME}.yaml"
-SNAKEMAKE_SBATCH="'sbatch --partition=cpu_long --mem=175G --ntasks=1 --cpus-per-task={threads} --time=16:00:00 --output=log/${MODEL_NAME}/%x-%j.out'"
+SNAKEMAKE_SBATCH="'sbatch --partition=cpu_long --mem=50G --ntasks=1 --cpus-per-task={threads} --time=16:00:00 --output=log/${MODEL_NAME}/%x-%j.out'"
 #THREADS_ARGS="--set-threads rsf_features_hclust_corr_analysis=20 rsf_analysis=20"
 THREADS_ARGS=""
 

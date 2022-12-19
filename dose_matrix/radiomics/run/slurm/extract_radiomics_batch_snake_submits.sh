@@ -1,11 +1,11 @@
 #!/bin/bash
 
-NJOBS=10
+NJOBS=200
 NTHREADS=1
-TIME="15:00:00"
+TIME="20:00:00"
 PARTITION="cpu_long"
 MEMORY_PER_NODE="175G"
-MODEL_NAME="pathol_cardiaque_drugs"
+MODEL_NAME="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"
 POSITIONAL=()
 
 while [[ $# -gt 0 ]]
@@ -50,7 +50,7 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="slurm_pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="slurm_pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="slurm_pathol_cardiaque_drugs.yaml" ["pathol_cardiaque_grade3_chimio"]="slurm_pathol_cardiaque_grade3_chimio.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"]="slurm_pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml" )
+declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="pathol_cardiaque_drugs.yaml" ["pathol_cardiaque_grade3_chimio"]="pathol_cardiaque_grade3_chimio.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1"]="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"]="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml" )
 
 SNAKEMAKE_CONFIG_FILE="config/slurm/${LIST_CONFIG_FILE[${MODEL_NAME}]}"
 SNAKEMAKE_NBATCHES=50
@@ -81,4 +81,4 @@ sbatch \
     --ntasks=1 \
     --partition=$PARTITION \
     --mem=$MEMORY_PER_NODE --wrap="$COMMANDS_JOB"
-        
+ 
