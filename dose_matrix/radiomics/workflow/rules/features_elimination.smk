@@ -7,7 +7,7 @@ rule feature_elimination_dataset_hclust_corr:
     output:
         ANALYZES_DIR + "screening/features_hclust_corr.csv",
     run:
-        trainset.feature_elimination_hclust_corr(ANALYZES_DIR + "datasets/trainset.csv.gz", EVENT_COL, ANALYZES_DIR)
+        trainset.feature_elimination_hclust_corr(EVENT_COL, ANALYZES_DIR)
 
 rule feature_elimination_dataset_hclust_corr_sets:
     input:
@@ -16,6 +16,5 @@ rule feature_elimination_dataset_hclust_corr_sets:
         expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv", nb_set = range(NB_ESTIM_SCORE_MODELS))
     run:
         for nb_set in range(NB_ESTIM_SCORE_MODELS):
-            trainset.feature_elimination_hclust_corr(ANALYZES_DIR + f"datasets/trainset_{nb_set}.csv.gz",
-                                                     EVENT_COL, ANALYZES_DIR)
+            trainset.feature_elimination_hclust_corr(EVENT_COL, ANALYZES_DIR, id_set = nb_set)
 
