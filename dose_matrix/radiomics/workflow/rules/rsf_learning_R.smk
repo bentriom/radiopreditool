@@ -26,18 +26,6 @@ rule rsf_subparts_heart_analysis:
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_all 32X"
 
-rule rsf_subparts_heart_vimp:
-    input:
-        expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_32X_ALL)
-    output:
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_ALL),
-    conda:
-        "../envs/rsf_R_env.yaml"
-    threads:
-        1 if is_slurm_run() else get_ncpus()
-    shell:
-        f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_32X_ALL)}"
-
 rule rsf_whole_heart_analysis:
     input:
         ANALYZES_DIR + "datasets/trainset.csv.gz",
@@ -53,36 +41,6 @@ rule rsf_whole_heart_analysis:
         1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_all 1320"
-
-rule rsf_whole_heart_vimp:
-    input:
-        expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_1320_ALL)
-    output:
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_1320_ALL),
-    conda:
-        "../envs/rsf_R_env.yaml"
-    threads:
-        1 if is_slurm_run() else get_ncpus()
-    shell:
-        f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_1320_ALL)}"
-
-rule multiple_scores_rsf:
-    input:
-        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
-        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
-        # expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_ALL)
-    output:
-        ANALYZES_DIR + "multiple_scores_rsf_all.log",
-        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
-               model = RSF_RADIOMICS_ALL),
-        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
-               model = RSF_RADIOMICS_ALL)
-    conda:
-        "../envs/rsf_R_env.yaml"
-    threads:
-        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
-    shell:
-        f"Rscript workflow/scripts/multiple_scores_rsf.R {CONFIGFILE_PATH} rsf_radiomics_all"
 
 # RSF feature elimination with hclustering / correlation
 
@@ -103,18 +61,6 @@ rule rsf_subparts_heart_features_hclust_corr_analysis:
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_features_hclust_corr 32X"
 
-rule rsf_subparts_heart_features_hclust_corr_vimp:
-    input:
-        expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_32X_FE_HCLUST)
-    output:
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
-    conda:
-        "../envs/rsf_R_env.yaml"
-    threads:
-        1 if is_slurm_run() else get_ncpus()
-    shell:
-        f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_32X_FE_HCLUST)}"
-
 
 rule rsf_whole_heart_features_hclust_corr_analysis:
     input:
@@ -133,6 +79,20 @@ rule rsf_whole_heart_features_hclust_corr_analysis:
     shell:
         f"Rscript workflow/scripts/rsf_learning.R {CONFIGFILE_PATH} rsf_radiomics_features_hclust_corr 1320"
 
+## VIMP plots
+
+rule rsf_whole_heart_vimp:
+    input:
+        expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_1320_ALL)
+    output:
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_1320_ALL),
+    conda:
+        "../envs/rsf_R_env.yaml"
+    threads:
+        1 if is_slurm_run() else get_ncpus()
+    shell:
+        f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_1320_ALL)}"
+
 rule rsf_whole_heart_features_hclust_corr_vimp:
     input:
         expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_1320_FE_HCLUST)
@@ -144,6 +104,61 @@ rule rsf_whole_heart_features_hclust_corr_vimp:
         1 if is_slurm_run() else get_ncpus()
     shell:
         f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_1320_FE_HCLUST)}"
+
+rule rsf_subparts_heart_vimp:
+    input:
+        expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_32X_ALL)
+    output:
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_ALL),
+    conda:
+        "../envs/rsf_R_env.yaml"
+    threads:
+        1 if is_slurm_run() else get_ncpus()
+    shell:
+        f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_32X_ALL)}"
+
+rule rsf_subparts_heart_features_hclust_corr_vimp:
+    input:
+        expand(ANALYZES_DIR + "rsf/{model}/model.rds", model = RSF_RADIOMICS_32X_FE_HCLUST)
+    output:
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
+    conda:
+        "../envs/rsf_R_env.yaml"
+    threads:
+        1 if is_slurm_run() else get_ncpus()
+    shell:
+        f"Rscript workflow/scripts/rsf_vimp.R {ANALYZES_DIR} {' '.join(RSF_RADIOMICS_32X_FE_HCLUST)}"
+
+rule rsf_vimp:
+    input:
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_ALL),
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_1320_ALL),
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
+        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_1320_FE_HCLUST)
+    output:
+        f"{ANALYZES_DIR}rsf_vimp.log"
+    shell:
+        f"touch {ANALYZES_DIR}rsf_vimp.log"
+
+## Multiple scores analysis
+
+rule multiple_scores_rsf:
+    input:
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+        # expand(ANALYZES_DIR + "rsf/{model}/cv.csv", model = RSF_RADIOMICS_ALL)
+    output:
+        ANALYZES_DIR + "multiple_scores_rsf_all.log",
+        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = RSF_RADIOMICS_ALL),
+        expand(ANALYZES_DIR + "rsf/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = RSF_RADIOMICS_ALL)
+    conda:
+        "../envs/rsf_R_env.yaml"
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_rsf.R {CONFIGFILE_PATH} rsf_radiomics_all"
 
 rule multiple_scores_rsf_features_hclust_corr:
     input:
@@ -163,15 +178,4 @@ rule multiple_scores_rsf_features_hclust_corr:
         1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
     shell:
         f"Rscript workflow/scripts/multiple_scores_rsf.R {CONFIGFILE_PATH} rsf_radiomics_features_hclust_corr"
-
-rule rsf_vimp:
-    input:
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_ALL),
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_1320_ALL),
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_32X_FE_HCLUST),
-        expand(ANALYZES_DIR + "rsf/{model}/rsf_vimp.png", model = RSF_RADIOMICS_1320_FE_HCLUST)
-    output:
-        f"{ANALYZES_DIR}rsf_vimp.log"
-    shell:
-        f"touch {ANALYZES_DIR}rsf_vimp.log"
 
