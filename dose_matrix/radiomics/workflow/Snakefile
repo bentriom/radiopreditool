@@ -52,11 +52,11 @@ cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiom
 include: "rules/metadata.smk"
 include: "rules/extract_radiomics.smk"
 include: "rules/learning_datasets.smk"
-include: "rules/viz.smk"
 include: "rules/features_elimination.smk"
 include: "rules/cox_learning_python.smk"
 include: "rules/cox_learning_R.smk"
 include: "rules/rsf_learning_R.smk"
+include: "rules/viz.smk"
 
 onstart:
     # Directory creations
