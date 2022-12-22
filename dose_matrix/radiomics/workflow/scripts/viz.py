@@ -105,8 +105,9 @@ def cindex_plots(analyzes_dir, nb_estim):
 
     ## Harrell's C-index multiple runs
     df_results_multiple.sort_values(by = ["mean_harrell"], ascending = False, inplace = True)
+    max_harrell_cindex = df_results_multiple.iloc[0]["mean_harrell"]
     fig = make_subplots(rows = 2, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
-                        subplot_titles = ("All features", "Pre-screening", "", ""))
+                        subplot_titles = ("All features", "Pre-screening", "All features", "Pre-screening"))
     color_map = {'Random Survival Forest': 'red', 'Cox PH with Lasso penalty': 'blue',
                  'Cox PH with Bootstrap Lasso': 'purple', 'Cox PH': 'green'}
     symbol_map = {'Random Survival Forest': 'diamond-open', 'Cox PH with Lasso penalty': 'square-open',
@@ -132,6 +133,8 @@ def cindex_plots(analyzes_dir, nb_estim):
                                    marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 1, col = 1)
+        fig.add_hline(y = max_harrell_cindex, line_width = 1.5, line_dash = "dash",
+                      line_color = "grey", opacity = 0.3, row = 1, col = 1)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 1)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis), row = 1, col = 1)
@@ -155,6 +158,9 @@ def cindex_plots(analyzes_dir, nb_estim):
                                    marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 1, col = 2)
+        fig.add_hline(y = max_harrell_cindex, line_width = 1.5, line_dash = "dash",
+                      annotation_text = "max", annotation_position = "top right",
+                      line_color = "grey", opacity = 0.3, row = 1, col = 2)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 2)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                      ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis),
@@ -164,6 +170,7 @@ def cindex_plots(analyzes_dir, nb_estim):
 
     ## IPCW C-index multiple runs
     df_results_multiple.sort_values(by = ["mean_ipcw"], ascending = False, inplace = True)
+    max_ipcw_cindex = df_results_multiple.iloc[0]["mean_ipcw"]
 
     # No screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_all, :], x = "model", y = "mean_ipcw",
@@ -183,6 +190,8 @@ def cindex_plots(analyzes_dir, nb_estim):
                                    marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 2, col = 1)
+        fig.add_hline(y = max_ipcw_cindex, line_width = 1.5, line_dash = "dash",
+                      line_color = "grey", opacity = 0.3, row = 2, col = 1)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 2, col = 1)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                      ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis), row = 2, col = 1)
@@ -207,6 +216,9 @@ def cindex_plots(analyzes_dir, nb_estim):
                                    marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 2, col = 2)
+        fig.add_hline(y = max_ipcw_cindex, line_width = 1.5, line_dash = "dash",
+                      annotation_text = "max", annotation_position = "top right",
+                      line_color = "grey", opacity = 0.3, row = 2, col = 2)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 2, col = 2)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                      ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis),
