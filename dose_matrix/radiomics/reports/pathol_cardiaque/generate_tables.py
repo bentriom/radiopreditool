@@ -376,8 +376,8 @@ for results_dir, model in list_models:
         name_scatter = fig_scatter.data[i]["name"]
         trace_scatter = go.Scatter(fig_scatter.data[i],
                                    marker_color = color_map[name_scatter],
-                                   marker_size = 15,
-                                   marker_line = dict(width = 5),
+                                   marker_size = 9,
+                                   marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 1, col = 1)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 1)
@@ -398,7 +398,10 @@ for results_dir, model in list_models:
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
         trace_scatter = go.Scatter(fig_scatter.data[i],
-                                   marker_color = color_map[name_scatter], marker_symbol = symbol_map[name_scatter])
+                                   marker_color = color_map[name_scatter],
+                                   marker_size = 9,
+                                   marker_line = dict(width = 2.5),
+                                   marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 1, col = 2)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 2)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
@@ -423,7 +426,10 @@ for results_dir, model in list_models:
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
         trace_scatter = go.Scatter(fig_scatter.data[i],
-                                   marker_color = color_map[name_scatter], marker_symbol = symbol_map[name_scatter])
+                                   marker_color = color_map[name_scatter],
+                                   marker_size = 9,
+                                   marker_line = dict(width = 2.5),
+                                   marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 2, col = 1)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 2, col = 1)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
@@ -444,7 +450,10 @@ for results_dir, model in list_models:
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
         trace_scatter = go.Scatter(fig_scatter.data[i],
-                                   marker_color = color_map[name_scatter], marker_symbol = symbol_map[name_scatter])
+                                   marker_color = color_map[name_scatter],
+                                   marker_size = 9,
+                                   marker_line = dict(width = 2.5),
+                                   marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 2, col = 2)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 2, col = 2)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
