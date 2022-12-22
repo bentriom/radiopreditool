@@ -371,7 +371,7 @@ for results_dir, model in list_models:
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
     fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index")
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
-    fig_scatter.write_image(f"plots/{model}/multiple_results_harrell_cindex_all.png", width = 1200, height = 900)
+    fig_scatter.write_image(f"plots/{model}/multiple_results_harrell_cindex_all.svg", width = 1200, height = 900)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
         trace_scatter = go.Scatter(fig_scatter.data[i],
@@ -393,7 +393,7 @@ for results_dir, model in list_models:
                              ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
     fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 2)
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
-    fig_scatter.write_image(f"plots/{model}/multiple_results_harrell_cindex_features_hclust_corr.png", width = 1200, height = 900)
+    fig_scatter.write_image(f"plots/{model}/multiple_results_harrell_cindex_features_hclust_corr.svg", width = 1200, height = 900)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
@@ -421,7 +421,7 @@ for results_dir, model in list_models:
                      ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
     fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index")
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
-    fig_scatter.write_image(f"plots/{model}/multiple_results_ipcw_cindex_all.png", width = 1200, height = 900)
+    fig_scatter.write_image(f"plots/{model}/multiple_results_ipcw_cindex_all.svg", width = 1200, height = 900)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
@@ -445,7 +445,7 @@ for results_dir, model in list_models:
                              ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
     fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index")
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
-    fig_scatter.write_image(f"plots/{model}/multiple_results_ipcw_cindex_features_hclust_corr.png", width = 1200, height = 900)
+    fig_scatter.write_image(f"plots/{model}/multiple_results_ipcw_cindex_features_hclust_corr.svg", width = 1200, height = 900)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
@@ -465,5 +465,5 @@ for results_dir, model in list_models:
     fig.update_layout(legend = {'font' : {'size' : 15}})
     fig.update_layout(title = "C-index score", title_x = 0.5)
 
-    fig.write_image(f"plots/{model}/multiple_results_cindex.png", width = 1200, height = 1200)
+    fig.write_image(f"plots/{model}/multiple_results_cindex.svg", width = 1200, height = 1200)
 

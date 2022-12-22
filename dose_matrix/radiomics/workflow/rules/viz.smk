@@ -19,5 +19,29 @@ rule scores_plot:
         rules.multiple_scores_rsf.output
         rules.multiple_scores_rsf_features_hclust_corr.output
     output:
-        ANALYZES_DIR + "plots/multiple"
+        ANALYZES_DIR + "plots/multiple_scores_cindex.svg",
+        ANALYZES_DIR + "plots/multiple_scores_harrell_cindex_all.svg",
+        ANALYZES_DIR + "plots/multiple_scores_harrell_cindex_features_hclust_corr.svg",
+        ANALYZES_DIR + "plots/multiple_scores_ipcw_cindex_all.svg",
+        ANALYZES_DIR + "plots/multiple_scores_ipcw_cindex_features_hclust_corr.svg",
+    threads:
+        1
+    run:
+       viz.cindex_plots(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
+
+rule scores_tables:
+    input:
+        rules.multiple_scores_baseline_analysis_R.output
+        rules.multiple_scores_cox_lasso_radiomics_all_R.output
+        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_R.output
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_R.output
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R.output
+        rules.multiple_scores_rsf.output
+        rules.multiple_scores_rsf_features_hclust_corr.output
+    output:
+        ANALYZES_DIR + f"tables/multiple_scores_{NB_ESTIM_SCORE_MODELS}_runs.tex",
+    threads:
+        1
+    run:
+       viz.latex_tables(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
 
