@@ -9,7 +9,7 @@ rule pca_visualisation:
     run:
         trainset.pca_viz(ANALYZES_DIR + "datasets/dataset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
-rule scores_plot:
+rule scores_plots:
     input:
         rules.multiple_scores_baseline_analysis_R.output
         rules.multiple_scores_cox_lasso_radiomics_all_R.output
