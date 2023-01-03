@@ -385,8 +385,10 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
 
 # Feature elimination pipeline with hclust on kendall's tau corr
 def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", feature_select_method = "univariate_cox"):
-    file_trainset = analyzes_dir + "datasets/trainset"
-    file_trainset = f"{file_trainset}.csv.gz" if id_set == "" else f"{file_trainset}_{id_set}.csv.gz"
+    if id_set == "":
+        file_trainset = analyzes_dir + "datasets/dataset.csv.gz"
+    else:
+        file_trainset = analyzes_dir + f"trainset_{id_set}.csv.gz"
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
     labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("[0-9]+_.*", label)])
