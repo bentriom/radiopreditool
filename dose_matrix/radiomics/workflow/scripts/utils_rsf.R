@@ -16,16 +16,15 @@ source("workflow/scripts/utils_radiopreditool.R")
 
 # Learning a model
 
-model_rsf.id <- function(id_set, covariates, event_col, duration_col, 
-                         analyzes_dir, model_name, rsf_logfile, screening_method = "all",
-                         load_results = F, save_results = T, save_rds = F) {
+model_rsf.id <- function(id_set, covariates, event_col, duration_col, analyzes_dir, model_name, rsf_logfile, 
+                         screening_method = "all", load_results = F, save_results = T, save_rds = F) {
     df_trainset <- read.csv(paste0(analyzes_dir, "datasets/trainset_", id_set, ".csv.gz"), header = T)
     df_testset <- read.csv(paste0(analyzes_dir, "datasets/testset_", id_set, ".csv.gz"), header = T)
     log_appender(appender_file(rsf_logfile, append = T))
     model_rsf(df_trainset, df_testset, covariates, event_col, duration_col,
               analyzes_dir, model_name, rsf_logfile, screening_method = screening_method,
-              load_results = load_results, save_results = save_results, run_multiple = T,
-              level = INFO, id_set = id_set)
+              load_results = load_results, save_results = save_results, save_rds = save_rds,
+              run_multiple = T, level = INFO, id_set = id_set)
 }
 
 model_rsf <- function(df_trainset, df_testset, covariates, event_col, duration_col, 

@@ -365,8 +365,8 @@ model_cox.id <- function(id_set, covariates, event_col, duration_col,
     print("n_boot is printed")
     model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, 
               model_name, coxlasso_logfile, screening_method = screening_method, penalty = penalty, n_boot = n_boot,
-              do_plot = do_plot, load_results = load_results, save_results = save_results, run_multiple = T,
-              level = INFO, id_set = id_set)
+              do_plot = do_plot, load_results = load_results, save_results = save_results, save_rds = save_rds,
+              run_multiple = T, level = INFO, id_set = id_set)
 }
 
 # Train a Cox model
