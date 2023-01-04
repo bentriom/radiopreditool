@@ -331,6 +331,11 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, run_
         colnames(bootstrap_selected_features) <- covariates
         selected_features <- select.bolasso.features(bootstrap_selected_features, bolasso.threshold)
     }
+    # We only take the selected features that are in the formula
+    else {
+      selected_features <- selected_features[selected_features %in% covariates]
+    }
+    print(formula)
     log_info(paste("Selected features:", do.call(paste, as.list(selected_features))))
     formula_selected <- get.surv.formula(event_col, selected_features, duration_col = duration_col)
     coxmodel <- coxph(formula_selected, data = data, x = T, y = T, control = coxph.control(iter.max = 1000))

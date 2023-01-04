@@ -9,7 +9,8 @@ get.analyzes_dir_from_config <- function(config) {
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
-    regex_non_clinical <- paste("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|(ctr)|(numcent)|(has_radiomics))", sep = "")
+    regex_non_clinical <- paste0("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|",
+                                 "(ctr)|(numcent)|(has_radiomics))")
     idx_non_clinical_vars <- grep(regex_non_clinical, columns)
     if (length(idx_non_clinical_vars) > 0) {
         return (columns[-idx_non_clinical_vars])
@@ -50,15 +51,15 @@ pretty.label <- function(label) {
     pattern_dosiomics = "X([0-9]{3,4})_[a-z]+_([a-z]+)_(\\w+)"
     pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_(1320)"
     pattern_iccc = "iccc_([0-9]|nan)"
-    if (str_detect(label, pattern_dosiomics)) {
+    if (stringr::str_detect(label, pattern_dosiomics)) {
         matches = str_match(label, pattern_dosiomics)
         type_dosio <- matches[3]
         if (type_dosio == "firstorder") type_dosio <- "" 
         paste(matches[2], type_dosio, matches[4])
-    } else if (str_detect(label, pattern_dosesvol)) {
+    } else if (stringr::str_detect(label, pattern_dosesvol)) {
         matches = str_match(label, pattern_dosesvol)
         paste(matches[4], matches[2])
-    } else if (str_detect(label, pattern_iccc)) {
+    } else if (stringr::str_detect(label, pattern_iccc)) {
         pretty.iccc(label)
     } else { label }
 }
@@ -164,13 +165,10 @@ preliminary_filter <- function(df_dataset, covariates, event_col,
     screened_features <- as.character(read.csv(file_features)[,1])
     # Add "X" for R colname compatibility
     screened_features <- as.character(lapply(screened_features, 
-                                    function(x) `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste("X", x, sep = ""), x)))
+                                      function(x) `if`(stringr::str_detect(substr(x, 1, 1), "[0-9]"), 
+                                                       paste("X", x, sep = ""), x)))
     covariates <- covariates[covariates %in% screened_features]
-    print("screened features:")
-    print(screened_features)
   }
-  print("not in:")
-  print(covariates[!(covariates %in% colnames(df_dataset))])
   # Check duplicated of columns with unique values
   filter_data <- !duplicated(as.list(df_dataset[covariates])) & 
                   unlist(lapply(df_dataset[covariates], 
@@ -188,10 +186,10 @@ filter_dummies_iccc <- function(df_dataset, event_col) {
   iccc_cols <- grep("iccc_", colnames(df_dataset), value = T)
   irrelevant_iccc_cols <- na.omit(unlist(sapply(iccc_cols, function(iccc) {
     table_iccc <- table(df_dataset[, c(iccc, event_col)])
-    if (any(table_iccc <= 6)) pval <- fisher.test(table_iccc)$p.value
+    if (any(table_iccc <= 10)) pval <- fisher.test(table_iccc)$p.value
     else pval <- chisq.test(table_iccc)$p.value
     # Rejected test means the two variables are dependant
-    if (pval > 0.05) return (iccc)
+    if (pval > 0.01) return (iccc)
     return (NULL)
   })))
   irrelevant_iccc_cols
