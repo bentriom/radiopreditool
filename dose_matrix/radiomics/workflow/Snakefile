@@ -57,6 +57,7 @@ include: "rules/cox_learning_python.smk"
 include: "rules/cox_learning_R.smk"
 include: "rules/rsf_learning_R.smk"
 include: "rules/viz.smk"
+include: "rules/error_curves.smk"
 
 onstart:
     # Directory creations
