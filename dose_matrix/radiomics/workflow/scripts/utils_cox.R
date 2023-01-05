@@ -26,7 +26,6 @@ loglik_ratio_best_lambda <- function(cox_object, cv.params) {
     lambda.ref <- cox_object$lambda.min
     deviance.params <- data.frame(penalty = cox_object$lambda, deviance = deviance(cox_object$glmnet.fit))
     cv.params.merge <- merge(cv.params, deviance.params, by = "penalty")
-    print(dim(cv.params.merge))
     rownames(cv.params.merge) <- cv.params.merge$penalty
     deviance.ref <- cv.params.merge[as.character(lambda.ref), "deviance"]
     nonzero.ref <- cv.params.merge[as.character(lambda.ref), "non_zero_coefs"]
@@ -335,7 +334,6 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, run_
     else {
       selected_features <- selected_features[selected_features %in% covariates]
     }
-    print(formula)
     log_info(paste("Selected features:", do.call(paste, as.list(selected_features))))
     formula_selected <- get.surv.formula(event_col, selected_features, duration_col = duration_col)
     coxmodel <- coxph(formula_selected, data = data, x = T, y = T, control = coxph.control(iter.max = 1000))
@@ -522,7 +520,6 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {
-        print(save_results_dir)
         write.csv(df_results, file = paste0(save_results_dir, "metrics.csv"), row.names = T)
         if (save_rds) saveRDS(coxmodel, file = paste0(save_results_dir, "model.rds"))
     }

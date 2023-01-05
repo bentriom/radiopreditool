@@ -4,37 +4,6 @@ options(show.error.locations = TRUE, error=traceback)
 source("workflow/scripts/utils_cox.R")
 source("workflow/scripts/utils_rsf.R")
 
-# glmnet.pec <- function(formula, data, family = "cox", alpha = 1, type.measure = "C", 
-#                        lambda = NULL, best.lambda = "lambda.min", ...) {
-#     covariates <- all.vars(formula[[3]])
-#     duration_col <- all.vars(formula[[2]])[1]
-#     event_col <- all.vars(formula[[2]])[2]
-#     if (!("data.table" %in% class(data))) {
-#         data_lasso <- coxlasso_data(data, covariates, event_col, duration_col)
-#         X <- data_lasso$X
-#         surv_y <- data_lasso$surv_y
-#     } else {
-#         X <- as.matrix(data[, ..covariates])
-#         surv_y <- Surv(as.numeric(unlist(data[, ..duration_col])), as.numeric(unlist(data[, ..event_col])))
-#     }
-#     fit <- glmnet(X, surv_y, family = "cox", alpha = 1, lambda = lambda, type.measure = "C", ...)
-#     out <- list("glmnet.fit" = fit, "call" = match.call(), "X" = X, "surv_y" = surv_y, 
-#                 "best.lambda" = best.lambda, "covariates" = covariates)
-#     class(out) <- "glmnet.pec"
-#     out
-# }
-# 
-# predictSurvProb.glmnet.pec <- function(object, newdata, times) {
-#     covariates <- object$covariates
-#     newdata_model <- newdata[, ..covariates]
-#     # saveRDS(newdata, file = "newdata.rds")
-#     # saveRDS(object$covariates, file = "covariates.rds")
-#     # saveRDS(newdata_model, file = "newdata_model.rds")
-#     cvcoxlasso.survfit <- survfit(object$glmnet.fit, x = object$X, y = object$surv_y, 
-#                                   newx = as.matrix(newdata_model), s = object$best.lambda)
-#     t(summary(cvcoxlasso.survfit, times = times)$surv)
-# }
-
 # Undo the parallelism in the model's call: we already run bootstrap samples in parallel
 undo_parallelism <- function(model_call) {
   if (model_call[[1]] == "selection.coxnet")
@@ -220,33 +189,6 @@ plot_error_curves <- function(resBoot, analyzes_dir) {
   ggsave(paste0(save_results_dir, "error_curve_brier_score.png"), device = "png", dpi = 480)
 }
 
-# plot_ipcw_cindex_model <- function(model_errors) {
-#   matrix_ipcw_cindex <- model_errors[["IPCW C-index tau"]]
-#   df_plot_ipcw_cindex = data.frame(mean_score = colMeans(matrix_ipcw_cindex),
-#                                    std_score = apply(matrix_ipcw_cindex, 2, sd),
-#                                    times = model_errors$pred.times)
-#   ggplot(df_plot_ipcw_cindex, aes(x = times, y = mean_score)) +
-#   geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), fill = "blue", alpha = 0.5) +
-#   geom_line(color = "red") + 
-#   geom_point(data = df_plot_ipcw_cindex, aes(x = times, y = mean_score), color = "purple") +
-#   ylim(0, NA) +
-#   labs(x = "Time (years)", y = "Bootstrap mean of IPCW C-index")
-# }
-# 
-# plot_brier_score_model <- function(model_errors) {
-#   matrix_bs <- model_errors[["Brier score tau"]]
-#   df_plot_bs = data.frame(mean_score = colMeans(matrix_bs), 
-#                           std_score = apply(matrix_bs, 2, sd),
-#                           times = model_errors$pred.times)
-#   # Brier score curve
-#   ggplot(df_plot_bs, aes(x = times, y = mean_score)) +
-#   geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), alpha = 0.5) +
-#   geom_line() + 
-#   geom_point(data = df_plot_bs, aes(x = times, y = mean_score)) +
-#   ylim(0, NA) +
-#   labs(x = "Time (years)", y = "Bootstrap mean of Brier score")
-# }
-
 # Curve estimation error for several models
 pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfile = NULL) {
     if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
@@ -275,16 +217,6 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
     df_dataset <- df_dataset[, c(event_col, duration_col, covariates_all)]
     df_dataset <- na.omit(df_dataset)
     log_info(paste("Dataset rows:", nrow(df_dataset)))
-
-    # # Preprocessing data
-    # infos <- preprocess_data_cox(df_dataset, covariates_all, event_col, duration_col)
-    # data_ex <- infos$data[sample(nrow(infos$data), 2000),]
-    # # After the preprocessing, some variables may be deleted: updating models' covariates
-    # cols_rsf_1320 <- cols_rsf_1320[cols_rsf_1320 %in% colnames(infos$data)]
-    # cols_lasso_1320 <- cols_lasso_1320[cols_lasso_1320 %in% colnames(infos$data)]
-    # cols_boot_lasso_32X <- cols_boot_lasso_32X[cols_boot_lasso_32X %in% colnames(infos$data)]
-    # cols_dv <- cols_dv[cols_dv %in% colnames(infos$data)]
-    # clinical_vars <- clinical_vars[clinical_vars %in% colnames(infos$data)]
 
     # Model Cox mean dose
     model_name_coxmean <- "1320_mean"
@@ -343,24 +275,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
                                          bootstrap_selected_features = bootstrap_selected_features)
     coxbootlasso_32X$full_covariates <- covariates_boot_lasso_32X
     coxbootlasso_32X$screening_method <- "features_hclust_corr"
-
-    # Model mean cox
-    # model_name_coxmean <- "1320_mean"
-    # covariates_coxmean <- c("X1320_original_firstorder_Mean", clinical_vars)
-    # formula_model_coxmean <- get.surv.formula(event_col, covariates_coxmean, duration_col = duration_col)
-    # coxmean <- coxph(formula_model_coxmean, data = data_ex, x = TRUE, y = TRUE)
-    # # coxmean <- rms::cph(formula_model_coxmean, data = data_ex, x = TRUE, y = TRUE, surv = TRUE)
-    # coxmean$call$formula <- formula_model_coxmean
-
-    # # Model lasso dosesvolumes
-    # model_name_lassodv <- "1320_dosesvol_lasso"
-    # covariates_lassodv <- c(cols_dv, clinical_vars)
-    # formula_model_lassodv <- get.surv.formula(event_col, covariates_lassodv, duration_col = duration_col)
-    # lassodv_list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R/", 
-    #                                         model_name_lassodv, "/path_lambda.csv"))[["lambda"]]
-    # coxlassodv <- selection.coxnet(formula_model_lassodv, data = data_ex, 
-    #                                list.lambda = lassodv_list.lambda, type.measure = "C")
-    
+   
     # Self-made pec estim
     formula_ipcw = get.ipcw.surv.formula(event_col, colnames(df_dataset), duration_col = duration_col)
     pred.times <- seq(1, 60, 1)
@@ -376,9 +291,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
     names(compared_models) <- c(model_name_coxmean, model_name_coxdv, model_name_lasso_32X,
                                 model_name_boot_lasso_32X, model_name_rsf)
     names(pretty_model_names) <- names(compared_models)
-    # names(compared_models) <- c(model_name_coxmean, model_name_coxdv, model_name_lasso_32X, model_name_rsf)
-    # names(compared_models) <- c(model_name_coxlassomean, model_name_lasso_1320, model_name_boot_lasso_32X)
-    # names(compared_models) <- c(model_name_coxmean, model_name_rsf)
+    
     # We eval the calls' arguments because the corresponding variables won't be available in the functions
     compared_models <- lapply(compared_models, function(model) {
             model$call$formula <- eval(model$call$formula)
@@ -410,46 +323,6 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
     saveRDS(boot_error, paste0(analyzes_dir, "error_curves/boot_error.rds"))
     plot_error_curves(boot_error, analyzes_dir)
     boot_error
-
-    # PEC
-    # formula_ipcw = get.ipcw.surv.formula(event_col, colnames(infos$data), duration_col = duration_col)
-    # pred.times <- seq(1, 60, 1)
-    # pec_M = floor(0.7 * nrow(infos$data))
-    # pec_B = B
-    # cl <- parallel::makeCluster(nworkers)
-    # doParallel::registerDoParallel(cl)
-    # print(paste("PEC, B =", pec_B))
-    # compared_models <- list("Cox mean dose" = coxmean, 
-    #                    "Cox Lasso doses-volumes" = coxlassodv, 
-    #                    "Cox Lasso heart's subparts screened dosiomics" = coxlasso_32X, 
-    #                    "RSF whole-heart screened first-order dosiomics" = rsf.best
-    #                    )
-    # fitpec <- pec(compared_models, 
-    #               data = infos$data, formula = formula_ipcw,
-    #               times = pred.times, start = pred.times[1], 
-    #               exact = F, splitMethod = "BootCv", reference = F, 
-    #               B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
-    # print("End pec")
-    # saveRDS(fitpec, file = paste0(analyzes_dir, "error_curves/fit_pec_", pec_B, ".rds"))
-    # png(paste0(analyzes_dir, "pec_plots/bootcv_", pec_B, ".png"), width = 800, height = 600)
-    # plot(fitpec, what = "BootCvErr", xlim = c(0, 60),
-    #      axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
-    # dev.off()
-    # parallel::stopCluster(cl)
-    # print(paste("Cindex, B =", pec_B))
-    # print(class(infos$data))
-    # print(dim(infos$data))
-    # fitcindex <- pec::cindex(compared_models, 
-    #                          data = infos$data, formula = formula_ipcw,
-    #                          times = pred.times, start = pred.times[1], 
-    #                          exact = F, splitMethod = "bootcv", reference = F, 
-    #                          B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
-    # print("End cindex")
-    # saveRDS(fitcindex, file = paste0(analyzes_dir, "error_curves/fit_cindex_", pec_B, ".rds"))
-    # png(paste0(analyzes_dir, "pec_plots/cindex_", pec_B, ".png"), width = 800, height = 600)
-    # plot(fitcindex, what = "BootCvErr", xlim = c(0, 60),
-    #      axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
-    # dev.off()
 }
 
 args = commandArgs(trailingOnly = TRUE)
