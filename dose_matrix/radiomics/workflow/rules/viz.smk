@@ -27,7 +27,7 @@ rule scores_plots:
     threads:
         1
     run:
-       viz.cindex_plots(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
+       viz.results_plots(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
 
 rule scores_tables:
     input:

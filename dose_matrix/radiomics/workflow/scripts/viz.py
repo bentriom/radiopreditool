@@ -18,7 +18,7 @@ def get_color(model):
     elif splits[0] == "CBL":
         return "Cox PH with Bootstrap Lasso"
 
-def cindex_plots(analyzes_dir, nb_estim):
+def results_plots(analyzes_dir, nb_estim):
     coxph_results_dir = f"{analyzes_dir}coxph_R/"
     rsf_results_dir = f"{analyzes_dir}rsf/"
     save_plots_dir = f"{analyzes_dir}plots/"
@@ -101,13 +101,11 @@ def cindex_plots(analyzes_dir, nb_estim):
     df_results_multiple.loc[idx_res, "std_harrell"] = [dict_results_multiple[model].loc["C-index", "Std"] for model in idx_res]
     df_results_multiple.loc[idx_res, "mean_ipcw"] = [dict_results_multiple[model].loc["IPCW C-index", "Mean"] for model in idx_res]
     df_results_multiple.loc[idx_res, "std_ipcw"] = [dict_results_multiple[model].loc["IPCW C-index", "Std"] for model in idx_res]
+    df_results_multiple.loc[idx_res, "mean_ibs"] = [dict_results_multiple[model].loc["IBS", "Mean"] for model in idx_res]
+    df_results_multiple.loc[idx_res, "std_ibs"] = [dict_results_multiple[model].loc["IBS", "Std"] for model in idx_res]
     df_results_multiple.loc[:, "model type"] = df_results_multiple["model"].apply(get_color)
 
-    ## Harrell's C-index multiple runs
-    df_results_multiple.sort_values(by = ["mean_harrell"], ascending = False, inplace = True)
-    max_harrell_cindex = df_results_multiple.iloc[0]["mean_harrell"]
-    fig = make_subplots(rows = 2, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
-                        subplot_titles = ("All features", "Pre-screening", "All features", "Pre-screening"))
+    ## Plots settings
     color_map = {'Random Survival Forest': 'red', 'Cox PH with Lasso penalty': 'blue',
                  'Cox PH with Bootstrap Lasso': 'purple', 'Cox PH': 'green'}
     symbol_map = {'Random Survival Forest': 'diamond-open', 'Cox PH with Lasso penalty': 'square-open',
@@ -115,6 +113,12 @@ def cindex_plots(analyzes_dir, nb_estim):
     xaxis_angle = -50
     xaxis_size = 16
     format_xaxis = lambda model: model.split(' ', 1)[1].replace('screened ', '').capitalize()
+
+    ## Harrell's C-index multiple runs
+    df_results_multiple.sort_values(by = ["mean_harrell"], ascending = False, inplace = True)
+    max_harrell_cindex = df_results_multiple.iloc[0]["mean_harrell"]
+    fig = make_subplots(rows = 2, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
+                        subplot_titles = ("All features", "Pre-screening", "All features", "Pre-screening"))
 
     # No screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_all, :], x = "model", y = "mean_harrell",
@@ -230,6 +234,67 @@ def cindex_plots(analyzes_dir, nb_estim):
     fig.update_layout(title = "C-index score", title_x = 0.5)
 
     fig.write_image(f"{save_plots_dir}multiple_scores_cindex.svg", width = 1200, height = 1200)
+
+    ## Plot IBS
+    df_results_multiple.sort_values(by = ["mean_ibs"], ascending = False, inplace = True)
+    max_ibs = df_results_multiple.iloc[0]["mean_ibs"]
+    y_max_ibs = 1.1 * (df_results_multiple["mean_ibs"] + df_results_multiple["std_ibs"]).max()
+    fig = make_subplots(rows = 1, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
+                        subplot_titles = ("All features", "Pre-screening"))
+
+    # No screening
+    fig_scatter = px.scatter(df_results_multiple.loc[idx_res_all, :], x = "model", y = "mean_ibs",
+                             color = "model type", error_y = "std_ibs")
+    fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
+    fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
+                             ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
+    fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS")
+    fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_all.svg", width = 1200, height = 900)
+    for i in range(len(fig_scatter.data)):
+        name_scatter = fig_scatter.data[i]["name"]
+        trace_scatter = go.Scatter(fig_scatter.data[i],
+                                   marker_color = color_map[name_scatter],
+                                   marker_size = 9,
+                                   marker_line = dict(width = 2.5),
+                                   marker_symbol = symbol_map[name_scatter])
+        fig.add_trace(trace_scatter, row = 1, col = 1)
+        fig.add_hline(y = max_ibs, line_width = 1.5, line_dash = "dash",
+                      line_color = "grey", opacity = 0.3, row = 1, col = 1)
+    fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 1)
+    fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
+                             ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis), row = 1, col = 1)
+    fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 1)
+    fig.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 1)
+    # Features hclust correlation screening
+    fig_scatter = px.scatter(df_results_multiple.loc[idx_res_features_hclust_corr, :], x = "model", y = "mean_ibs",
+                             color = "model type", error_y = "std_ibs")
+    fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
+    fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
+                             ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
+    fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
+    fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_features_hclust_corr.svg", width = 1200, height = 900)
+    fig_scatter.update_traces(showlegend = False)
+    for i in range(len(fig_scatter.data)):
+        name_scatter = fig_scatter.data[i]["name"]
+        trace_scatter = go.Scatter(fig_scatter.data[i],
+                                   marker_color = color_map[name_scatter],
+                                   marker_size = 9,
+                                   marker_line = dict(width = 2.5),
+                                   marker_symbol = symbol_map[name_scatter])
+        fig.add_trace(trace_scatter, row = 1, col = 2)
+        fig.add_hline(y = max_ibs, line_width = 1.5, line_dash = "dash",
+                      annotation_text = "max", annotation_position = "top right",
+                      line_color = "grey", opacity = 0.3, row = 1, col = 2)
+    fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 2)
+    fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
+                     ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis),
+                     row = 1, col = 2)
+    fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 2)
+    fig.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
+
+    fig.write_image(f"{save_plots_dir}multiple_scores_ibs.svg", width = 1200, height = 1200)
 
 ## Latex tables
 
