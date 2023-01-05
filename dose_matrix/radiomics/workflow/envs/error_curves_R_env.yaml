@@ -1,0 +1,23 @@
+name: cox_R
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-essentials
+  - r-base
+  - r-caret
+  - r-pec
+  - r-hmisc
+  - r-logger
+  - r-glmnet
+  - r-glmnetutils
+  - r-survival
+  - r-tidyverse
+  - r-randomforestsrc
+  - r-rms
+  - r-doparallel
+  - r-foreach
+  - r-rslurm
+

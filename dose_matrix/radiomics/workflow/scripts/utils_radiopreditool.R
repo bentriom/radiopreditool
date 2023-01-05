@@ -46,6 +46,20 @@ get.ncpus <- function() {
 
 get.nworkers <- function() get.ncpus()
 
+get.na.coefs <- function(object) {
+  if (is(object, "coxph")) {
+    coefs_coxph <- coef(object)
+    return(names(coefs_coxph)[is.na(coefs_coxph)])
+  }
+  else if (is(object, "selection.coxnet") | is(object, "bootstrap.coxnet")) {
+    coefs_coxph <- coef(object$coxph.fit)
+    return(names(coefs_coxph)[is.na(coefs_coxph)])
+  }
+  else if (is(object, "rfsrc")) {
+    return(NULL)
+  }
+}
+
 # Pretty label names
 pretty.label <- function(label) {
     pattern_dosiomics = "X([0-9]{3,4})_[a-z]+_([a-z]+)_(\\w+)"

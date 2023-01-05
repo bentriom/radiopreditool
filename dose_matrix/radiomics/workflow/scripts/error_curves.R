@@ -53,6 +53,7 @@ sample.estim.error <- function(data, indices, list_models, ipcw.formula, times) 
   surv_y_boot_test <- survival::Surv(boot_test[[duration_col]], boot_test[[event_col]])
   idx_surv <- length(times)
   lapply(list_models, function(model) {
+    # Create a model call with proper data and filtered covariates
     boot_call <- undo_parallelism(rlang::duplicate(model$call))
     boot_call$data <- boot_train
     filtered_covariates <- preliminary_filter(boot_train, model$full_covariates, event_col, 
@@ -60,6 +61,18 @@ sample.estim.error <- function(data, indices, list_models, ipcw.formula, times) 
     filtered_formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
     boot_call$formula <- filtered_formula_model
     boot_model <- eval(boot_call)
+    na_coefs <- get.na.coefs(boot_model)
+    while (length(na_coefs) > 0) {
+      warning(paste0(paste("NA value:", na_coefs, collapse = ""), 
+                           ". Discarding these variables and re-fitting ", typeof(boot_model), "."))
+      filtered_covariates <- filtered_covariates[!(filtered_covariates %in% na_coefs)]
+      print(filtered_covariates)
+      filtered_formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
+      boot_call$formula <- filtered_formula_model
+      boot_model <- eval(boot_call)
+      na_coefs <- get.na.coefs(boot_model)
+    }
+    # Error estimation
     survprob.boot <- predictSurvProb(boot_model, newdata = data.table::as.data.table(boot_test), times = times)
     harrell.cindex <- Hmisc::rcorr.cens(survprob.boot[,idx_surv], S = surv_y_boot_test)[["C Index"]]
     ipcw.cindexes <- pec::cindex(list("Boot model" = as.matrix(survprob.boot)),
@@ -104,7 +117,7 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
   duration_col <- all.vars(ipcw.formula[[2]])[1]
   event_col <- all.vars(ipcw.formula[[2]])[2]
   functions_to_export <- c("sample.estim.error", "selection.coxnet", "predictSurvProb.selection.coxnet", 
-                           "undo_parallelism", "predictSurvProb", "coxlasso_data", "get.coefs.cox", 
+                           "undo_parallelism", "predictSurvProb", "coxlasso_data", "get.coefs.cox", "get.na.coefs",
                            "bootstrap.coxnet", "predictSurvProb.bootstrap.coxnet",
                            "get.surv.formula", "get.best.lambda", "preliminary_filter", "filter_dummies_iccc")
   if (boot.parallel == "foreach") {
@@ -114,8 +127,6 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
     log_info(paste(colnames(showConnections()), collapse = " "))
     log_info(paste(apply(showConnections(), 1, 
                          function(row) { paste(paste(as.character(row), collapse = " ")) }), collapse = "\n"))
-    idx_boot <- sample(nrow(data), replace = T)
-    sample.estim.error(data, idx_boot, list_models, ipcw.formula, times)
     listResBoot <- foreach(i = 1:B, .export = functions_to_export,
                            .packages = c("survival", "randomForestSRC", "logger", "prodlim")) %dopar% {
       idx_boot <- sample(nrow(data), replace = T)
@@ -163,6 +174,15 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
   out
 }
 
+# Get color according to model
+get_color_model <- function(pretty_model_name) {
+  if (stringr::str_detect(pretty_model_name, "Cox Lasso")) return("blue")
+  if (stringr::str_detect(pretty_model_name, "Cox Bootstrap Lasso")) return("purple")
+  if (stringr::str_detect(pretty_model_name, "Cox mean dose")) return("green")
+  if (stringr::str_detect(pretty_model_name, "Cox doses-volumes")) return("orange")
+  if (stringr::str_detect(pretty_model_name, "RSF ")) return("red")
+}
+
 # Plot time-dependant error curves
 plot_error_curves <- function(resBoot, analyzes_dir) {
   df_plot <- lapply(names(resBoot$bootstrap_errors), function (model_name) {
@@ -174,21 +194,27 @@ plot_error_curves <- function(resBoot, analyzes_dir) {
                                mean_bs = colMeans(matrix_bs),
                                std_bs = apply(matrix_bs, 2, sd),
                                times = model_errors$pred.times,
-                               model_name = model_name)
+                               model_name = model_name,
+                               pretty_model_name = resBoot$pretty_model_names[[model_name]])
                   })
   df_plot <- as.data.frame(do.call("rbind", df_plot))
   save_results_dir <- paste0(analyzes_dir, "plots/")
+  colors_models <- as.character(lapply(resBoot$pretty_model_names, get_color_model))
   # Plot IPCW C-index curve
-  ggplot(df_plot, aes(x = times, y = mean_ipcw_cindex, color = model_name)) + geom_line() + 
+  ggplot(df_plot, aes(x = times, y = mean_ipcw_cindex, color = pretty_model_name)) + geom_line() + 
   geom_ribbon(aes(ymin = mean_ipcw_cindex - std_ipcw_cindex, ymax = mean_ipcw_cindex + std_ipcw_cindex, 
-                  fill = model_name), linetype = 0, alpha = 0.2, show.legend = F) +
-  ylim(0, NA) +
+                  fill = pretty_model_name), linetype = 0, alpha = 0.2, show.legend = F) +
+  scale_color_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+  scale_fill_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+  ylim(0.4, NA) +
   labs(x = "Time (years)", y = "Bootstrap mean of IPCW C-index", color = "Model name")
   ggsave(paste0(save_results_dir, "error_curve_ipcw_cindex.png"), device = "png", dpi = 480)
   # Plot brier score curve
-  ggplot(df_plot, aes(x = times, y = mean_bs, color = model_name)) + geom_line() + 
+  ggplot(df_plot, aes(x = times, y = mean_bs, color = pretty_model_name)) + geom_line() + 
   geom_ribbon(aes(ymin = mean_bs - std_bs, ymax = mean_bs + std_bs, 
-                  fill = model_name), linetype = 0, alpha = 0.2, show.legend = F) +
+                  fill = pretty_model_name), linetype = 0, alpha = 0.2, show.legend = F) +
+  scale_color_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+  scale_fill_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
   ylim(0, NA) +
   labs(x = "Time (years)", y = "Bootstrap mean of Brier score", color = "Model name")
   ggsave(paste0(save_results_dir, "error_curve_brier_score.png"), device = "png", dpi = 480)
@@ -222,12 +248,14 @@ plot_error_curves <- function(resBoot, analyzes_dir) {
 # }
 
 # Curve estimation error for several models
-pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
+pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfile = NULL) {
+    if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
+    else log_appender(appender_stdout)
     file_dataset = paste0(analyzes_dir, "datasets/dataset.csv.gz")
     nworkers <- get.nworkers()
     options(rf.cores = 1, mc.cores = 1)
     dir.create(paste0(analyzes_dir, "plots/"), showWarnings = FALSE)
-    dir.create(paste0(analyzes_dir, "pec_results/"), showWarnings = FALSE)
+    dir.create(paste0(analyzes_dir, "error_curves/"), showWarnings = FALSE)
     df_dataset <- read.csv(file_dataset, header = T)
 
     # # Feature elimination
@@ -246,7 +274,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
                                cols_dv, cols_rsf_1320_firstorder, cols_lasso_32X_full, cols_boot_lasso_32X))
     df_dataset <- df_dataset[, c(event_col, duration_col, covariates_all)]
     df_dataset <- na.omit(df_dataset)
-    print(dim(df_dataset))
+    log_info(paste("Dataset rows:", nrow(df_dataset)))
 
     # # Preprocessing data
     # infos <- preprocess_data_cox(df_dataset, covariates_all, event_col, duration_col)
@@ -280,7 +308,8 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
     model_name_rsf <- paste0("1320_radiomics_full_all")
     covariates_rsf_1320 <- c(clinical_vars, cols_rsf_1320_firstorder)
     formula_model_rsf <- get.surv.formula(event_col, covariates_rsf_1320, duration_col = duration_col)
-    rsf_1320_params.best <<- read.csv(paste(analyzes_dir, "rsf/", model_name_rsf, "/0/cv.csv", sep = ""))[1,]
+    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf, "/5_runs_full_test_metrics.csv"))[2,])
+    rsf_1320_params.best <<- read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf, "/",id_max_cv-1,"/cv.csv"))[1,]
     rsf_1320 <- rfsrc(formula_model_rsf, data = df_dataset, ntree = rsf_1320_params.best$ntree, 
                       nodesize = rsf_1320_params.best$nodesize, nsplit = rsf_1320_params.best$nsplit)
     rsf_1320$full_covariates <- covariates_rsf_1320
@@ -290,8 +319,10 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
     model_name_lasso_32X <- "32X_radiomics_full_lasso_all"
     covariates_lasso_32X <- c(cols_lasso_32X_full, clinical_vars)
     formula_model_lasso_32X <- get.surv.formula(event_col, covariates_lasso_32X, duration_col = duration_col)
+    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso_32X, 
+                                           "/5_runs_full_test_metrics.csv"))[2,])
     lasso_32X_list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R/", 
-                                             model_name_lasso_32X, "/0/path_lambda.csv"))[["lambda"]]
+                                             model_name_lasso_32X, "/",id_max_cv-1,"/path_lambda.csv"))[["lambda"]]
     coxlasso_32X <- selection.coxnet(formula_model_lasso_32X, data = df_dataset, 
                                      list.lambda = lasso_32X_list.lambda, type.measure = "C")
     coxlasso_32X$full_covariates <- covariates_lasso_32X
@@ -301,10 +332,12 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
     model_name_boot_lasso_32X <- "32X_radiomics_full_bootstrap_lasso_features_hclust_corr"
     covariates_boot_lasso_32X <- c(cols_boot_lasso_32X, clinical_vars)
     formula_model_boot_lasso_32X <- get.surv.formula(event_col, covariates_boot_lasso_32X, duration_col = duration_col)
+    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
+                                           "/5_runs_full_test_metrics.csv"))[2,])
     selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
-                                         "/0/final_selected_features.csv"))[["selected_features"]]
+                                         "/",id_max_cv-1,"/final_selected_features.csv"))[["selected_features"]]
     bootstrap_selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
-                                                   "/0/bootstrap_selected_features.csv"), header = T)
+                                                   "/",id_max_cv-1,"/bootstrap_selected_features.csv"), header = T)
     coxbootlasso_32X <- bootstrap.coxnet(data = df_dataset, formula = formula_model_boot_lasso_32X, pred.times,
                                          best.lambda.method = "lambda.1se", selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features)
@@ -336,12 +369,13 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
     compared_models <- list("Cox mean dose" = coxmean,
                             "Cox doses-volumes" = coxdv,
                             "Cox Lasso heart's subparts dosiomics" = coxlasso_32X,
-                            "Cox Bootstrap Lasso heart's subparts dosiomics with screening" = coxbootlasso_32X,
+                            "Cox Bootstrap Lasso \nheart's subparts dosiomics with screening" = coxbootlasso_32X,
                             "RSF whole-heart first-order dosiomics" = rsf_1320
                             )
-    pretty_model_names <- rlang::duplicate(names(compared_models))
+    pretty_model_names <- as.list(names(compared_models))
     names(compared_models) <- c(model_name_coxmean, model_name_coxdv, model_name_lasso_32X,
                                 model_name_boot_lasso_32X, model_name_rsf)
+    names(pretty_model_names) <- names(compared_models)
     # names(compared_models) <- c(model_name_coxmean, model_name_coxdv, model_name_lasso_32X, model_name_rsf)
     # names(compared_models) <- c(model_name_coxlassomean, model_name_lasso_1320, model_name_boot_lasso_32X)
     # names(compared_models) <- c(model_name_coxmean, model_name_rsf)
@@ -367,13 +401,16 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
           })
     
     # Self-made bootstrap error estimation
-    print(paste("B =", B))
+    log_info(paste("B =", B))
     boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
     boot_error <- bootstrap.estim.error(df_dataset, formula_ipcw, compared_models, analyzes_dir, 
                                         B = B, times = pred.times, 
                                         logfile = NULL, boot.parallel = boot.parallel)
-    saveRDS(boot_error, paste0(analyzes_dir, "pec_results/boot.rds"))
-    
+    boot_error$pretty_model_names <- pretty_model_names
+    saveRDS(boot_error, paste0(analyzes_dir, "error_curves/boot_error.rds"))
+    plot_error_curves(boot_error, analyzes_dir)
+    boot_error
+
     # PEC
     # formula_ipcw = get.ipcw.surv.formula(event_col, colnames(infos$data), duration_col = duration_col)
     # pred.times <- seq(1, 60, 1)
@@ -393,7 +430,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
     #               exact = F, splitMethod = "BootCv", reference = F, 
     #               B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
     # print("End pec")
-    # saveRDS(fitpec, file = paste0(analyzes_dir, "pec_results/fit_pec_", pec_B, ".rds"))
+    # saveRDS(fitpec, file = paste0(analyzes_dir, "error_curves/fit_pec_", pec_B, ".rds"))
     # png(paste0(analyzes_dir, "pec_plots/bootcv_", pec_B, ".png"), width = 800, height = 600)
     # plot(fitpec, what = "BootCvErr", xlim = c(0, 60),
     #      axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
@@ -408,7 +445,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200) {
     #                          exact = F, splitMethod = "bootcv", reference = F, 
     #                          B = pec_B, M = pec_M, keep.index = T, keep.matrix = T)
     # print("End cindex")
-    # saveRDS(fitcindex, file = paste0(analyzes_dir, "pec_results/fit_cindex_", pec_B, ".rds"))
+    # saveRDS(fitcindex, file = paste0(analyzes_dir, "error_curves/fit_cindex_", pec_B, ".rds"))
     # png(paste0(analyzes_dir, "pec_plots/cindex_", pec_B, ".png"), width = 800, height = 600)
     # plot(fitcindex, what = "BootCvErr", xlim = c(0, 60),
     #      axis1.at = seq(0, 60, 5), axis1.label = seq(0, 60, 5))
