@@ -35,7 +35,6 @@ sample.estim.error <- function(data, indices, list_models, ipcw.formula, times) 
       warning(paste0(paste("NA value:", na_coefs, collapse = ""), 
                            ". Discarding these variables and re-fitting ", typeof(boot_model), "."))
       filtered_covariates <- filtered_covariates[!(filtered_covariates %in% na_coefs)]
-      print(filtered_covariates)
       filtered_formula_model <- get.surv.formula(event_col, filtered_covariates, duration_col = duration_col)
       boot_call$formula <- filtered_formula_model
       boot_model <- eval(boot_call)
@@ -58,21 +57,20 @@ sample.estim.error <- function(data, indices, list_models, ipcw.formula, times) 
 
 # Task for a slurm job: several sample.estim.error calls
 slurm_job_boot_estim_error <- function(nb_estim, data, list_models, ipcw.formula, times) {
-  resBoot <- foreach(i = 1:nb_estim, .combine = 'list') %do% {
+  listResBoot <- foreach(i = 1:nb_estim, .errorhandling = "pass") %do% {
     idx_boot <- sample(nrow(data), replace = T)
     sample.estim.error(data, idx_boot, list_models, ipcw.formula, times)
   }
   # Converts the result to have one list of models, where each element is a model
   # that contains the metrics of all bootstrap samples
-  resBoot <- do.call(function (...) Map(cbind, ...), resBoot)
+  resBoot <- do.call(function (...) Map(cbind, ...), listResBoot)
   return(resBoot)
 }
 
 # Bootstrap error estimation
 bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir, cens.model = "cox", 
-                                  B = 100, times = seq(1, 60, by = 1), logfile = NULL, 
-                                  boot.parallel = "foreach", boot.ncpus = min(get.nworkers(), B), 
-                                  estim_per_job = 5) {
+                                  B = 100, times = seq(1, 60, by = 1), logfile = NULL, error_estim_per_job = 10,
+                                  boot.parallel = "foreach", boot.ncpus = min(get.nworkers(), B)) {
   stopifnot(boot.parallel %in% c("foreach", "rslurm"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
   else log_appender(appender_stdout)
@@ -87,7 +85,7 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
   event_col <- all.vars(ipcw.formula[[2]])[2]
   functions_to_export <- c("sample.estim.error", "selection.coxnet", "predictSurvProb.selection.coxnet", 
                            "undo_parallelism", "predictSurvProb", "coxlasso_data", "get.coefs.cox", "get.na.coefs",
-                           "bootstrap.coxnet", "predictSurvProb.bootstrap.coxnet",
+                           "bootstrap.coxnet", "predictSurvProb.bootstrap.coxnet", "slurm_job_boot_estim_error",
                            "get.surv.formula", "get.best.lambda", "preliminary_filter", "filter_dummies_iccc")
   if (boot.parallel == "foreach") {
     log_info(paste("Bootstrap error estimation: creating a cluster with", boot.ncpus, "workers"))
@@ -106,9 +104,8 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
     resBoot <- do.call(function (...) Map(cbind, ...), listResBoot)
     parallel::stopCluster(cl)
   } else if (boot.parallel == "rslurm") {
-    estim_per_job <- 5
-    nb_estim_jobs <- rep(estim_per_job, B %/% estim_per_job)
-    if (B %% estim_per_job > 0) nb_estim_jobs <- c(nb_estim_jobs, B %% estim_per_job)
+    nb_estim_jobs <- rep(error_estim_per_job, B %/% error_estim_per_job)
+    if (B %% error_estim_per_job > 0) nb_estim_jobs <- c(nb_estim_jobs, B %% error_estim_per_job)
     log_info(paste("Number of slurm jobs:", length(nb_estim_jobs)))
     log_info(do.call(paste, as.list(nb_estim_jobs)))
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1, 
@@ -122,7 +119,7 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
     listResJobs <- get_slurm_out(sjob, outtype = "raw", wait = T)
     # Converts the result to have one list of models, where each element is a model
     # that contains the metrics of all bootstrap samples
-    resBoot <- do.call(function (...) Map(cbind, ...), listResJobs)
+    resBoot <- do.call(function (...) Map(cbind, ...), listResJobs) 
     cleanup_files(sjob, wait = T)
     log_info("End of all submitted jobs")
   }
@@ -132,9 +129,14 @@ bootstrap.estim.error <- function(data, ipcw.formula, list_models, analyzes_dir,
   resBoot <- Map(function(model_metrics) {
                  new_model_metrics <- apply(model_metrics, 1, function(list_metric) {
                                               matrix_metric <- do.call(rbind, list_metric)
-                                              stopifnot(nrow(matrix_metric) == B)
                                               matrix_metric
                                             })
+                 stopifnot({
+                   nrow(new_model_metrics[["Harrell's C-index"]]) == B
+                   nrow(new_model_metrics[["IPCW C-index tau"]]) == B
+                   nrow(new_model_metrics[["Brier score tau"]]) == B
+                   nrow(new_model_metrics[["IBS"]]) == B
+                 })
                  new_model_metrics$pred.times <- times
                  new_model_metrics
                  }, resBoot)
@@ -190,7 +192,7 @@ plot_error_curves <- function(resBoot, analyzes_dir) {
 }
 
 # Curve estimation error for several models
-pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfile = NULL) {
+pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, logfile = NULL) {
     if (!is.null(logfile)) log_appender(appender_file(logfile, append = TRUE))
     else log_appender(appender_stdout)
     file_dataset = paste0(analyzes_dir, "datasets/dataset.csv.gz")
@@ -240,21 +242,22 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
     model_name_rsf <- paste0("1320_radiomics_full_all")
     covariates_rsf_1320 <- c(clinical_vars, cols_rsf_1320_firstorder)
     formula_model_rsf <- get.surv.formula(event_col, covariates_rsf_1320, duration_col = duration_col)
-    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf, "/5_runs_full_test_metrics.csv"))[2,])
+    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf,
+                                           "/5_runs_full_test_metrics.csv"), row.names = 1)[2,])
     rsf_1320_params.best <<- read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf, "/",id_max_cv-1,"/cv.csv"))[1,]
     rsf_1320 <- rfsrc(formula_model_rsf, data = df_dataset, ntree = rsf_1320_params.best$ntree, 
                       nodesize = rsf_1320_params.best$nodesize, nsplit = rsf_1320_params.best$nsplit)
     rsf_1320$full_covariates <- covariates_rsf_1320
     rsf_1320$screening_method <- "all"
 
-    # Model Cox Lasso 32X full no screening
+    # Model Cox Lasso 32X full no screening 
     model_name_lasso_32X <- "32X_radiomics_full_lasso_all"
     covariates_lasso_32X <- c(cols_lasso_32X_full, clinical_vars)
     formula_model_lasso_32X <- get.surv.formula(event_col, covariates_lasso_32X, duration_col = duration_col)
     id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso_32X, 
-                                           "/5_runs_full_test_metrics.csv"))[2,])
-    lasso_32X_list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R/", 
-                                             model_name_lasso_32X, "/",id_max_cv-1,"/path_lambda.csv"))[["lambda"]]
+                                           "/5_runs_full_test_metrics.csv"), row.names = 1)[2,])
+    lasso_32X_list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso_32X, "/",
+                                             id_max_cv-1,"/path_lambda.csv"))[["lambda"]]
     coxlasso_32X <- selection.coxnet(formula_model_lasso_32X, data = df_dataset, 
                                      list.lambda = lasso_32X_list.lambda, type.measure = "C")
     coxlasso_32X$full_covariates <- covariates_lasso_32X
@@ -265,7 +268,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
     covariates_boot_lasso_32X <- c(cols_boot_lasso_32X, clinical_vars)
     formula_model_boot_lasso_32X <- get.surv.formula(event_col, covariates_boot_lasso_32X, duration_col = duration_col)
     id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
-                                           "/5_runs_full_test_metrics.csv"))[2,])
+                                           "/5_runs_full_test_metrics.csv"), row.names = 1)[2,])
     selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
                                          "/",id_max_cv-1,"/final_selected_features.csv"))[["selected_features"]]
     bootstrap_selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
@@ -280,7 +283,6 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
     formula_ipcw = get.ipcw.surv.formula(event_col, colnames(df_dataset), duration_col = duration_col)
     pred.times <- seq(1, 60, 1)
     pec_M = floor(0.7 * nrow(df_dataset))
-    pec_B = B
     compared_models <- list("Cox mean dose" = coxmean,
                             "Cox doses-volumes" = coxdv,
                             "Cox Lasso heart's subparts dosiomics" = coxlasso_32X,
@@ -314,10 +316,10 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, B = 200, logfi
           })
     
     # Self-made bootstrap error estimation
-    log_info(paste("B =", B))
+    log_info(paste("n_boot =", n_boot))
     boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
     boot_error <- bootstrap.estim.error(df_dataset, formula_ipcw, compared_models, analyzes_dir, 
-                                        B = B, times = pred.times, 
+                                        B = n_boot, times = pred.times, 
                                         logfile = NULL, boot.parallel = boot.parallel)
     boot_error$pretty_model_names <- pretty_model_names
     saveRDS(boot_error, paste0(analyzes_dir, "error_curves/boot_error.rds"))
