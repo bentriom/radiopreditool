@@ -197,11 +197,12 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
     log_info("End of all submitted jobs")
   }
   filename_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_full_test_metrics.csv")
+  rownames(results) <- index_results
   write.csv(results, file = filename_results, row.names = T)
-  df_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
-  rownames(df_results) <- index_results
-  filename_df_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
-  write.csv(df_results, file = filename_df_results, row.names = T)
+  summary_results <- data.frame(Mean = apply(results, 1, mean), Std = apply(results, 1, sd)) 
+  rownames(summary_results) <- index_results
+  filename_summary_results <- paste0(analyzes_dir, "rsf/", model_name, "/", nb_estim, "_runs_test_metrics.csv")
+  write.csv(summary_results, file = filename_summary_results, row.names = T)
 }
 
 # Plot of features importances with VIMP method

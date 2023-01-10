@@ -385,10 +385,8 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
 
 # Feature elimination pipeline with hclust on kendall's tau corr
 def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", feature_select_method = "univariate_cox"):
-    if id_set == "":
-        file_trainset = analyzes_dir + "datasets/dataset.csv.gz"
-    else:
-        file_trainset = analyzes_dir + f"trainset_{id_set}.csv.gz"
+    file_trainset = f"{analyzes_dir}datasets/"
+    file_trainset = f"{file_trainset}dataset.csv.gz" if id_set == "" else f"{file_trainset}trainset_{id_set}.csv.gz"
     df_trainset = pd.read_csv(file_trainset)
     features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
     labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("[0-9]+_.*", label)])
@@ -429,7 +427,8 @@ def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", featur
     kept_cols = [feature for feature in df_trainset.columns \
                  if not re.match("[0-9]{3,4}_.*", feature) or feature in filter_2_cols_radiomics]
     os.makedirs(analyzes_dir + "screening", exist_ok = True)
-    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + f"screening/features_hclust_corr_{id_set}.csv",
+    end_filename = "" if id_set == "" else f"_{id_set}"
+    pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + f"screening/features_hclust_corr{end_filename}.csv",
                                                  index = False, header = None)
     # df_trainset[kept_cols].to_csv(analyzes_dir + "preprocessed_trainset.csv.gz", index = False)
 
