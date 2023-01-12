@@ -251,7 +251,7 @@ slurm_job_boot_coxnet <- function(nb_coxnet, data, lasso_data_full, formula, alp
 bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, run_type = "selection",
                              best.lambda.method = "lambda.1se", nfolds = 5, boot.parallel = "foreach", 
                              boot.ncpus = get.nworkers(), coxnet_per_job = 5, 
-                             type.measure = "C", bolasso.threshold = 0.8, selected_features = NULL,
+                             type.measure = "C", bolasso.threshold = 0.9, selected_features = NULL,
                              bootstrap_selected_features = NULL, logfile = NULL) {
     stopifnot(boot.parallel %in% c("boot.multicore", "foreach", "rslurm"))
     stopifnot(run_type %in% c("selection", "error_estimation"))

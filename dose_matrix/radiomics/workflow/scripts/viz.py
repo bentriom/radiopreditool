@@ -250,7 +250,7 @@ def results_plots(analyzes_dir, nb_estim):
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
     fig_scatter.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS")
-    fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_all.svg", width = 1200, height = 900)
+    fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_all.svg", width = 1200, height = 800)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
         trace_scatter = go.Scatter(fig_scatter.data[i],
@@ -274,7 +274,7 @@ def results_plots(analyzes_dir, nb_estim):
                              ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
     fig_scatter.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
-    fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_features_hclust_corr.svg", width = 1200, height = 900)
+    fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_features_hclust_corr.svg", width = 1200, height = 800)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
@@ -294,7 +294,7 @@ def results_plots(analyzes_dir, nb_estim):
     fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 2)
     fig.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
 
-    fig.write_image(f"{save_plots_dir}multiple_scores_ibs.svg", width = 1200, height = 1200)
+    fig.write_image(f"{save_plots_dir}multiple_scores_ibs.svg", width = 1200, height = 800)
 
 ## Latex tables
 
