@@ -238,8 +238,8 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, 
     coxdv$full_covariates <- covariates_coxdv
     coxdv$screening_method <- "all"
 
-    # Model rsf 1320 radiomics firstorder no screening
-    model_name_rsf <- paste0("1320_radiomics_full_all")
+    # Model rsf 1320 radiomics firstorder with screening
+    model_name_rsf <- paste0("1320_radiomics_firstorder_features_hclust_corr")
     covariates_rsf_1320 <- c(clinical_vars, cols_rsf_1320_firstorder)
     formula_model_rsf <- get.surv.formula(event_col, covariates_rsf_1320, duration_col = duration_col)
     id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf,
@@ -248,7 +248,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, 
     rsf_1320 <- rfsrc(formula_model_rsf, data = df_dataset, ntree = rsf_1320_params.best$ntree, 
                       nodesize = rsf_1320_params.best$nodesize, nsplit = rsf_1320_params.best$nsplit)
     rsf_1320$full_covariates <- covariates_rsf_1320
-    rsf_1320$screening_method <- "all"
+    rsf_1320$screening_method <- "features_hclust_corr"
 
     # Model Cox Lasso 32X full no screening 
     model_name_lasso_32X <- "32X_radiomics_full_lasso_all"
