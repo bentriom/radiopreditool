@@ -1,5 +1,6 @@
 
 options(show.error.locations = TRUE, error=traceback)
+require("patchwork")
 
 source("workflow/scripts/utils_cox.R")
 source("workflow/scripts/utils_rsf.R")
@@ -172,23 +173,28 @@ plot_error_curves <- function(resBoot, analyzes_dir) {
   save_results_dir <- paste0(analyzes_dir, "plots/")
   colors_models <- as.character(lapply(resBoot$pretty_model_names, get_color_model))
   # Plot IPCW C-index curve
-  ggplot(df_plot, aes(x = times, y = mean_ipcw_cindex, color = pretty_model_name)) + geom_line() + 
-  geom_ribbon(aes(ymin = mean_ipcw_cindex - std_ipcw_cindex, ymax = mean_ipcw_cindex + std_ipcw_cindex, 
-                  fill = pretty_model_name), linetype = 0, alpha = 0.2, show.legend = F) +
-  scale_color_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
-  scale_fill_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
-  ylim(0.4, NA) +
-  labs(x = "Time (years)", y = "Bootstrap mean of IPCW C-index", color = "Model name")
-  ggsave(paste0(save_results_dir, "error_curve_ipcw_cindex.png"), device = "png", dpi = 480)
+  cindex_plot <- ggplot(df_plot, aes(x = times, y = mean_ipcw_cindex, color = pretty_model_name)) + geom_line() + 
+                 geom_ribbon(aes(ymin = mean_ipcw_cindex - std_ipcw_cindex, ymax = mean_ipcw_cindex + std_ipcw_cindex, 
+                                 fill = pretty_model_name), linetype = 0, alpha = 0.2, show.legend = F) +
+                 scale_color_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+                 scale_fill_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+                 ylim(0.4, NA) +
+                 labs(x = "Time (years)", y = "Bootstrap mean of IPCW C-index", color = "Model name") +
+                 theme(aspect.ratio = 1.5)
+  ggsave(paste0(save_results_dir, "error_curve_ipcw_cindex.png"), plot = cindex_plot, device = "png", dpi = 480)
   # Plot brier score curve
-  ggplot(df_plot, aes(x = times, y = mean_bs, color = pretty_model_name)) + geom_line() + 
-  geom_ribbon(aes(ymin = mean_bs - std_bs, ymax = mean_bs + std_bs, 
-                  fill = pretty_model_name), linetype = 0, alpha = 0.2, show.legend = F) +
-  scale_color_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
-  scale_fill_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
-  ylim(0, NA) +
-  labs(x = "Time (years)", y = "Bootstrap mean of Brier score", color = "Model name")
-  ggsave(paste0(save_results_dir, "error_curve_brier_score.png"), device = "png", dpi = 480)
+  bs_plot <- ggplot(df_plot, aes(x = times, y = mean_bs, color = pretty_model_name)) + geom_line() + 
+             geom_ribbon(aes(ymin = mean_bs - std_bs, ymax = mean_bs + std_bs, 
+                             fill = pretty_model_name), linetype = 0, alpha = 0.2, show.legend = F) +
+             scale_color_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+             scale_fill_manual(breaks = resBoot$pretty_model_names, values = colors_models) +
+             ylim(0, NA) +
+             labs(x = "Time (years)", y = "Bootstrap mean of Brier score", color = "Model name") +
+             theme(aspect.ratio = 1.5)
+  ggsave(paste0(save_results_dir, "error_curve_brier_score.png"), plot = bs_plot, device = "png", dpi = 480)
+  full_plots <- cindex_plot + bs_plot + patchwork::plot_layout(guides = "collect") & 
+                theme(legend.position = "top", aspect.ratio = 2) & guides(color = guide_legend(nrow = 3, byrow = T))
+  ggsave(paste0(save_results_dir, "error_curves.png"), plot = full_plots, device = "png", dpi = 480)
 }
 
 # Curve estimation error for several models
