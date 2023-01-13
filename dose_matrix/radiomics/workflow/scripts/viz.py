@@ -14,9 +14,9 @@ def get_color(model):
     elif splits[0] == "C":
         return "Cox PH"
     elif splits[0] == "CL":
-            return "Cox PH with Lasso penalty"
+            return "Cox PH Lasso"
     elif splits[0] == "CBL":
-        return "Cox PH with Bootstrap Lasso"
+        return "Cox PH Bootstrap Lasso"
 
 def results_plots(analyzes_dir, nb_estim):
     coxph_results_dir = f"{analyzes_dir}coxph_R/"
@@ -106,19 +106,22 @@ def results_plots(analyzes_dir, nb_estim):
     df_results_multiple.loc[:, "model type"] = df_results_multiple["model"].apply(get_color)
 
     ## Plots settings
-    color_map = {'Random Survival Forest': 'red', 'Cox PH with Lasso penalty': 'blue',
-                 'Cox PH with Bootstrap Lasso': 'purple', 'Cox PH': 'green'}
-    symbol_map = {'Random Survival Forest': 'diamond-open', 'Cox PH with Lasso penalty': 'square-open',
-                  'Cox PH with Bootstrap Lasso': 'x-open', 'Cox PH': 'circle-open'}
+    color_map = {'Random Survival Forest': 'red', 'Cox PH Lasso': 'blue',
+                 'Cox PH Bootstrap Lasso': 'purple', 'Cox PH': 'green'}
+    symbol_map = {'Random Survival Forest': 'diamond-open', 'Cox PH Lasso': 'square-open',
+                  'Cox PH Bootstrap Lasso': 'x-open', 'Cox PH': 'circle-open'}
     xaxis_angle = -50
-    xaxis_size = 16
+    xaxis_size = 19.5
+    legend_size = 18
     format_xaxis = lambda model: model.split(' ', 1)[1].replace('screened ', '').capitalize()
 
     ## Harrell's C-index multiple runs
     df_results_multiple.sort_values(by = ["mean_harrell"], ascending = False, inplace = True)
     max_harrell_cindex = df_results_multiple.iloc[0]["mean_harrell"]
-    fig = make_subplots(rows = 2, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
+    fig = make_subplots(rows = 2, cols = 2, horizontal_spacing = 0.13, vertical_spacing = 0.41,
                         subplot_titles = ("All features", "Pre-screening", "All features", "Pre-screening"))
+    fig.update_layout(legend = dict(orientation = "h", font = {'size': legend_size},
+                                    xanchor = "left", x = 0, yanchor = "bottom", y = 1.04))
 
     # No screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_all, :], x = "model", y = "mean_harrell",
@@ -126,8 +129,8 @@ def results_plots(analyzes_dir, nb_estim):
     fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
     fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
-    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index")
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index")
     fig_scatter.write_image(f"{save_plots_dir}multiple_scores_harrell_cindex_all.svg", width = 1200, height = 900)
     for i in range(len(fig_scatter.data)):
         name_scatter = fig_scatter.data[i]["name"]
@@ -142,16 +145,16 @@ def results_plots(analyzes_dir, nb_estim):
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 1)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis), row = 1, col = 1)
-    fig.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 1)
     fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 1)
+    fig.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 1)
     # Features hclust correlation screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_features_hclust_corr, :], x = "model", y = "mean_harrell",
                              color = "model type", error_y = "std_harrell")
     fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
     fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                              ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
-    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 2)
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 2)
     fig_scatter.write_image(f"{save_plots_dir}multiple_scores_harrell_cindex_features_hclust_corr.svg", width = 1200, height = 900)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
@@ -169,8 +172,8 @@ def results_plots(analyzes_dir, nb_estim):
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                      ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis),
                      row = 1, col = 2)
-    fig.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 2)
     fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 2)
+    fig.update_yaxes(range = [0.5, 1.0], title = "Mean Harrell's C-index", row = 1, col = 2)
 
     ## IPCW C-index multiple runs
     df_results_multiple.sort_values(by = ["mean_ipcw"], ascending = False, inplace = True)
@@ -182,8 +185,8 @@ def results_plots(analyzes_dir, nb_estim):
     fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
     fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                      ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
-    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index")
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index")
     fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ipcw_cindex_all.svg", width = 1200, height = 900)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
@@ -199,8 +202,8 @@ def results_plots(analyzes_dir, nb_estim):
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 2, col = 1)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                      ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis), row = 2, col = 1)
-    fig.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index", row = 2, col = 1)
     fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 2, col = 1)
+    fig.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index", row = 2, col = 1)
 
     # Features hclust correlation screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_features_hclust_corr, :], x = "model", y = "mean_ipcw",
@@ -208,8 +211,8 @@ def results_plots(analyzes_dir, nb_estim):
     fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
     fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                              ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
-    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index")
     fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index")
     fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ipcw_cindex_features_hclust_corr.svg", width = 1200, height = 900)
     fig_scatter.update_traces(showlegend = False)
     for i in range(len(fig_scatter.data)):
@@ -227,13 +230,13 @@ def results_plots(analyzes_dir, nb_estim):
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                      ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis),
                      row = 2, col = 2)
-    fig.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index", row = 2, col = 2)
     fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 2, col = 2)
+    fig.update_yaxes(range = [0.5, 1.0], title = "Mean IPCW C-index", row = 2, col = 2)
 
-    fig.update_layout(legend = {'font' : {'size' : 15}})
-    fig.update_layout(title = "C-index score", title_x = 0.5)
+    # fig.update_layout(title = "C-index score", title_x = 0.5)
 
     fig.write_image(f"{save_plots_dir}multiple_scores_cindex.svg", width = 1200, height = 1200)
+    fig.write_image(f"{save_plots_dir}multiple_scores_cindex.png", width = 1200, height = 1200)
 
     ## Plot IBS
     df_results_multiple.sort_values(by = ["mean_ibs"], ascending = False, inplace = True)
@@ -241,6 +244,8 @@ def results_plots(analyzes_dir, nb_estim):
     y_max_ibs = 1.1 * (df_results_multiple["mean_ibs"] + df_results_multiple["std_ibs"]).max()
     fig = make_subplots(rows = 1, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
                         subplot_titles = ("All features", "Pre-screening"))
+    fig.update_layout(legend = dict(orientation = "h", font = {'size': legend_size},
+                                    xanchor = "left", x = 0, yanchor = "bottom", y = 1.06))
 
     # No screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_all, :], x = "model", y = "mean_ibs",
@@ -295,6 +300,7 @@ def results_plots(analyzes_dir, nb_estim):
     fig.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
 
     fig.write_image(f"{save_plots_dir}multiple_scores_ibs.svg", width = 1200, height = 800)
+    fig.write_image(f"{save_plots_dir}multiple_scores_ibs.png", width = 1200, height = 800)
 
 ## Latex tables
 
