@@ -35,6 +35,8 @@ def fill_missing(df_fccss):
     # Patients who have pathol cardiaque >= grade 3, a date_pc but no date_pc_3
     mask = pd.isnull(df_fccss["date_pathol_cardiaque_3"]) & (df_fccss["Pathologie_cardiaque_3"] == 1)
     df_fccss.loc[mask, "date_pathol_cardiaque_3"] = df_fccss.loc[mask, "date_pathol_cardiaque"]
+    mask = pd.isnull(df_fccss["date_pathol_cardiaque_3_new"]) & (df_fccss["Pathologie_cardiaque_3_new"] == 1)
+    df_fccss.loc[mask, "date_pathol_cardiaque_3_new"] = df_fccss.loc[mask, "date_pathol_cardiaque"]
     # Dummy variables for the first cancer (iccc)
     enc = OneHotEncoder()
     enc.fit(df_fccss["iccc"].values.reshape(-1,1))
@@ -56,7 +58,7 @@ def fill_missing(df_fccss):
         if age > 15:
             return 3
     df_fccss.loc[:, "age_at_diagnosis"] = df_fccss[["date_diag", "date_nais"]].apply(age_at_diagnosis, axis=1)
-    df_fccss.loc[:, "categ_age_at_diagnosis"] = df_fccss["age_at_diagnosis"].apply(categ_age_at_diagnosis)   
+    df_fccss.loc[:, "categ_age_at_diagnosis"] = df_fccss["age_at_diagnosis"].apply(categ_age_at_diagnosis)
 
 # Compute survival times
 def survival_date(event_col, date_event_col, row):
