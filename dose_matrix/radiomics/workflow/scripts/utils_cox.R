@@ -262,6 +262,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, run_
     event_col <- all.vars(formula[[2]])[2]
     lasso_data_full <- coxlasso_data(data, covariates, event_col, duration_col)
     log_info(paste("Bootstrap lasso, best lambda method:", best.lambda.method))
+    log_info(paste("Bootstrap Lasso threshold:", bolasso.threshold))
     log_info(paste("Bootstrap lasso, run type:", run_type))
     if (is.null(selected_features)) {
         log_info(paste("Bootstrap lasso: parallel method is", boot.parallel))
@@ -456,13 +457,11 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
                                          logfile = coxlasso_logfile)
         } else {
             boot.parallel <- `if`(Sys.getenv("SLURM_NTASKS") == "", "foreach", "rslurm")
+            bolasso.threshold <- 0.8
             coxmodel <- bootstrap.coxnet(df_model_train, formula_model, pred.times, B = n_boot,
-                                         boot.parallel = boot.parallel,
+                                         boot.parallel = boot.parallel, bolasso.threshold = bolasso.threshold,
                                          best.lambda.method = best.lambda.method, logfile = coxlasso_logfile)
             if (save_results) {
-                # print("Results dir:")
-                # print(save_results_dir)
-                # print(getwd())
                 write.csv(coxmodel$bootstrap_selected_features, row.names = F, 
                           file = paste0(save_results_dir, "bootstrap_selected_features.csv"))
                 write.csv(data.frame(selected_features = coxmodel$selected_features), row.names = F,

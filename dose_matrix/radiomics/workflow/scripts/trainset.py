@@ -420,7 +420,8 @@ def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", featur
     # Eliminate columns with unique values
     unique_cols = [c for c in df_covariates_hclust.columns if len(df_covariates_hclust[c].unique()) == 1]
     df_covariates_hclust.drop(columns = unique_cols, inplace = True)
-    corr_threshold = 0.85
+    corr_threshold = 0.8
+    logger.info(f"Correlation threshold: {corr_threshold}")
     surv_duration_col = "survival_time_years"
     logger.info(f"Hclust on dataframe: {df_covariates_hclust.shape}")
     filter_2_cols_radiomics = filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold,
