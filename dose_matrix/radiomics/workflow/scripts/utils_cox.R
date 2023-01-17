@@ -287,7 +287,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, run_
                              .packages = c("survival")) %dopar% {
             idx_boot <- sample(nrow(data), replace = T)
             sample.selection.coxnet(data, idx_boot, lasso_data_full, formula, alpha, 
-                                    best.lambda.method, nfolds, type.measure, pred.times)
+                                    best.lambda.method, nfolds, type.measure, pred.times, run_type)
           }
           if (nrow(resBoot[,-c(1,2)]) != B) stop(paste("Bootstrap matrix nrow:", nrow(resBoot[,-c(1,2)]), "- B:", B))
           parallel::stopCluster(cl)
