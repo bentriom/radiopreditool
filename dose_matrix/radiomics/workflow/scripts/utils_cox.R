@@ -535,7 +535,7 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     }
     if (do_plot) {
         plot_cox_coefs(save_results_dir)
-        if (penalty == "lasso") {plot_cox_lambda_path(save_results_dir)
+        if (penalty == "lasso") plot_cox_lambda_path(save_results_dir)
         if (penalty == "bootstrap_lasso") plot_bootstrap_cox(save_results_dir, n_boot)
     }
     log_threshold(INFO)
@@ -600,9 +600,9 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
 # Plots of cox models : coefficients
 plot_cox_coefs <- function(save_results_dir) {
   df_coefs <- read.csv(paste0(save_results_dir, "best_coefs.csv"))
-  names.nonnull.coefs <- df_coefs[abs(df_coefs$coefs) > 0, "labels"]
+  df_coefs <- df_coefs[abs(df_coefs$coefs) > 0, ]
   df_coefs <- df_coefs[order(-abs(df_coefs$coefs)), ]
-  ggplot(subset(df_coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + 
+  ggplot(df_coefs, aes(x = reorder(labels, abs(coefs)), y = coefs)) +
   geom_bar(stat = "identity") + coord_flip() 
   ggsave(paste0(save_results_dir, "coefs.png"), device = "png", dpi = 480)
 }
