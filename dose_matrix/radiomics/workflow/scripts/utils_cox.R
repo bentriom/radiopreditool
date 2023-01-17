@@ -433,6 +433,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             cv.params <- coxmodel$coxnet.cv.params
             best.lambda <- coxmodel$best.lambda
             if (save_results) {
+                mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
+                rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
+                write.csv(mat.coefs, file = paste0(save_results_dir, "mat_coefs.csv"), row.names = T)
                 write.csv(cv.params, file = paste0(save_results_dir, "cv.csv"), row.names = F)
                 write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), row.names = F, 
                           file = paste0(save_results_dir, "best_params.csv"))
@@ -520,18 +523,21 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
     df_results <- data.frame(Train = results_train, Test = results_test)
     rownames(df_results) <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
     if (save_results) {
+        # Save coefs from final Cox PH fit
+        if (is(coxmodel, "selection.coxnet") | is(coxmodel, "bootstrap.coxnet")) coxph_fit <- coxmodel$coxph.fit
+        else coxph_fit <- coxmodel
+        best_coefs <- coef(coxph_fit)
+        df_coefs = data.frame(labels = pretty.labels(names(best_coefs)), raw_labels = names(best_coefs),
+                              coefs = best_coefs)
+        df_coefs <- df_coefs[order(-abs(df_coefs$coefs)), ]
+        write.csv(df_coefs, file = paste0(save_results_dir, "best_coefs.csv"), row.names = F)
         write.csv(df_results, file = paste0(save_results_dir, "metrics.csv"), row.names = T)
         if (save_rds) saveRDS(coxmodel, file = paste0(save_results_dir, "model.rds"))
     }
     if (do_plot) {
-        if (penalty == "none") {
-            plot_cox(coxmodel, save_results_dir) # coxph
-        } else if (penalty == "lasso") {
-            plot_cox(coxmodel$coxnet.fit, save_results_dir) # selection.coxnet$coxnet
-        } else if (penalty == "bootstrap_lasso") {
-            plot_cox(coxmodel$coxph.fit, save_results_dir) # bootstrap.coxnet$coxph
-            plot_bootstrap(coxmodel, save_results_dir, n_boot) # bootstrap.coxnet
-        }
+        plot_cox_coefs(save_results_dir)
+        if (penalty == "lasso") {plot_cox_lambda_path(save_results_dir)
+        if (penalty == "bootstrap_lasso") plot_bootstrap_cox(save_results_dir, n_boot)
     }
     log_threshold(INFO)
     results_test
@@ -592,63 +598,58 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   write.csv(summary_results, file = filename_summary_results, row.names = T)
 }
 
-# Plots of cox models : coefficients, regularization path, CV error for lambda estimation
-plot_cox <- function(cox_object, save_results_dir) {
-    # Coefficients of best Cox
-    if (is(cox_object, "cv.glmnet") | is(cox_object, "glmnet")) {
-        best.params <- read.csv(paste0(save_results_dir, "best_params.csv"))
-        best.lambda <- best.params[1, "penalty"]
-    }
-    best.coefs.cox <- `if`(is(cox_object, "glmnet") | is(cox_object, "cv.glmnet"), 
-                           coef(cox_object, s = best.lambda)[,1], coef(cox_object))
-    names.nonnull.coefs <- pretty.labels(names(best.coefs.cox[abs(best.coefs.cox) > 0]))
-    df.coefs = data.frame(labels = pretty.labels(names(best.coefs.cox)), coefs = best.coefs.cox)
-    ggplot(subset(df.coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + 
-    geom_bar(stat = "identity") + coord_flip() 
-    ggsave(paste0(save_results_dir, "coefs.png"), device = "png", dpi = 480)
-    # Regularization path + mean error for Cox Lasso
-    if (is(cox_object, "cv.glmnet")) {
-        # Mean errors of cross-validation
-        cv.params <- read.csv(paste0(save_results_dir, "cv.csv"))
-        cv.params.unique <- cv.params[order(-cv.params$non_zero_coefs, cv.params$penalty), ]
-        cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
-        mask_even = which((1:nrow(cv.params.unique)) %% 2 == 0)
-        ggplot(cv.params, aes(x = penalty, y = mean_score)) +
-        geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), fill = "blue", alpha = 0.5) +
-        geom_line(color = "blue") + geom_point(color = " red") +
-        geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
-        geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
-        geom_point(data = cv.params.unique, aes(x = penalty, y = mean_score), color = "purple") +
-        geom_text(data = cv.params.unique[mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), 
-                  size = 3, vjust = -1) +
-        geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), 
-                  size = 3, vjust = 2) +
-        scale_x_log10() +
-        labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
-        ggsave(paste0(save_results_dir, "cv_mean_error.png"), device = "png", dpi = 480)
-        # Regularization path
-        mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
-        rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
-        df.mat.coefs <- melt(mat.coefs)
-        colnames(df.mat.coefs) <- c("lambda", "varname", "coef")
-        df.mat.coefs[, "varname"] <- pretty.labels(as.character(df.mat.coefs[["varname"]]))
-        first.lambda <- rownames(mat.coefs)[nrow(mat.coefs)]
-        ggplot(df.mat.coefs, aes(x = lambda, y = coef, color = varname)) + geom_line() + 
-        xlab("Penalty (log10)") + ylab("Coefficient") + theme(legend.position = "none") +
-        geom_text(data = subset(df.mat.coefs, lambda == first.lambda & varname %in% names.nonnull.coefs), 
-                  aes(x = lambda, y = coef, label = pretty.labels(as.character(varname))), size = 3, hjust = 1) +
-        coord_cartesian(clip = 'off') +
-        theme(plot.margin = unit(c(1,1,1,1), "lines"), axis.title.y = element_text(margin = margin(0,2,0,0, "cm"))) + 
-        geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
-        geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
-        scale_x_log10()
-        ggsave(paste0(save_results_dir, "regularization_path.png"), device = "png", dpi = 480)
-    }
+# Plots of cox models : coefficients
+plot_cox_coefs <- function(save_results_dir) {
+  df_coefs <- read.csv(paste0(save_results_dir, "best_coefs.csv"))
+  names.nonnull.coefs <- df_coefs[abs(df_coefs$coefs) > 0, "labels"]
+  df_coefs <- df_coefs[order(-abs(df_coefs$coefs)), ]
+  ggplot(subset(df_coefs, labels %in% names.nonnull.coefs), aes(x = labels, y = coefs)) + 
+  geom_bar(stat = "identity") + coord_flip() 
+  ggsave(paste0(save_results_dir, "coefs.png"), device = "png", dpi = 480)
+}
+
+# Plots of cox models: regularization path with CV error for lambda estimation
+plot_cox_lambda_path <- function(save_results_dir) {
+  # Mean errors of cross-validation
+  cv.params <- read.csv(paste0(save_results_dir, "cv.csv"))
+  cv.params.unique <- cv.params[order(-cv.params$non_zero_coefs, cv.params$penalty), ]
+  cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
+  mask_even = which((1:nrow(cv.params.unique)) %% 2 == 0)
+  ggplot(cv.params, aes(x = penalty, y = mean_score)) +
+  geom_ribbon(aes(ymin = mean_score - std_score, ymax = mean_score + std_score), fill = "blue", alpha = 0.5) +
+  geom_line(color = "blue") + geom_point(color = " red") +
+  geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
+  geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
+  geom_point(data = cv.params.unique, aes(x = penalty, y = mean_score), color = "purple") +
+  geom_text(data = cv.params.unique[mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), 
+            size = 3, vjust = -1) +
+  geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs), 
+            size = 3, vjust = 2) +
+  scale_x_log10() +
+  labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
+  ggsave(paste0(save_results_dir, "cv_mean_error.png"), device = "png", dpi = 480)
+  # Regularization path
+  mat.coefs <- read.csv(paste0(save_results_dir, "mat_coefs.csv"))
+  df.mat.coefs <- melt(mat.coefs)
+  colnames(df.mat.coefs) <- c("lambda", "varname", "coef")
+  df.mat.coefs[, "varname"] <- pretty.labels(as.character(df.mat.coefs[["varname"]]))
+  first.lambda <- rownames(mat.coefs)[nrow(mat.coefs)]
+  ggplot(df.mat.coefs, aes(x = lambda, y = coef, color = varname)) + geom_line() + 
+  xlab("Penalty (log10)") + ylab("Coefficient") + theme(legend.position = "none") +
+  geom_text(data = subset(df.mat.coefs, lambda == first.lambda & varname %in% names.nonnull.coefs), 
+            aes(x = lambda, y = coef, label = pretty.labels(as.character(varname))), size = 3, hjust = 1) +
+  coord_cartesian(clip = 'off') +
+  theme(plot.margin = unit(c(1,1,1,1), "lines"), axis.title.y = element_text(margin = margin(0,2,0,0, "cm"))) + 
+  geom_vline(xintercept = cv.params[1, "penalty"], color = "orange") +
+  geom_vline(xintercept = best.params[1, "penalty"], color = "darkgreen", linetype = "dotdash") +
+  scale_x_log10()
+  ggsave(paste0(save_results_dir, "regularization_path.png"), device = "png", dpi = 480)
 }
 
 # Plot bootstrap selected coefficients + error statistics
-plot_bootstrap <- function(object, save_results_dir, B) {
-    freq_selection <- colSums(object$bootstrap_selected_features[, colSums(object$bootstrap_selected_features) > 0])
+plot_bootstrap_cox <- function(save_results_dir, B) {
+    bootstrap_selected_features <- read.csv(paste0(save_results_dir, "bootstrap_selected_features.csv"))
+    freq_selection <- colSums(bootstrap_selected_features[, colSums(bootstrap_selected_features) > 0])
     df.coefs = data.frame(labels = pretty.labels(names(freq_selection)), coefs = freq_selection)
     df.coefs = df.coefs[order(-df.coefs$coefs), ]
     if (nrow(df.coefs) > 30) df.coefs <- df.coefs[1:30, ]
