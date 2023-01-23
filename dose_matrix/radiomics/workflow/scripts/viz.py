@@ -309,8 +309,9 @@ def generate_line_set(df, set_type):
            f"& ${df.loc['BS at 60',set_type]:.3f}$ & ${df.loc['IBS',set_type]:.3f}$"
 
 def generate_line_multiple(df):
-    return f"${df.loc['C-index','Mean']:.3f} \pm {df.loc['C-index','Std']:.3f}$ & \
-             ${df.loc['IBS','Mean']:.3f} \pm {df.loc['IBS','Std']:.3f}$"
+    return f"${df.loc['C-index','Mean']:.3f} \pm {df.loc['C-index','Std']:.3f}$ & " \
+           f"${df.loc['IPCW C-index','Mean']:.3f} \pm {df.loc['IPCW C-index','Std']:.3f}$ & " \
+           f"${df.loc['IBS','Mean']:.3f} \pm {df.loc['IBS','Std']:.3f}$"
 
 def latex_tables(analyzes_dir, nb_estim):
     coxph_results_dir = f"{analyzes_dir}coxph_R/"
@@ -352,45 +353,62 @@ def latex_tables(analyzes_dir, nb_estim):
     df_multiple_rsf_32X_filter = pd.read_csv(rsf_results_dir + f"32X_radiomics_full_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
 
     #table_multiple = "\\begin{tabular}{|c|c|c|c|c|}\n"
-    table_multiple = "\\begin{tabular}{|c|c|c|}\n"
+    table_multiple = "\\begin{tabular}{|l|c|c|c|c|c|c|}\n"
     table_multiple += "\\hline\n"
-    #table_multiple += "Model  & C-index & IPCW C-index & BS at 60 & IBS \\\\ \\hline\n"
-    table_multiple += "Model  & C-index & IBS \\\\ \\hline\n"
-    table_multiple += f"Cox mean heart dose & {generate_line_multiple(df_multiple_cox_mean)} \\\\ \\hline\n"
-    table_multiple += f"Cox doses volumes & {generate_line_multiple(df_multiple_dosesvol)} \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso doses volumes & {generate_line_multiple(df_multiple_dosesvol_lasso)}  \\\\ \\hline\n"
-    table_multiple += f"RSF doses volumes & {generate_line_multiple(df_multiple_rsf_dosesvol)}  \\\\ \\hline\n"
+    table_multiple += "\\multirow{2}{*}{Model} & \\multicolumn{3}{c}{All features} & \\multicolumn{3}{c}{Pre-screening} \\\\ \\cline{2-7}" \
+                      "& Harrell's C-index & IPCW C-index & IBS & Harrell's C-index & IPCW C-index & IBS  \\\\ \hline"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox \\\\ Mean heart dose\\end{tabular}  & " \
+                      f"{generate_line_multiple(df_multiple_cox_mean)} & & & \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox \\\\ Dose-volume indicators\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_dosesvol)} & & & \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Lasso \\\\ Dose-volume indicators\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_dosesvol_lasso)} & & & \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}RSF \\\\ Dose-volume indicators\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_dosesvol)} & & & \\\\ \\hline\n"
     # Firstorder radiomics Cox Lasso
-    table_multiple += f"Cox Lasso whole heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_cox_1320_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso whole heart firstorder (FETrain) & {generate_line_multiple(df_multiple_cox_1320_filter_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso subparts of heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_cox_32X_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso subparts of heart firstorder (FETrain) & {generate_line_multiple(df_multiple_cox_32X_filter_firstorder)}  \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Lasso \\\\ Whole heart firstorder dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_1320_firstorder)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_1320_filter_firstorder)} \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Lasso \\\\ Heart's subparts firstorder dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_32X_firstorder)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_32X_filter_firstorder)} \\\\ \\hline\n"
     # Full radiomics Cox Lasso
-    table_multiple += f"Cox Lasso whole heart (AllTrain) & {generate_line_multiple(df_multiple_cox_1320)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso whole heart (FETrain) & {generate_line_multiple(df_multiple_cox_1320_filter)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso subparts of heart (AllTrain) & {generate_line_multiple(df_multiple_cox_32X)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Lasso subparts of heart (FETrain) & {generate_line_multiple(df_multiple_cox_32X_filter)}  \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Lasso \\\\ Whole heart dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_1320)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_1320_filter)} \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Lasso \\\\ Heart's subparts dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_32X)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_32X_filter)} \\\\ \\hline\n"
     # Firstorder radiomics Cox Bootstrap Lasso
-    table_multiple += f"Cox Bootstrap Lasso whole heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_cox_boot_1320_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Bootstrap Lasso whole heart firstorder (FETrain) & {generate_line_multiple(df_multiple_cox_boot_1320_filter_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Bootstrap Lasso subparts of heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_cox_boot_32X_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Bootstrap Lasso subparts of heart firstorder (FETrain) & {generate_line_multiple(df_multiple_cox_boot_32X_filter_firstorder)}  \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Bootstrap Lasso \\\\ Whole heart firstorder dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_1320_firstorder)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_1320_filter_firstorder)} \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Bootstrap Lasso \\\\ Heart's subparts firstorder dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_32X_firstorder)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_32X_filter_firstorder)} \\\\ \\hline\n"
     # Full radiomics Cox Bootstrap Lasso
-    table_multiple += f"Cox Bootstrap Lasso whole heart (AllTrain) & {generate_line_multiple(df_multiple_cox_boot_1320)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Bootstrap Lasso whole heart (FETrain) & {generate_line_multiple(df_multiple_cox_boot_1320_filter)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Bootstrap Lasso subparts of heart (AllTrain) & {generate_line_multiple(df_multiple_cox_boot_32X)}  \\\\ \\hline\n"
-    table_multiple += f"Cox Bootstrap Lasso subparts of heart (FETrain) & {generate_line_multiple(df_multiple_cox_boot_32X_filter)}  \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Bootstrap Lasso \\\\ Whole heart dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_1320)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_1320_filter)} \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}Cox Bootstrap Lasso \\\\ Heart's subparts dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_32X)} & " \
+                      f"{generate_line_multiple(df_multiple_cox_boot_32X_filter)} \\\\ \\hline\n"
     # Firstorder radiomics RSF
-    table_multiple += f"RSF whole heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_rsf_1320_firstorder)} \\\\ \\hline\n"
-    table_multiple += f"RSF whole heart firstorder (FETrain) &{ generate_line_multiple(df_multiple_rsf_1320_filter_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"RSF subparts of heart firstorder (AllTrain) & {generate_line_multiple(df_multiple_rsf_32X_firstorder)}  \\\\ \\hline\n"
-    table_multiple += f"RSF subparts of heart firstorder (FETrain) & {generate_line_multiple(df_multiple_rsf_32X_filter_firstorder)}  \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}RSF \\\\ Whole heart firstorder dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_1320_firstorder)} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_1320_filter_firstorder)} \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}RSF \\\\ Heart's subparts firstorder dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_32X_firstorder)} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_32X_filter_firstorder)} \\\\ \\hline\n"
     # Full radiomics RSF
-    table_multiple += f"RSF whole heart (AllTrain) & {generate_line_multiple(df_multiple_rsf_1320)} \\\\ \\hline\n"
-    table_multiple += f"RSF whole heart (FETrain) &{ generate_line_multiple(df_multiple_rsf_1320_filter)}  \\\\ \\hline\n"
-    table_multiple += f"RSF subparts of heart (AllTrain) & {generate_line_multiple(df_multiple_rsf_32X)}  \\\\ \\hline\n"
-    table_multiple += f"RSF subparts of heart (FETrain) & {generate_line_multiple(df_multiple_rsf_32X_filter)}  \\\\ \\hline\n"
-    table_multiple += "\\end{tabular}"
+    table_multiple += "\\begin{tabular}{@{}l@{}}RSF \\\\ Whole heart dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_1320)} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_1320_filter)} \\\\ \\hline\n"
+    table_multiple += "\\begin{tabular}{@{}l@{}}RSF \\\\ Heart's subparts dosiomics\\end{tabular} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_32X)} & " \
+                      f"{generate_line_multiple(df_multiple_rsf_32X_filter)} \\\\ \\hline\n"
+    table_multiple += "\\end{tabular}\n"
+
 
     # Save table
     os.makedirs(f"{analyzes_dir}tables", exist_ok = True)
