@@ -217,11 +217,12 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, 
     # cols_lasso_1320 - cols_lasso_1320[cols_lasso_1320 %in% features_hclust_corr] # specific to this model
     clinical_vars <- get.clinical_features(colnames(df_dataset), event_col, duration_col)
     cols_dv <- grep("dv_\\w+_1320", colnames(df_dataset), value = TRUE)
-    cols_rsf_1320_firstorder <- filter.gl(grep("^X1320_original_firstorder", colnames(df_dataset), value = TRUE))
-    cols_lasso_32X_full <- filter.gl(grep("^X32[0-9]_original_", colnames(df_dataset), value = TRUE))
-    cols_boot_lasso_32X <- filter.gl(grep("^X32[0-9]_original_", colnames(df_dataset), value = TRUE))
+    cols_rsf_firstorder <- filter.gl(grep("^X1320_original_firstorder", colnames(df_dataset), value = TRUE))
+    # cols_lasso <- filter.gl(grep("^X32[0-9]_original_", colnames(df_dataset), value = TRUE))
+    cols_lasso <- filter.gl(grep("^X32[0-9]_original_", colnames(df_dataset), value = TRUE))
+    cols_boot_lasso <- filter.gl(grep("^1320_original_", colnames(df_dataset), value = TRUE))
     covariates_all <- unique(c(clinical_vars, "X1320_original_firstorder_Mean", 
-                               cols_dv, cols_rsf_1320_firstorder, cols_lasso_32X_full, cols_boot_lasso_32X))
+                               cols_dv, cols_rsf_firstorder, cols_lasso, cols_boot_lasso))
     df_dataset <- df_dataset[, c(event_col, duration_col, covariates_all)]
     df_dataset <- na.omit(df_dataset)
     log_info(paste("Dataset rows:", nrow(df_dataset)))
@@ -246,44 +247,44 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, 
 
     # Model rsf 1320 radiomics firstorder with screening
     model_name_rsf <- paste0("1320_radiomics_firstorder_features_hclust_corr")
-    covariates_rsf_1320 <- c(clinical_vars, cols_rsf_1320_firstorder)
-    formula_model_rsf <- get.surv.formula(event_col, covariates_rsf_1320, duration_col = duration_col)
+    covariates_rsf <- c(clinical_vars, cols_rsf_firstorder)
+    formula_model_rsf <- get.surv.formula(event_col, covariates_rsf, duration_col = duration_col)
     id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf,
                                            "/5_runs_full_test_metrics.csv"), row.names = 1)[2,])
-    rsf_1320_params.best <<- read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf, "/",id_max_cv-1,"/cv.csv"))[1,]
-    rsf_1320 <- rfsrc(formula_model_rsf, data = df_dataset, ntree = rsf_1320_params.best$ntree, 
-                      nodesize = rsf_1320_params.best$nodesize, nsplit = rsf_1320_params.best$nsplit)
-    rsf_1320$full_covariates <- covariates_rsf_1320
-    rsf_1320$screening_method <- "features_hclust_corr"
+    rsf_params.best <<- read.csv(paste0(analyzes_dir, "rsf/", model_name_rsf, "/",id_max_cv-1,"/cv.csv"))[1,]
+    rsf <- rfsrc(formula_model_rsf, data = df_dataset, ntree = rsf_params.best$ntree, 
+                      nodesize = rsf_params.best$nodesize, nsplit = rsf_params.best$nsplit)
+    rsf$full_covariates <- covariates_rsf
+    rsf$screening_method <- "features_hclust_corr"
 
-    # Model Cox Lasso 32X full no screening 
-    model_name_lasso_32X <- "32X_radiomics_full_lasso_all"
-    covariates_lasso_32X <- c(cols_lasso_32X_full, clinical_vars)
-    formula_model_lasso_32X <- get.surv.formula(event_col, covariates_lasso_32X, duration_col = duration_col)
-    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso_32X, 
+    # Model Cox Lasso 32X full with screening 
+    model_name_lasso <- "32X_radiomics_full_lasso_features_hclust_corr"
+    covariates_lasso <- c(cols_lasso, clinical_vars)
+    formula_model_lasso <- get.surv.formula(event_col, covariates_lasso, duration_col = duration_col)
+    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso, 
                                            "/5_runs_full_test_metrics.csv"), row.names = 1)[2,])
-    lasso_32X_list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso_32X, "/",
+    lasso_list.lambda <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_lasso, "/",
                                              id_max_cv-1,"/path_lambda.csv"))[["lambda"]]
-    coxlasso_32X <- selection.coxnet(formula_model_lasso_32X, data = df_dataset, 
-                                     list.lambda = lasso_32X_list.lambda, type.measure = "C")
-    coxlasso_32X$full_covariates <- covariates_lasso_32X
-    coxlasso_32X$screening_method <- "all"
+    coxlasso <- selection.coxnet(formula_model_lasso, data = df_dataset, 
+                                     list.lambda = lasso_list.lambda, type.measure = "C")
+    coxlasso$full_covariates <- covariates_lasso
+    coxlasso$screening_method <- "features_hclust_corr"
 
-    # Model Cox bootstrap Lasso 32X with screening
-    model_name_boot_lasso_32X <- "32X_radiomics_full_bootstrap_lasso_features_hclust_corr"
-    covariates_boot_lasso_32X <- c(cols_boot_lasso_32X, clinical_vars)
-    formula_model_boot_lasso_32X <- get.surv.formula(event_col, covariates_boot_lasso_32X, duration_col = duration_col)
-    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
+    # Model Cox bootstrap Lasso 1320 no screening
+    model_name_boot_lasso <- "1320_radiomics_full_bootstrap_lasso_all"
+    covariates_boot_lasso <- c(cols_boot_lasso, clinical_vars)
+    formula_model_boot_lasso <- get.surv.formula(event_col, covariates_boot_lasso, duration_col = duration_col)
+    id_max_cv <- which.max(read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso, 
                                            "/5_runs_full_test_metrics.csv"), row.names = 1)[2,])
-    selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
+    selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso, 
                                          "/",id_max_cv-1,"/final_selected_features.csv"))[["selected_features"]]
-    bootstrap_selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso_32X, 
+    bootstrap_selected_features <- read.csv(paste0(analyzes_dir, "coxph_R/", model_name_boot_lasso, 
                                                    "/",id_max_cv-1,"/bootstrap_selected_features.csv"), header = T)
-    coxbootlasso_32X <- bootstrap.coxnet(data = df_dataset, formula = formula_model_boot_lasso_32X, pred.times,
+    coxbootlasso <- bootstrap.coxnet(data = df_dataset, formula = formula_model_boot_lasso, pred.times,
                                          best.lambda.method = "lambda.1se", selected_features = selected_features, 
                                          bootstrap_selected_features = bootstrap_selected_features)
-    coxbootlasso_32X$full_covariates <- covariates_boot_lasso_32X
-    coxbootlasso_32X$screening_method <- "features_hclust_corr"
+    coxbootlasso$full_covariates <- covariates_boot_lasso
+    coxbootlasso$screening_method <- "all"
    
     # Self-made pec estim
     formula_ipcw = get.ipcw.surv.formula(event_col, colnames(df_dataset), duration_col = duration_col)
@@ -291,13 +292,13 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, 
     pec_M = floor(0.7 * nrow(df_dataset))
     compared_models <- list("Cox mean dose" = coxmean,
                             "Cox doses-volumes" = coxdv,
-                            "Cox Lasso heart's subparts dosiomics" = coxlasso_32X,
-                            "Cox Bootstrap Lasso \nheart's subparts dosiomics with screening" = coxbootlasso_32X,
-                            "RSF whole-heart first-order dosiomics" = rsf_1320
+                            "Cox Lasso heart's subparts dosiomics \nwith screening" = coxlasso,
+                            "Cox Bootstrap Lasso \nwhole heart dosiomics" = coxbootlasso,
+                            "RSF whole-heart first-order dosiomics" = rsf
                             )
     pretty_model_names <- as.list(names(compared_models))
-    names(compared_models) <- c(model_name_coxmean, model_name_coxdv, model_name_lasso_32X,
-                                model_name_boot_lasso_32X, model_name_rsf)
+    names(compared_models) <- c(model_name_coxmean, model_name_coxdv, model_name_lasso,
+                                model_name_boot_lasso, model_name_rsf)
     names(pretty_model_names) <- names(compared_models)
     
     # We eval the calls' arguments because the corresponding variables won't be available in the functions
@@ -335,6 +336,7 @@ pec_estimation <- function(analyzes_dir, event_col, duration_col, n_boot = 100, 
 
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
+    Sys.sleep(20)
     analyzes_dir <- args[1]
     event_col <- args[2]
     duration_col <- `if`(length(args) == 3, args[3], "survival_time_years")

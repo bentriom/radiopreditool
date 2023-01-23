@@ -434,9 +434,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
             cv.params <- coxmodel$coxnet.cv.params
             best.lambda <- coxmodel$best.lambda
             if (save_results) {
-                mat.coefs <- t(as.matrix(coef(cox_object$glmnet.fit)))
-                rownames(mat.coefs) <- cox_object$glmnet.fit$lambda
-                write.csv(mat.coefs, file = paste0(save_results_dir, "mat_coefs.csv"), row.names = T)
+                mat.coefs <- t(as.matrix(coef(coxmodel$coxnet.fit$glmnet.fit)))
+                mat.coefs$lambda <- coxmodel$coxnet.fit$glmnet.fit$lambda
+                write.csv(mat.coefs, file = paste0(save_results_dir, "mat_coefs.csv"), row.names = F)
                 write.csv(cv.params, file = paste0(save_results_dir, "cv.csv"), row.names = F)
                 write.csv(data.frame(penalty = best.lambda, l1_ratio = 1.0), row.names = F, 
                           file = paste0(save_results_dir, "best_params.csv"))
@@ -564,7 +564,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                              "preprocess_data_cox", "normalize_data", "coxlasso_data", "preliminary_filter", "filter_dummies_iccc",
                              "get.clinical_features","predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
                              "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet", "slurm_job_boot_coxnet",
-                             "plot_cox", "plot_bootstrap", "pretty.labels", "pretty.label", "pretty.iccc",
+                             "plot_cox_coefs", "plot_bootstrap_cox", "plot_cox_lambda_path", "pretty.labels", "pretty.label", "pretty.iccc",
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
@@ -610,6 +610,8 @@ plot_cox_coefs <- function(save_results_dir) {
 # Plots of cox models: regularization path with CV error for lambda estimation
 plot_cox_lambda_path <- function(save_results_dir) {
   # Mean errors of cross-validation
+  best.params <- read.csv(paste0(save_results_dir, "best_params.csv"))
+  best.lambda <- best.params[1, "penalty"]
   cv.params <- read.csv(paste0(save_results_dir, "cv.csv"))
   cv.params.unique <- cv.params[order(-cv.params$non_zero_coefs, cv.params$penalty), ]
   cv.params.unique <- cv.params.unique[!duplicated(cv.params.unique$non_zero_coefs), ]
@@ -629,10 +631,14 @@ plot_cox_lambda_path <- function(save_results_dir) {
   ggsave(paste0(save_results_dir, "cv_mean_error.png"), device = "png", dpi = 480)
   # Regularization path
   mat.coefs <- read.csv(paste0(save_results_dir, "mat_coefs.csv"))
-  df.mat.coefs <- melt(mat.coefs)
+  rownames(mat.coefs) <- mat.coefs$lambda
+  mat.coefs$lambda <- NULL
+  df.mat.coefs <- melt(as.matrix(mat.coefs))
   colnames(df.mat.coefs) <- c("lambda", "varname", "coef")
   df.mat.coefs[, "varname"] <- pretty.labels(as.character(df.mat.coefs[["varname"]]))
   first.lambda <- rownames(mat.coefs)[nrow(mat.coefs)]
+  df_best_coefs <- read.csv(paste0(save_results_dir, "best_coefs.csv"))
+  names.nonnull.coefs <- df_best_coefs[abs(df_best_coefs$coefs) > 0, "labels"]
   ggplot(df.mat.coefs, aes(x = lambda, y = coef, color = varname)) + geom_line() + 
   xlab("Penalty (log10)") + ylab("Coefficient") + theme(legend.position = "none") +
   geom_text(data = subset(df.mat.coefs, lambda == first.lambda & varname %in% names.nonnull.coefs), 

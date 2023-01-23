@@ -87,6 +87,7 @@ multiple_scores_rsf <- function(nb_estim, screening_method, event_col, analyzes_
 # Script args
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
+    Sys.sleep(20)
     config <- yaml.load_file(args[1])
     run_type <- args[2]
     analyzes_dir <- get.analyzes_dir_from_config(config)
