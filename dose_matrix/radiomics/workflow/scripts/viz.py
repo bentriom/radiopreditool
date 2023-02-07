@@ -239,8 +239,8 @@ def results_plots(analyzes_dir, nb_estim):
     fig.write_image(f"{save_plots_dir}multiple_scores_cindex.png", width = 1200, height = 1200)
 
     ## Plot IBS
-    df_results_multiple.sort_values(by = ["mean_ibs"], ascending = False, inplace = True)
-    max_ibs = df_results_multiple.iloc[0]["mean_ibs"]
+    df_results_multiple.sort_values(by = ["mean_ibs"], ascending = True, inplace = True)
+    min_ibs = df_results_multiple.iloc[0]["mean_ibs"]
     y_max_ibs = 1.1 * (df_results_multiple["mean_ibs"] + df_results_multiple["std_ibs"]).max()
     fig = make_subplots(rows = 1, cols = 2, horizontal_spacing = 0.15, vertical_spacing = 0.35,
                         subplot_titles = ("All features", "Pre-screening"))
@@ -253,7 +253,7 @@ def results_plots(analyzes_dir, nb_estim):
     fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
     fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis))
-    fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_xaxes(categoryorder = "total ascending", title = "", tickfont = {'size': xaxis_size})
     fig_scatter.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS")
     fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_all.svg", width = 1200, height = 800)
     for i in range(len(fig_scatter.data)):
@@ -264,12 +264,12 @@ def results_plots(analyzes_dir, nb_estim):
                                    marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 1, col = 1)
-        fig.add_hline(y = max_ibs, line_width = 1.5, line_dash = "dash",
+        fig.add_hline(y = min_ibs, line_width = 1.5, line_dash = "dash",
                       line_color = "grey", opacity = 0.3, row = 1, col = 1)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 1)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_all, "model"],
                              ticktext = df_results_multiple.loc[idx_res_all, "model"].apply(format_xaxis), row = 1, col = 1)
-    fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 1)
+    fig.update_xaxes(categoryorder = "total ascending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 1)
     fig.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 1)
     # Features hclust correlation screening
     fig_scatter = px.scatter(df_results_multiple.loc[idx_res_features_hclust_corr, :], x = "model", y = "mean_ibs",
@@ -277,7 +277,7 @@ def results_plots(analyzes_dir, nb_estim):
     fig_scatter.update_xaxes(tickangle = xaxis_angle, tickmode = "linear")
     fig_scatter.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                              ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis))
-    fig_scatter.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size})
+    fig_scatter.update_xaxes(categoryorder = "total ascending", title = "", tickfont = {'size': xaxis_size})
     fig_scatter.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
     fig_scatter.write_image(f"{save_plots_dir}multiple_scores_ibs_features_hclust_corr.svg", width = 1200, height = 800)
     fig_scatter.update_traces(showlegend = False)
@@ -289,14 +289,14 @@ def results_plots(analyzes_dir, nb_estim):
                                    marker_line = dict(width = 2.5),
                                    marker_symbol = symbol_map[name_scatter])
         fig.add_trace(trace_scatter, row = 1, col = 2)
-        fig.add_hline(y = max_ibs, line_width = 1.5, line_dash = "dash",
-                      annotation_text = "max", annotation_position = "top right",
+        fig.add_hline(y = min_ibs, line_width = 1.5, line_dash = "dash",
+                      annotation_text = "min", annotation_position = "bottom right",
                       line_color = "grey", opacity = 0.3, row = 1, col = 2)
     fig.update_xaxes(tickangle = xaxis_angle, tickmode = "linear", row = 1, col = 2)
     fig.update_xaxes(tickmode = "array", tickvals = df_results_multiple.loc[idx_res_features_hclust_corr, "model"],
                      ticktext = df_results_multiple.loc[idx_res_features_hclust_corr, "model"].apply(format_xaxis),
                      row = 1, col = 2)
-    fig.update_xaxes(categoryorder = "total descending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 2)
+    fig.update_xaxes(categoryorder = "total ascending", title = "", tickfont = {'size': xaxis_size}, row = 1, col = 2)
     fig.update_yaxes(range = [0, y_max_ibs], title = "Mean IBS", row = 1, col = 2)
 
     fig.write_image(f"{save_plots_dir}multiple_scores_ibs.svg", width = 1200, height = 800)
