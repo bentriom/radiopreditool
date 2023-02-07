@@ -28,6 +28,8 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.decomposition import PCA
 
+DATETIME_FORMAT_FCCSS = "%Y-%m-%d"
+
 ## Create datasets
 
 # Fill missing values of the dataset
@@ -44,8 +46,8 @@ def fill_missing(df_fccss):
     df_fccss[dummy_iccc_cols] = enc.transform(df_fccss["iccc"].values.reshape(-1,1)).toarray()
     # Age at diagnosis of the first tumor
     def age_at_diagnosis(patient):
-        date_diag = datetime.strptime(patient.loc["date_diag"], "%d/%m/%Y")
-        birthdate = datetime.strptime(patient.loc["date_nais"], "%d/%m/%Y")
+        date_diag = datetime.strptime(patient.loc["date_diag"], DATETIME_FORMAT_FCCSS)
+        birthdate = datetime.strptime(patient.loc["date_nais"], DATETIME_FORMAT_FCCSS)
         age = date_diag.year - birthdate.year - ((date_diag.month, date_diag.day) < (birthdate.month, birthdate.day))
         return age
     def categ_age_at_diagnosis(age):
@@ -65,16 +67,16 @@ def survival_date(event_col, date_event_col, row):
     if row["numcent"] == 199103047:
         return datetime.strptime("03/11/2019", "%d/%m/%Y")
     elif row[event_col] == 1:
-        return datetime.strptime(row[date_event_col], "%d/%m/%Y")
+        return datetime.strptime(row[date_event_col], DATETIME_FORMAT_FCCSS)
     elif row["deces"] == 1:
         if not pd.isnull(row["date_deces"]):
-            return datetime.strptime(row["date_deces"], "%d/%m/%Y")
+            return datetime.strptime(row["date_deces"], DATETIME_FORMAT_FCCSS)
         else:
-            return datetime.strptime(row["date_sortie"], "%d/%m/%Y")
+            return datetime.strptime(row["date_sortie"], DATETIME_FORMAT_FCCSS)
     else:
         cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
         min_date = datetime.strptime("31/12/2016", "%d/%m/%Y")
-        return max([datetime.strptime(row[col], "%d/%m/%Y") for col in cols_date if not pd.isna(row[col])] + [min_date])
+        return max([datetime.strptime(row[col], DATETIME_FORMAT_FCCSS) for col in cols_date if not pd.isna(row[col])] + [min_date])
 
 # Complete features for patients with no radiotherapy
 def fill_features_no_rt(df_dataset, col_treated_by_rt, params_file):
@@ -100,6 +102,10 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         return df_dataset.loc[mask, :]
     elif name_filter_dataset == "sampling":
         return df_dataset.groupby(event_col, group_keys = False).apply(lambda x: x.sample(frac = 0.2))
+    elif name_filter_dataset == "women":
+        assert "Sexe" in df_dataset.columns
+        mask = (df_dataset["Sexe"] == 2)
+        return df_dataset.loc[mask, :]
     else:
         raise NotImplementedError(f"name_filter_dataset: {name_filter_dataset} not supported.")
 
@@ -123,36 +129,37 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     cols_survival = ["numcent", event_col, "deces", date_event_col, "date_deces"] + cols_date
     df_survival = df_fccss[cols_survival]
     df_fccss["survival_date"] = df_survival.apply(lambda x: survival_date(event_col, date_event_col, x), axis = 1)
-    df_fccss["datetime_date_diag"] = df_fccss["date_diag"].apply(lambda x: datetime.strptime(x, "%d/%m/%Y"))
+    df_fccss["datetime_date_diag"] = df_fccss["date_diag"].apply(lambda x: datetime.strptime(x, DATETIME_FORMAT_FCCSS))
     surv_duration_col = "survival_time_years"
     df_fccss[surv_duration_col] = df_fccss[["survival_date", "datetime_date_diag"]].apply(
         lambda x: (x["survival_date"] - x["datetime_date_diag"]).total_seconds() / (365.25 * 24 * 3600), axis = 1)
     cols_radiomics = df_radiomics.columns.to_list()
     cols_radiomics.remove("ctr"), cols_radiomics.remove("numcent")
     # Create dataset by merging fccss and radiomics
-    cols_y = [event_col, surv_duration_col]
+    df_dataset = df_fccss[["ctr", "numcent"] + clinical_variables + [event_col, surv_duration_col]]
+    # Keep columns for filters and statistics
     col_treated_by_rt = "radiotherapie_1K"
-    df_dataset = df_fccss[["ctr", "numcent"] + clinical_variables + cols_y]
-    if col_treated_by_rt not in clinical_variables:
-        df_dataset.insert(len(df_dataset.columns), col_treated_by_rt, df_fccss[col_treated_by_rt])
+    cols_keep_and_drop = [col_treated_by_rt, "Sexe"]
+    [df_dataset.insert(len(df_dataset.columns), col, df_fccss[col]) for col in cols_keep_and_drop \
+                                                                    if col not in clinical_variables]
     df_dataset = df_dataset.merge(df_radiomics, how = "left", on = ["ctr", "numcent"])
     df_dataset.loc[:, "has_radiomics"] = df_dataset.loc[:, "has_radiomics"].replace(np.nan, 0)
+    # Some filters need radiomics
     df_dataset = filter_patients(df_dataset, name_filter_dataset, event_col, surv_duration_col)
     # Eliminating patients with negative survival
     mask_negative_times = df_dataset[surv_duration_col] < 0
     logger.info(f"Eliminating {sum(mask_negative_times)} patients with negative survival times")
     df_dataset = df_dataset.loc[~mask_negative_times, ]
-    # Fill columns about radiotherapie
+    # Fill columns about radiotherapie: dosiomics filled of zeros for patients with no RT
     fill_features_no_rt(df_dataset, col_treated_by_rt, params_file)
-    logger.info(f"Full fccss dataset: {df_dataset.shape}")
+    logger.info(f"Full fccss dataset (with '{name_filter_dataset}' filter) : {df_dataset.shape}")
     logger.info(f"Full fccss dataset without NA: {df_dataset.dropna().shape}")
     logger.info(f"Full fccss dataset with radiomics: {df_dataset.loc[df_dataset['has_radiomics'] == 1, :].shape}")
     # Save
-    if col_treated_by_rt not in clinical_variables:
-        df_dataset.drop(columns = col_treated_by_rt, inplace = True)
+    [df_dataset.drop(columns = col, inplace = True) for col in cols_keep_and_drop if col not in clinical_variables]
     df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
 
-# One-time split train / test
+# One split train / test
 def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
                   end_name_sets = "", test_size = 0.3, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
