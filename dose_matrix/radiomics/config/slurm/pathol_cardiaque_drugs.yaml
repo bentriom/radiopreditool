@@ -16,7 +16,7 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 # 702 - 704: thyroid
 LABELS_SUPER_T_VOI: [1320, 1702]
 LABELS_T_VOI: [309, 310, 320, 321, 322, 323, 324]
-FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011021_update_070622.csv.gz
+FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011021_extended.csv.gz
 FCCSS_CLINICAL_VARIABLES: ["ALKYL", "ANTHRA"]
 EVENT_COL: "Pathologie_cardiaque"
 DATE_EVENT_COL: "date_pathol_cardiaque"
