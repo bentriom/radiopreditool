@@ -35,7 +35,8 @@ def write_header(labels_super_t_voi, labels_t_voi, radiomics_dir, params_file):
         f.write(str(len(features_name_per_label)))
     return len(features_name_per_label)
 
-def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t_voi, labels_t_voi, newdosi_filename, radiomics_dir, subdir, params_file, nbr_features_per_label):
+def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t_voi, labels_t_voi,
+                      newdosi_filename, radiomics_dir, subdir, params_file, nbr_features_per_label):
     logger = logging.getLogger("feature_extractor")
     ctr, numcent = get_ctr_numcent(newdosi_filename)
     all_features_values = np.zeros(0)

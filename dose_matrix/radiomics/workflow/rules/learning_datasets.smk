@@ -6,6 +6,7 @@ rule create_dataset:
         FCCSS_CLINICAL_DATASET
     output:
         ANALYZES_DIR + "datasets/dataset.csv.gz",
+        ANALYZES_DIR + "dataset.log",
     run:
         file_radiomics = RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
         trainset.create_dataset(file_radiomics, FCCSS_CLINICAL_DATASET, ANALYZES_DIR, FCCSS_CLINICAL_VARIABLES,
@@ -16,6 +17,7 @@ rule split_dataset:
         ANALYZES_DIR + "datasets/dataset.csv.gz",
         FCCSS_CLINICAL_DATASET
     output:
+        ANALYZES_DIR + "trainset.log",
         ANALYZES_DIR + "datasets/trainset.csv.gz",
         ANALYZES_DIR + "datasets/testset.csv.gz"
     run:
