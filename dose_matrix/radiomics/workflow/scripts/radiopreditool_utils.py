@@ -47,7 +47,7 @@ def get_date(dosi_filename):
     # Date is missing for some files
     if str_date_treatment == "00000000":
         date_treatment = datetime.strptime("19000101", "%Y%m%d")
-    else:    
+    else:
         date_treatment = datetime.strptime(str_date_treatment, "%Y%m%d")
     return date_treatment
 
@@ -67,6 +67,8 @@ def get_super_t(label_t):
     labels_breast_right = [413, 415, 417, 419]
     labels_breast_left = [414, 416, 418, 420]
     labels_breasts = labels_breast_right + labels_breast_left
+    labels_active_marrow_subset = [605, 607, 608]
+    labels_active_marrow = range(601, 620)
     if pd.isnull(label_t):
         return np.nan
     elif label_t in labels_heart:
@@ -76,11 +78,15 @@ def get_super_t(label_t):
     elif label_t in labels_thyroid:
         return 1702
     elif label_t in labels_breasts:
-        return 1410
+        return 1413
     elif label_t in labels_breast_right:
-        return 1411
+        return 2413
     elif label_t in labels_breast_left:
-        return 1412
+        return 3413
+    elif label_t in labels_active_marrow:
+        return 1601
+    elif label_t in labels_active_marrow_subset:
+        return 2601
     else:
         return 1000
 
