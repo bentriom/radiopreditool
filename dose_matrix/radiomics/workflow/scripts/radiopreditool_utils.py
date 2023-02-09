@@ -61,14 +61,11 @@ def check_summable_df(df_dosi_A, df_dosi_B, voi_type = 'T'):
 
 # Labels T
 def get_super_t(label_t):
-    labels_heart = range(320, 325)
-    labels_brain = range(370, 381)
-    labels_thyroid = range(702, 705)
-    labels_breast_right = [413, 415, 417, 419]
-    labels_breast_left = [414, 416, 418, 420]
-    labels_breasts = labels_breast_right + labels_breast_left
-    labels_active_marrow_subset = [605, 607, 608]
-    labels_active_marrow = range(601, 620)
+    labels_heart = range(320, 325) # 1320
+    labels_brain = range(370, 381) # 1370
+    labels_thyroid = range(702, 705) # 1702
+    labels_breast_right = [413, 415, 417, 419] # 2413
+    labels_breast_left = [414, 416, 418, 420] # 3413
     if pd.isnull(label_t):
         return np.nan
     elif label_t in labels_heart:
@@ -77,21 +74,41 @@ def get_super_t(label_t):
         return 1370
     elif label_t in labels_thyroid:
         return 1702
-    elif label_t in labels_breasts:
-        return 1413
     elif label_t in labels_breast_right:
         return 2413
     elif label_t in labels_breast_left:
         return 3413
-    elif label_t in labels_active_marrow:
-        return 1601
+    else:
+        return 1000
+
+def get_super_t_active_marrow_subset(label_t):
+    labels_heart = range(320, 325) # 1320
+    labels_brain = range(370, 381) # 1370
+    labels_thyroid = range(702, 705) # 1702
+    labels_breast_right = [413, 415, 417, 419] # 2413
+    labels_breast_left = [414, 416, 418, 420] # 3413
+    labels_active_marrow_subset = [605, 607, 608] # 2601
+    if pd.isnull(label_t):
+        return np.nan
+    elif label_t in labels_heart:
+        return 1320
+    elif label_t in labels_brain:
+        return 1370
+    elif label_t in labels_thyroid:
+        return 1702
+    elif label_t in labels_breast_right:
+        return 2413
+    elif label_t in labels_breast_left:
+        return 3413
     elif label_t in labels_active_marrow_subset:
         return 2601
     else:
         return 1000
 
-def col_super_t(df_dosi):
-    df_dosi['SUPER_T'] = df_dosi['T'].astype(int).apply(get_super_t)
+def col_super_t(df_dosi, name_super_t_func):
+    # get_super_t_func = getattr(radiopreditool_utils, name_super_t_func)
+    get_super_t_func = globals()[name_super_t_func]
+    df_dosi['SUPER_T'] = df_dosi['T'].astype(int).apply(get_super_t_func)
 
 def get_clinical_features(df_dataset, event_col, duration_col):
     regex = "^(([0-9]{3,4}_)|(dv_)|" + f"({event_col})|({duration_col})|(ctr)|(numcent)|(has_radiomics))"

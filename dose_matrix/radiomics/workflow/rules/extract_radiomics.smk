@@ -15,7 +15,7 @@ rule images_nii:
         list_filenames = [os.path.basename(newdosi_file) for newdosi_file in list_newdosi_files_patient]
         path_csv = DOSES_DATASET_DIR + subdir + "/"
         path_nii = NII_DIR + subdir + "/"
-        csv2nii.to_nii(path_csv, path_nii, list_filenames)
+        csv2nii.to_nii(path_csv, path_nii, list_filenames, NAME_SUPER_T_FUNC)
 
 rule write_header_radiomics:
     output:

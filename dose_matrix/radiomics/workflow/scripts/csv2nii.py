@@ -77,7 +77,7 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
 
 # Requires: list of newdosi files for one patient
 # Guarantees: three nifti files: doses, mask for each organ, mask for each suborgan
-def to_nii(path_csv, path_nii, list_csv_files):
+def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func):
     logger = logging.getLogger("csv2nii")
     relevant_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T', 'ID2013A']
     int_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T']
@@ -93,7 +93,7 @@ def to_nii(path_csv, path_nii, list_csv_files):
         nbr_rows_after = df_dosi.shape[0]
         logger.warning(f"{first_newdosi_file}: has NaN values in X, Y or Z. "\
                        f"Dropping {nbr_rows_before - nbr_rows_after} rows.")
-    col_super_t(df_dosi)
+    col_super_t(df_dosi, name_super_t_func)
     df_dosi = df_dosi[relevant_cols]
     ctr_patient, numcent_patient = get_ctr_numcent(first_newdosi_file)
     date_last_treatment = get_date(first_newdosi_file)
@@ -121,7 +121,7 @@ def to_nii(path_csv, path_nii, list_csv_files):
             if df_other_dosi.shape[0] <= 1:
                 logger.warning(f"{current_newdosi_file}: has <= 1 rows. Stopping the sum.")
                 break
-            col_super_t(df_other_dosi)
+            col_super_t(df_other_dosi, name_super_t_func)
             df_other_dosi = df_other_dosi[relevant_cols]
             well_ordered_rows = check_summable_df(df_dosi, df_other_dosi)
             if well_ordered_rows:
