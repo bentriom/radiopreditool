@@ -12,7 +12,7 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 # Lung, heart, right breast, left breast, some active marrow
 NAME_SUPER_T_FUNC: get_super_t_active_marrow_subset
 LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 2601]
-LABELS_T_VOI: [309, 310]
+LABELS_T_VOI: [309, 310, 413, 414, 415, 416, 417, 418, 419, 420]
 FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011222_extended.csv.gz
 FCCSS_CLINICAL_VARIABLES: ["categ_age_at_diagnosis", "ALKYL", "ANTHRA", 
                            'iccc_01.a', 'iccc_02.a', 'iccc_02.b', 'iccc_02.c',
