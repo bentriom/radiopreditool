@@ -1,0 +1,44 @@
+MODEL_NAME: breast_cancer_bw_0.5
+RADIOMICS_NAME: breast_cancer_bw_0.5
+DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
+DOSES_DATASET_SUBDIRS:
+    - CURIE
+    - GR
+    - TOULOUSE
+    - REIMS
+    - NICE
+RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
+RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics/radiomics_breast_cancer_bw_0.5.yaml
+# Lung, heart, right breast, left breast, some active marrow
+NAME_SUPER_T_FUNC: get_super_t_active_marrow_subset
+LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 2601]
+LABELS_T_VOI: [309, 310, 413, 414, 415, 416, 417, 418, 419, 420]
+FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011222_extended.csv.gz
+FCCSS_CLINICAL_VARIABLES: ["categ_age_at_diagnosis", 
+                           'iccc_01.a', 'iccc_02.a', 'iccc_02.b', 'iccc_02.c',
+                           'iccc_02.d', 'iccc_02.e', 'iccc_03.a', 'iccc_03.b', 'iccc_03.c',
+                           'iccc_03.d', 'iccc_03.e', 'iccc_03.f', 'iccc_04.a', 'iccc_04.b',
+                           'iccc_05.a', 'iccc_06.a', 'iccc_06.b', 'iccc_07.a', 'iccc_07.b',
+                           'iccc_08.a', 'iccc_08.b', 'iccc_08.c', 'iccc_08.d', 'iccc_08.e',
+                           'iccc_09.a', 'iccc_09.b', 'iccc_09.c', 'iccc_09.d', 'iccc_09.e',
+                           'iccc_10.a', 'iccc_10.b', 'iccc_10.c', 'iccc_10.d', 'iccc_10.e',
+                           'iccc_11.a', 'iccc_11.b', 'iccc_11.c', 'iccc_11.d', 'iccc_11.e',
+                           'iccc_11.f', 'iccc_12.a', 'iccc_12.b', 
+                           'do_MITO_cumsum', 'do_RUFO_cumsum', 'do_AMSI_cumsum', 'do_EPIA_cumsum', 'do_EPIR_cumsum', 'do_ELIP_cumsum',
+                           'do_VP16_cumsum', 'do_VM26_cumsum', 'do_RUB_cumsum', 'do_CELI_cumsum', 'do_CERU_cumsum', 'do_ADR_cumsum',
+                           'do_ACT_cumsum', 'do_MELP_cumsum', 'do_ARACY_cumsum', 'do_ASPA_cumsum', 'do_CCNU_cumsum', 'do_BCNU_cumsum',
+                           'do_BLEO_cumsum', 'do_Carbo_cumsum', 'do_CARY_cumsum', 'do_CLB_cumsum', 'do_CDDP_cumsum', 'do_Deg_cumsum',
+                           'do_vinde_cumsum', 'do_CPM_cumsum', 'do_ESTRA_cumsum', 'do_HEXA_cumsum', 'do_holo_cumsum', 'do_HYDREA_cumsum',
+                           'do_TG6_cumsum', 'do_MTX_cumsum', 'do_PCB_cumsum', 'do_VCR_cumsum', 'do_OP_cumsum', 'do_PUR_cumsum',
+                           'do_TTPA_cumsum', 'do_vLB_cumsum', 'do_AME_cumsum', 'do_Dacar_cumsum', 'do_PRED_cumsum', 'do_FU5_cumsum',
+                           'do_PEPT_cumsum', 'do_STREP_cumsum', 'do_BUS_cumsum', 'do_IFNA_cumsum', 'do_IL2_cumsum', 'do_MGG_cumsum',
+                           'do_FOT_cumsum', 'do_NAVEL_cumsum', 'do_TEM_cumsum', 'do_VACCIN_cumsum', 'do_IRINO_cumsum', 'do_FLUDA_cumsum',
+                           'do_GLIVEC_cumsum', 'do_OXA_cumsum', 'do_CAPE_cumsum', 'do_TAXOL_cumsum', 'do_TAXOT_cumsum', 'do_FUFOL_cumsum',
+                           'do_GEM_cumsum', 'do_TRAB_cumsum', 'do_IRE_cumsum', 'do_AVAS_cumsum', 'do_HER_cumsum', 'do_HYCA_cumsum', 
+                           'do_PAZO_cumsum', 'do_ZELBO_cumsum', 'do_SUNI_cumsum', 'do_AXIT_cumsum', 'do_ALIM_cumsum']
+EVENT_COL: "K2_loc20"
+DATE_EVENT_COL: "date_K2_loc20"
+NB_ESTIM_SCORE_MODELS: 5
+N_BOOTSTRAP: 100
+NAME_FILTER_DATASET: "women"
+
