@@ -32,13 +32,6 @@ rsf_learning <- function(screening_method, event_col, analyzes_dir, duration_col
     df_trainset <- read.csv(file_trainset, header = TRUE)
     df_testset <- read.csv(file_testset, header = TRUE)
     features <- colnames(df_trainset)
-    # Former way of screening features
-    # # Select subset of features due to feature elimination
-    # features <- `if`(file_features == "all", colnames(df_trainset), as.character(read.csv(file_features)[,1]))
-    # # Add "X" for R colname compatibility
-    # features <- as.character(lapply(features, function(x) { `if`(str_detect(substr(x, 1, 1), "[0-9]"), paste0("X", x), x) }))
-    # df_trainset <- df_trainset[,features]
-    # df_testset <- df_testset[,features]
     clinical_vars <- get.clinical_features(features, event_col, duration_col)
     log_info(paste0("Trainset file:", file_trainset, "with", nrow(df_trainset), "samples"))
 
@@ -50,7 +43,6 @@ rsf_learning <- function(screening_method, event_col, analyzes_dir, duration_col
         covariates_32X <- c(clinical_vars, cols_32X)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir, 
                              model_name, rsf_logfile, screening_method = screening_method)
-        # plot_vimp(rsf.obj, analyzes_dir, model_name)
     
         # Model 32X radiomics full covariates
         log_info("Model 32X radiomics full")
@@ -59,9 +51,7 @@ rsf_learning <- function(screening_method, event_col, analyzes_dir, duration_col
         covariates_32X <- c(clinical_vars, cols_32X)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_32X, event_col, duration_col, analyzes_dir,
                              model_name, rsf_logfile, screening_method = screening_method)
-        # plot_vimp(rsf.obj, analyzes_dir, model_name)
-    } 
-    else if (subdivision_type == "1320") {
+    } else if (subdivision_type == "1320") {
         if (screening_method == "all") {
             # Model 1320 doses volumes indicators covariates
             log_info("Model 1320 heart doses volumes")
@@ -79,7 +69,6 @@ rsf_learning <- function(screening_method, event_col, analyzes_dir, duration_col
         covariates_1320 <- c(clinical_vars, cols_1320)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, analyzes_dir,
                              model_name, rsf_logfile, screening_method = screening_method)
-        # plot_vimp(rsf.obj, analyzes_dir, model_name)
     
         # Model 1320 radiomics full covariates
         log_info("Model 1320 radiomics full")
@@ -88,9 +77,33 @@ rsf_learning <- function(screening_method, event_col, analyzes_dir, duration_col
         covariates_1320 <- c(clinical_vars, cols_1320)
         rsf.obj <- model_rsf(df_trainset, df_testset, covariates_1320, event_col, duration_col, analyzes_dir,
                              model_name, rsf_logfile, screening_method = screening_method)
-        # plot_vimp(rsf.obj, analyzes_dir, model_name)
+    } else if (subdivision_type == "breasts") {
+        if (screening_method == "all") {
+            # Model breasts doses volumes indicators covariates
+            log_info("Model breasts doses volumes")
+            model_name <- "breasts_dosesvol"
+            cols_dv <- grep("dv_\\w+_(2413|3413)", features, value = TRUE)
+            covariates_dv <- c(cols_dv, clinical_vars)
+            rsf.obj <- model_rsf(df_trainset, df_testset, covariates_dv, event_col, duration_col, analyzes_dir,
+                                 model_name, rsf_logfile, screening_method = screening_method)
         }
-    else {  
+
+        # RSF all radiomics (breasts: 2413, 3413)
+        log_info("Model breasts radiomics full")
+        model_name <- paste0("breasts_radiomics_full_", screening_method)
+        cols_breasts <- filter.gl(grep("^X(2413|3413)_", features, value = TRUE))
+        covariates_breasts <- c(clinical_vars, cols_breasts)
+        rsf.obj <- model_rsf(df_trainset, df_testset, covariates_breasts, event_col, duration_col, analyzes_dir,
+                             model_name, rsf_logfile, screening_method = screening_method)
+    else if (subdivision_type == "thorax") {
+        # RSF all radiomics (thorax: 309, 310, 1320, 1702, 2413, 3413, 2601)
+        log_info("Model thorax radiomics full")
+        model_name <- paste0("thorax_radiomics_full_", screening_method)
+        cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+        covariates_thorax <- c(clinical_vars, cols_thorax)
+        rsf.obj <- model_rsf(df_trainset, df_testset, covariates_thorax, event_col, duration_col, analyzes_dir,
+                             model_name, rsf_logfile, screening_method = screening_method)
+    } else {  
         stop("Subdivision type of features unrecognized")
     }
     log_info("Done. Time:")

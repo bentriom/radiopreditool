@@ -85,16 +85,20 @@ pretty.labels <- function(labels) {
 # Automatically create a survival formula
 get.surv.formula <- function(event_col, covariates, duration_col = "survival_time_years") {
     str.surv_formula <- paste("Surv(", duration_col, ",", event_col, ") ~ ", sep = '')
-    for (var in covariates) {
-        str.surv_formula <- paste(str.surv_formula, var, " + ", sep = '')
+    if (length(covariates) > 0) {
+      for (var in covariates) {
+          str.surv_formula <- paste(str.surv_formula, var, " + ", sep = '')
+      }
+      str.surv_formula <- substr(str.surv_formula, 1, nchar(str.surv_formula) - 2)
+    } else {
+      str.surv_formula <- paste0(str.surv_formula, "1")
     }
-    str.surv_formula <- substr(str.surv_formula, 1, nchar(str.surv_formula) - 2)
     as.formula(str.surv_formula)
 }
 
 get.ipcw.surv.formula <- function(event_col, covariates, duration_col = "survival_time_years") {
     clinical_vars <- get.clinical_features(covariates, event_col, duration_col)
-    regex_removed <- "^iccc_"
+    regex_removed <- "^(iccc|do)_"
     idx_removed <- grep(regex_removed, clinical_vars)
     if (length(idx_removed) > 0)
         get.surv.formula(event_col, clinical_vars[-idx_removed])

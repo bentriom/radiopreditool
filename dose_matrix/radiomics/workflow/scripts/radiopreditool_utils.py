@@ -6,6 +6,35 @@ import SimpleITK as sitk
 import os, re
 from multiprocessing import cpu_count
 from datetime import datetime
+import numpy as np
+import numpy.random as rand
+
+# Generates survival data with controlled censorship
+def generate_survival_times(n_samples, n_covariates, hazard_ratios,
+                            frac_censor = 0.8, mat_cov = None, distribution = "exp"):
+    assert n_covariates == len(hazard_ratios)
+    assert distribution in ["exp"]
+    if distribution == "exp":
+        inv_cumbasehazard = lambda t:  (1/0.025) * t
+    # Simulate covariates
+    if mat_cov is None:
+        X = rand.randn(n_covariates, n_samples)
+    else:
+        assert mat_cov.shape == (n_covariates, n_covariates)
+        X = rand.multivariate_normal(cov = mat_cov, size = n_samples)
+    assert X.shape == (n_covariates, n_samples)
+    # Get coefficients from hazard ratios
+    betas = np.log(np.array(hazard_ratios))
+    # Simulate survival times: T = inv_cumbasehazard(-ln(U) * exp(-beta' * X)) with U uniform
+    u = rand.uniform(size = n_samples)
+    times_event = np.vectorize(inv_cumbasehazard)(-np.log(u) * np.exp(-np.dot(betas, X)))
+    n_censored_times = np.ceil(n_samples * frac_censor)
+    idx_censored_samples = rand.choice(range(n_samples), int(n_censored_times), replace = False)
+    is_censored = np.ones(n_samples)
+    is_censored[idx_censored_samples] = 0
+    times_event[idx_censored_samples] = np.array([rand.weibull(t+1) for t in times_event[idx_censored_samples]])
+
+    return times_event, is_censored, X
 
 # Snakefile tools
 def addslash(subdir):

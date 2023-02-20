@@ -106,6 +106,22 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         assert "Sexe" in df_dataset.columns
         mask = (df_dataset["Sexe"] == 2)
         return df_dataset.loc[mask, :]
+    elif name_filter_dataset == "women_test":
+        cols_dosiomics = [col for col in df_dataset.columns if re.match("^[0-9]{3,4}_original_", col)]
+        cols_dv = [col for col in df_dataset.columns if re.match("^dv_\w+_[0-9]{3,4}", col)]
+        cols = cols_dv + cols_dosiomics
+        hazard_ratios = np.ones(len(cols))
+        mask_hr = np.isin(cols, [f"{label}_original_firstorder_Mean" for label in get_all_labels(df_dataset)] + \
+                                [f"dv_D50_{label}" for label in get_all_labels(df_dataset)])
+        hazard_ratios[mask_hr] = 3.0
+        n_samples = 400
+        surv_times, status, X = generate_survival_times(n_samples, len(cols), hazard_ratios, frac_censor = 0.2)
+        df_dataset = df_dataset.iloc[range(n_samples)]
+        df_dataset.loc[:, cols] = np.transpose(X)
+        df_dataset.loc[:, event_col] = status
+        df_dataset.loc[:, duration_col] = surv_times
+        clinical_features =  get_clinical_features(df_dataset, event_col, duration_col)
+        return df_dataset[["ctr", "numcent", "has_radiomics", event_col, duration_col] + clinical_features + cols]
     else:
         raise NotImplementedError(f"name_filter_dataset: {name_filter_dataset} not supported.")
 
@@ -210,6 +226,7 @@ def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_va
 def kfold_multiple_splits_dataset(nb_estim, file_radiomics, file_fccss_clinical,
                                   analyzes_dir, clinical_variables, event_col, date_event_col, seed = None):
     logger = setup_logger("trainset", analyzes_dir + "trainset.log")
+    logger.info(f"{nb_estim}-Fold stratified cross-validation")
     logger.info(f"Event col: {event_col}. Date of event col: {date_event_col}")
     surv_duration_col = "survival_time_years"
     df_dataset = pd.read_csv(analyzes_dir + "datasets/dataset.csv.gz")
@@ -393,7 +410,7 @@ def filter_corr_hclust_all(df_trainset, df_covariates_hclust, corr_threshold, ev
     return all_filter_2_cols
 
 # Feature elimination pipeline with hclust on kendall's tau corr
-def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", feature_select_method = "univariate_cox"):
+def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", feature_select_method = "multivariate_cox"):
     file_trainset = f"{analyzes_dir}datasets/"
     file_trainset = f"{file_trainset}dataset.csv.gz" if id_set == "" else f"{file_trainset}trainset_{id_set}.csv.gz"
     df_trainset = pd.read_csv(file_trainset)

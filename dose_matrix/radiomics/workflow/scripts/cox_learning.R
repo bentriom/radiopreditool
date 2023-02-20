@@ -103,6 +103,23 @@ cox_radiomics_learning <- function(screening_method, event_col, analyzes_dir, du
         log_info("Model radiomics full lasso (1320)")
         model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile,
                   screening_method = screening_method, penalty = penalty, n_boot = n_boot)
+    } else if (subdivision_type == "breasts") {
+        # Coxph Lasso all radiomics of the two breasts (2413, 3413)
+        model_name <- paste0("breasts_radiomics_full_", penalty, "_", screening_method)
+        cols_breasts <- filter.gl(grep("^X(2413|3413)_", features, value = TRUE))
+        covariates <- c(cols_breasts, clinical_vars)
+        log_info("Model radiomics full lasso (breasts: 2413, 3413)")
+        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile,
+                  screening_method = screening_method, penalty = penalty, n_boot = n_boot)
+    } else if (subdivision_type == "thorax") {
+        # Coxph Lasso all radiomics of the thorax
+        model_name <- paste0("thorax_radiomics_full_", penalty, "_", screening_method)
+        cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+        covariates <- c(cols_thorax, clinical_vars)
+        log_info("Model radiomics full lasso (thorax: 2413, 3413)")
+        model_cox(df_trainset, df_testset, covariates, event_col, duration_col, analyzes_dir, model_name, logfile,
+                  screening_method = screening_method, penalty = penalty, n_boot = n_boot)
+ 
     } else {
         stop("Subdivision type of features unrecognized")
     }

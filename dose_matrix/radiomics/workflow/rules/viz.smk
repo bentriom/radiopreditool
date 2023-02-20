@@ -9,39 +9,59 @@ rule pca_visualisation:
     run:
         trainset.pca_viz(ANALYZES_DIR + "datasets/dataset.csv.gz", EVENT_COL, ANALYZES_DIR)
 
-rule scores_plots:
+rule scores_plots_heart:
     input:
-        rules.multiple_scores_baseline_analysis_R.output,
-        rules.multiple_scores_cox_lasso_radiomics_all_R.output,
-        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_R.output,
-        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_R.output,
-        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R.output,
-        rules.multiple_scores_rsf.output,
-        rules.multiple_scores_rsf_features_hclust_corr.output,
+        rules.multiple_scores_baseline_analysis_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_all_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_heart_R.output,
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_heart_R.output,
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_heart_R.output,
+        rules.multiple_scores_rsf_heart.output,
+        rules.multiple_scores_rsf_features_hclust_corr_heart.output,
     output:
-        ANALYZES_DIR + "plots/multiple_scores_cindex.svg",
-        ANALYZES_DIR + "plots/multiple_scores_harrell_cindex_all.svg",
-        ANALYZES_DIR + "plots/multiple_scores_harrell_cindex_features_hclust_corr.svg",
-        ANALYZES_DIR + "plots/multiple_scores_ipcw_cindex_all.svg",
-        ANALYZES_DIR + "plots/multiple_scores_ipcw_cindex_features_hclust_corr.svg",
+        ANALYZES_DIR + "plots/heart/multiple_scores_cindex.svg",
+        ANALYZES_DIR + "plots/heart/multiple_scores_harrell_cindex_all.svg",
+        ANALYZES_DIR + "plots/heart/multiple_scores_harrell_cindex_features_hclust_corr.svg",
+        ANALYZES_DIR + "plots/heart/multiple_scores_ipcw_cindex_all.svg",
+        ANALYZES_DIR + "plots/heart/multiple_scores_ipcw_cindex_features_hclust_corr.svg",
     threads:
         1
     run:
-       viz.results_plots(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
+       viz.results_plots_heart(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
 
-rule scores_tables:
+rule scores_tables_heart:
     input:
-        rules.multiple_scores_baseline_analysis_R.output,
-        rules.multiple_scores_cox_lasso_radiomics_all_R.output,
-        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_R.output,
-        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_R.output,
-        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_R.output,
-        rules.multiple_scores_rsf.output,
-        rules.multiple_scores_rsf_features_hclust_corr.output,
+        rules.multiple_scores_baseline_analysis_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_all_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_heart_R.output,
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_heart_R.output,
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_heart_R.output,
+        rules.multiple_scores_rsf_heart.output,
+        rules.multiple_scores_rsf_features_hclust_corr_heart.output,
     output:
-        ANALYZES_DIR + f"tables/multiple_scores_{NB_ESTIM_SCORE_MODELS}_runs.tex",
+        ANALYZES_DIR + f"tables/heart/multiple_scores_{NB_ESTIM_SCORE_MODELS}_runs.tex",
     threads:
         1
     run:
-       viz.latex_tables(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
+       viz.latex_tables_heart(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
+
+rule scores_plots_thorax:
+    input:
+        rules.multiple_scores_baseline_analysis_breasts_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_all_thorax_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_thorax_R.output,
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_thorax_R.output,
+        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_thorax_R.output,
+        rules.multiple_scores_rsf_thorax.output,
+        rules.multiple_scores_rsf_features_hclust_corr_thorax.output,
+    output:
+        ANALYZES_DIR + "plots/thorax/multiple_scores_cindex.svg",
+        ANALYZES_DIR + "plots/thorax/multiple_scores_harrell_cindex_all.svg",
+        ANALYZES_DIR + "plots/thorax/multiple_scores_harrell_cindex_features_hclust_corr.svg",
+        ANALYZES_DIR + "plots/thorax/multiple_scores_ipcw_cindex_all.svg",
+        ANALYZES_DIR + "plots/thorax/multiple_scores_ipcw_cindex_features_hclust_corr.svg",
+    threads:
+        1
+    run:
+        viz.results_plots_thorax(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
 

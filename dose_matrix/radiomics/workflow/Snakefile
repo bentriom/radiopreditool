@@ -32,10 +32,14 @@ CONFIGFILE_PATH = sys.argv[sys.argv.index("--configfile")+1] if "--configfile" i
 
 # Wildcard functions
 def get_newdosi_files(wildcards):
-    return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files if wildcards.newdosi_patient in newdosi_file])
+    return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz",
+                  newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files \
+                                               if wildcards.newdosi_patient in newdosi_file])
 
 # Create useful variables for rules based on configuration
-list_newdosi_files = [addslash(subdir) + f.split(".")[0]  for subdir in DOSES_DATASET_SUBDIRS for f in os.listdir(DOSES_DATASET_DIR + subdir) if ".csv.gz" in f]
+list_newdosi_files = [addslash(subdir) + f.split(".")[0]  for subdir in DOSES_DATASET_SUBDIRS \
+                                                          for f in os.listdir(DOSES_DATASET_DIR + subdir) \
+                                                          if ".csv.gz" in f]
 list_newdosi_patients = list(set([get_patient_file(newdosi) for newdosi in list_newdosi_files]))
 str_cmd_dataset_subdirs = reduce(lambda a,b:a+b, [sdir + "," for sdir in DOSES_DATASET_SUBDIRS])[0:-1]
 
@@ -55,8 +59,10 @@ include: "rules/extract_radiomics.smk"
 include: "rules/learning_datasets.smk"
 include: "rules/features_screening.smk"
 include: "rules/cox_learning_python.smk"
-include: "rules/cox_learning_R.smk"
-include: "rules/rsf_learning_R.smk"
+include: "rules/cox_learning_heart_R.smk"
+include: "rules/cox_learning_thorax_R.smk"
+include: "rules/rsf_learning_heart_R.smk"
+include: "rules/rsf_learning_thorax_R.smk"
 include: "rules/viz.smk"
 include: "rules/error_curves.smk"
 
@@ -70,6 +76,6 @@ onstart:
         os.remove(RADIOMICS_DIR + "feature_extraction.log")
 
 rule all:
-    input: 
+    input:
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
 
