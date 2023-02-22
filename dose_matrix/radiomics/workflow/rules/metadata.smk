@@ -1,12 +1,14 @@
 
 ## Metadata
+
 rule list_newdosi_files:
     input:
-        expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files) 
+        expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz", newdosi_file = list_newdosi_files)
     output:
         METADATA_DIR + "list_newdosi_files.csv"
     shell:
-        "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + "' > " + METADATA_DIR + "list_newdosi_files.csv"
+        "./workflow/scripts/awk_list_newdosi_files.sh '" + DOSES_DATASET_DIR + \
+        "' > " + METADATA_DIR + "list_newdosi_files.csv"
 
 rule list_newdosi_checks:
     input:
@@ -18,11 +20,13 @@ rule list_newdosi_checks:
 
 rule report_checks:
     input:
-        METADATA_DIR + "list_newdosi_checks.csv"
+        METADATA_DIR + "list_newdosi_checks.csv",
+        LABELS_T_ORGANS_FILE
     output:
-        METADATA_DIR + "report_checks.txt"
+        METADATA_DIR + "report_checks.txt",
+        expand(METADATA_DIR + "fccss_missing_labels_t_{name}.csv", name = ["all", "women", "men"]),
     run:
-        report_checks.print_report(METADATA_DIR)
+        report_checks.print_report(METADATA_DIR, FCCSS_CLINICAL_DATASET, LABELS_T_ORGANS_FILE)
 
 rule entropy_analysis:
     input:

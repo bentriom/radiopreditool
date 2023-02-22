@@ -18,6 +18,9 @@ LABELS_SUPER_T_VOI = config["LABELS_SUPER_T_VOI"] if "LABELS_SUPER_T_VOI" in con
 LABELS_T_VOI = config["LABELS_T_VOI"] if "LABELS_T_VOI" in config else [""]
 NB_ESTIM_SCORE_MODELS = config["NB_ESTIM_SCORE_MODELS"] if "NB_ESTIM_SCORE_MODELS" in config else 10
 NAME_FILTER_DATASET = config["NAME_FILTER_DATASET"] if "NAME_FILTER_DATASET" in config else ""
+LABELS_T_ORGANS_FILE = config["LABELS_T_ORGANS_FILE"] if "LABELS_T_ORGANS_FILE" in config else \
+                       "/Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/" \
+                       "labels_organs_20160118_only_t.csv"
 
 DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]

@@ -6,6 +6,7 @@ DOSES_DATASET_SUBDIRS:
     - GR
 RESULTS_DIR: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/test/
 RADIOMICS_PARAMS_FILE: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/config/radiomics/radiomics_breast_cancer_bw_0.5.yaml
+LABELS_T_ORGANS_FILE: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/labels_organs_20160118_only_t.csv
 # Lung, heart, right breast, left breast, some active marrow
 NAME_SUPER_T_FUNC: get_super_t_active_marrow_subset
 LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 2601]
