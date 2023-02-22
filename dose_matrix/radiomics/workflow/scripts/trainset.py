@@ -98,7 +98,7 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
     elif name_filter_dataset == "positive_entropy":
         assert "1320_original_firstorder_Entropy" in df_dataset.columns
         mask = (df_dataset["has_radiomics"] == 0) | \
-               (df_dataset["has_radiomics"] == 1) & (df_dataset["1320_original_firstorder_Entropy"] > 0)
+               ((df_dataset["has_radiomics"] == 1) & (df_dataset["1320_original_firstorder_Entropy"] > 0))
         return df_dataset.loc[mask, :]
     elif name_filter_dataset == "sampling":
         return df_dataset.groupby(event_col, group_keys = False).apply(lambda x: x.sample(frac = 0.2))
@@ -116,7 +116,7 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         hazard_ratios[mask_hr] = 3.0
         n_samples = 400
         surv_times, status, X = generate_survival_times(n_samples, len(cols), hazard_ratios, frac_censor = 0.2)
-        df_dataset = df_dataset.iloc[range(n_samples)]
+        df_dataset = df_dataset.iloc[range(n_samples)].copy()
         df_dataset.loc[:, cols] = np.transpose(X)
         df_dataset.loc[:, event_col] = status
         df_dataset.loc[:, duration_col] = surv_times
