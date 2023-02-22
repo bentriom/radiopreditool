@@ -194,14 +194,16 @@ preliminary_filter <- function(df_dataset, covariates, event_col,
   filtered_covariates <- names(filter_data)[filter_data]
   # Filter iccc columns with chi2/fisher test on contingency table
   irrelevant_iccc_cols <- filter_dummies_iccc(df_dataset[, c(filtered_covariates, event_col)], event_col)
-  filtered_covariates <- filtered_covariates[!(filtered_covariates %in% irrelevant_iccc_cols)]
+  irrelevant_drugs_cols <- filter_drugs_cumsums(df_dataset[, c(filtered_covariates, event_col)], event_col)
+  filtered_covariates <- filtered_covariates[!(filtered_covariates %in% c(irrelevant_iccc_cols, irrelevant_drugs_cols))]
   filtered_covariates
 }
 
 # Perfoms chi2 test to only keep dummy primary cancers variables that are dependant with any event
 # Returns the iccc columns to delete
 filter_dummies_iccc <- function(df_dataset, event_col) {
-  iccc_cols <- grep("iccc_", colnames(df_dataset), value = T)
+  stopifnot(event_col %in% colnames(df_dataset))
+  iccc_cols <- grep("^iccc_\\d", colnames(df_dataset), value = T)
   irrelevant_iccc_cols <- na.omit(unlist(sapply(iccc_cols, function(iccc) {
     table_iccc <- table(df_dataset[, c(iccc, event_col)])
     if (any(table_iccc <= 10)) pval <- fisher.test(table_iccc)$p.value
@@ -211,5 +213,20 @@ filter_dummies_iccc <- function(df_dataset, event_col) {
     return (NULL)
   })))
   irrelevant_iccc_cols
+}
+
+# Performs Wilcoxon test to only keep chemotherapy cumulative doses that are dependant with any events
+# Returns the chemotherapy variables to delete
+filter_drugs_cumsums <- function(df_dataset, event_col) {
+  stopifnot(event_col %in% colnames(df_dataset))
+  drugs_cols <- grep("do_(\\w+)_cumsum", colnames(df_dataset), value = T)
+  mask_no_event <- (df_dataset[[event_col]] == 0)
+  irrelevant_drugs_cols <- na.omit(unlist(sapply(drugs_cols, function(drug) {
+    pval <- wilcox.test(df_dataset[mask_no_event, drug], df_dataset[!mask_no_event, drug])$p.value
+    # Rejected test means the two variables are dependant
+    if (pval > 0.01) return (drug)
+    return (NULL)
+  })))
+  irrelevant_drugs_cols
 }
 
