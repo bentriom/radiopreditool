@@ -19,11 +19,8 @@ rule scores_plots_heart:
         rules.multiple_scores_rsf_heart.output,
         rules.multiple_scores_rsf_features_hclust_corr_heart.output,
     output:
-        ANALYZES_DIR + "plots/heart/multiple_scores_cindex.svg",
-        ANALYZES_DIR + "plots/heart/multiple_scores_harrell_cindex_all.svg",
-        ANALYZES_DIR + "plots/heart/multiple_scores_harrell_cindex_features_hclust_corr.svg",
-        ANALYZES_DIR + "plots/heart/multiple_scores_ipcw_cindex_all.svg",
-        ANALYZES_DIR + "plots/heart/multiple_scores_ipcw_cindex_features_hclust_corr.svg",
+        expand(ANALYZES_DIR + "plots/heart/multiple_scores_cindex.{format}", format = ["png", "svg"]),
+        expand(ANALYZES_DIR + "plots/heart/multiple_scores_ibs.{format}", format = ["png", "svg"]),
     threads:
         1
     run:
@@ -55,11 +52,8 @@ rule scores_plots_thorax:
         rules.multiple_scores_rsf_thorax.output,
         rules.multiple_scores_rsf_features_hclust_corr_thorax.output,
     output:
-        ANALYZES_DIR + "plots/thorax/multiple_scores_cindex.svg",
-        ANALYZES_DIR + "plots/thorax/multiple_scores_harrell_cindex_all.svg",
-        ANALYZES_DIR + "plots/thorax/multiple_scores_harrell_cindex_features_hclust_corr.svg",
-        ANALYZES_DIR + "plots/thorax/multiple_scores_ipcw_cindex_all.svg",
-        ANALYZES_DIR + "plots/thorax/multiple_scores_ipcw_cindex_features_hclust_corr.svg",
+        expand(ANALYZES_DIR + "plots/thorax/multiple_scores_cindex.{format}", format = ["png", "svg"]),
+        expand(ANALYZES_DIR + "plots/thorax/multiple_scores_ibs.{format}", format = ["png", "svg"]),
     threads:
         1
     run:
