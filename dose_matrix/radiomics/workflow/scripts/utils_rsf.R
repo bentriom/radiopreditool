@@ -176,7 +176,7 @@ parallel_multiple_scores_rsf <- function(nb_estim, covariates, event_col, durati
     nb_max_slurm_jobs <- 40
     functions_to_export <- c("model_rsf.id", "model_rsf", "get.surv.formula", "get.ipcw.surv.formula",
                              "bootstrap.undersampling", "predictSurvProbOOB", "get.clinical_features",
-                             "preliminary_filter", "filter_dummies_iccc",
+                             "preliminary_filter", "filter_dummies_iccc", "filter_drugs_cumsums",
                              "create.params.df", "cv.rsf", "get.param.cv.error")
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
     sopt <- list(time = "02:00:00", "ntasks" = 1, "cpus-per-task" = 1,
