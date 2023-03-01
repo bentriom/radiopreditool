@@ -281,7 +281,7 @@ bootstrap.coxnet <- function(data, formula, pred.times, B = 100, alpha = 1, run_
         log_info(paste("Bootstrap lasso: parallel method is", boot.parallel))
         functions_to_export <- c("slurm_job_boot_coxnet", "sample.selection.coxnet", "selection.coxnet",
                                  "loglik_ratio_best_lambda", "predictSurvProb.selection.coxnet", "coxlasso_data",
-                                 "preliminary_filter", "filter_dummies_iccc", "filter_drugs_cumsums",
+                                 "preliminary_filter", "filter_dummies_iccc", "filter_drugs_cumsums", "get.na.coefs",
                                  "get.coefs.cox", "get.surv.formula", "get.best.lambda")
         # Launch bootstrap
         if (boot.parallel == "boot.multicore") {
@@ -575,11 +575,11 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
   } else if (parallel.method == "rslurm") {
     functions_to_export <- c("model_cox.id", "model_cox", "loglik_ratio_best_lambda", "get.best.lambda",
                              "get.coefs.cox", "preprocess_data_cox", "normalize_data", "coxlasso_data",
-                             "preliminary_filter", "filter_dummies_iccc", "get.clinical_features",
+                             "preliminary_filter", "filter_dummies_iccc", "filter_drugs_cumsums", "get.na.coefs",
                              "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
                              "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
                              "slurm_job_boot_coxnet", "plot_cox_coefs", "plot_bootstrap_cox", "plot_cox_lambda_path",
-                             "pretty.labels", "pretty.label", "pretty.iccc", "filter_drugs_cumsums",
+                             "pretty.labels", "pretty.label", "pretty.iccc", "get.clinical_features",
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
