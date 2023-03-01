@@ -2,6 +2,7 @@
 import logging
 import numpy as np
 import pandas as pd
+import scipy.optimize as opt
 import SimpleITK as sitk
 import os, re
 from multiprocessing import cpu_count
@@ -10,12 +11,11 @@ import numpy as np
 import numpy.random as rand
 
 # Generates survival data with controlled censorship
-def generate_survival_times(n_samples, n_covariates, hazard_ratios,
-                            frac_censor = 0.8, mat_cov = None, distribution = "exp"):
-    assert n_covariates == len(hazard_ratios)
+def generate_survival_times(n_samples, n_covariates, betas, frac_censor = 0.8, censor_type = "type_I",
+                            mat_cov = None, distribution = "exp"):
+    assert n_covariates == len(betas)
     assert distribution in ["exp"]
-    if distribution == "exp":
-        inv_cumbasehazard = lambda t:  (1/0.025) * t
+    assert censor_type in ["type_I", "random"]
     # Simulate covariates
     if mat_cov is None:
         X = rand.randn(n_covariates, n_samples)
@@ -23,18 +23,30 @@ def generate_survival_times(n_samples, n_covariates, hazard_ratios,
         assert mat_cov.shape == (n_covariates, n_covariates)
         X = rand.multivariate_normal(cov = mat_cov, size = n_samples)
     assert X.shape == (n_covariates, n_samples)
-    # Get coefficients from hazard ratios
-    betas = np.log(np.array(hazard_ratios))
+    if distribution == "exp":
+        inv_cumbasehazard = lambda x:  (x/0.025)
+    betas = np.asarray(betas)
     # Simulate survival times: T = inv_cumbasehazard(-ln(U) * exp(-beta' * X)) with U uniform
-    u = rand.uniform(size = n_samples)
-    times_event = np.vectorize(inv_cumbasehazard)(-np.log(u) * np.exp(-np.dot(betas, X)))
-    n_censored_times = np.ceil(n_samples * frac_censor)
-    idx_censored_samples = rand.choice(range(n_samples), int(n_censored_times), replace = False)
-    is_censored = np.ones(n_samples)
-    is_censored[idx_censored_samples] = 0
-    times_event[idx_censored_samples] = np.array([rand.weibull(t+1) for t in times_event[idx_censored_samples]])
+    if distribution == "exp":
+        mean_base_hazard = 10
+        risks_samples = np.exp(np.dot(betas, X))
+        means_surv_time = 1 / ((1/mean_base_hazard) * risks_samples) # 1/lambda_Ts
+        times_event = rand.exponential(means_surv_time)
+        if censor_type == "random":
+            assert frac_censor >= 0.5, "Censor time modeled by an exponential and P(censoring) < 0.5"
+            means_exp_censor = 1 / (-(1/means_surv_time) * np.log(2*(1-frac_censor))) # 1/lambda_Cs
+            difference_times_event_censor = rand.laplace(means_surv_time, means_exp_censor) # T - C
+            status = 1 * (difference_times_event_censor <= 0)
+            times_censor = np.maximum(times_event - difference_times_event_censor, 0)
+            times_observed = np.minimum(times_event, times_censor)
+        elif censor_type == "type_I":
+            study_end = opt.minimize_scalar(lambda t: (np.sum(times_event<=t)/len(times_event)-(1-frac_censor))**2,
+                                            bounds = (0, max(times_event)), method = "bounded").x
+            times_observed = times_event
+            status = 1 * (times_event <= study_end)
+            times_observed[times_observed > study_end] = study_end
 
-    return times_event, is_censored, X
+    return times_observed, status, X
 
 # Snakefile tools
 def addslash(subdir):
@@ -150,7 +162,7 @@ def get_t_radiomics_features(df_dataset):
     return [col for col in df_dataset.columns if re.match("^[0-9]{3}_", col)]
 
 def get_super_t_radiomics_features(df_dataset):
-    return [col for col in df_dataset.columns if re.match("^1[0-9]{3}_", col)]
+    return [col for col in df_dataset.columns if re.match("^[0-9]{4}_", col)]
 
 def get_labels_t(df_dataset):
     features = get_t_radiomics_features(df_dataset)

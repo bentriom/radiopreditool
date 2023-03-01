@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import logging
 from datetime import datetime
+from itertools import compress
 
 import matplotlib
 matplotlib.use('Agg')
@@ -76,7 +77,8 @@ def survival_date(event_col, date_event_col, row):
     else:
         cols_date = ["date_sortie", "datederm", "date_dvigr", "date_rep", "date_rep2", "cslt_date_cslt", "date_diag"]
         min_date = datetime.strptime("31/12/2016", "%d/%m/%Y")
-        return max([datetime.strptime(row[col], DATETIME_FORMAT_FCCSS) for col in cols_date if not pd.isna(row[col])] + [min_date])
+        return max([datetime.strptime(row[col], DATETIME_FORMAT_FCCSS) \
+                    for col in cols_date if not pd.isna(row[col])] + [min_date])
 
 # Complete features for patients with no radiotherapy
 def fill_features_no_rt(df_dataset, col_treated_by_rt, params_file):
@@ -89,7 +91,9 @@ def fill_features_no_rt(df_dataset, col_treated_by_rt, params_file):
     features_values = [dict_features_values[x] for x in dict_features_values if not x.startswith("diagnostics_")]
     for label in list_labels:
         features = [pretty_dosesvol(f"{label}_{x}") for x in dict_features_values if not x.startswith("diagnostics_")]
-        df_dataset.loc[mask_no_rt, features] = features_values
+        mask_features_in_df = [f in df_dataset.columns for f in features]
+        df_dataset.loc[mask_no_rt, list(compress(features,mask_features_in_df))] = \
+            list(compress(features_values,mask_features_in_df))
 
 # Filter patients according to some criteria
 def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
@@ -106,22 +110,33 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         assert "Sexe" in df_dataset.columns
         mask = (df_dataset["Sexe"] == 2)
         return df_dataset.loc[mask, :]
-    elif name_filter_dataset == "women_test":
+    elif name_filter_dataset == "women_sim":
         cols_dosiomics = [col for col in df_dataset.columns if re.match("^[0-9]{3,4}_original_", col)]
-        cols_dv = [col for col in df_dataset.columns if re.match("^dv_\w+_[0-9]{3,4}", col)]
+        cols_dv = [col for col in df_dataset.columns if re.match("^dv_\w", col)]
         cols = cols_dv + cols_dosiomics
-        hazard_ratios = np.ones(len(cols))
-        mask_hr = np.isin(cols, [f"{label}_original_firstorder_Mean" for label in get_all_labels(df_dataset)] + \
-                                [f"dv_D50_{label}" for label in get_all_labels(df_dataset)])
-        hazard_ratios[mask_hr] = 3.0
-        n_samples = 400
-        surv_times, status, X = generate_survival_times(n_samples, len(cols), hazard_ratios, frac_censor = 0.2)
-        df_dataset = df_dataset.iloc[range(n_samples)].copy()
-        df_dataset.loc[:, cols] = np.transpose(X)
-        df_dataset.loc[:, event_col] = status
-        df_dataset.loc[:, duration_col] = surv_times
         clinical_features =  get_clinical_features(df_dataset, event_col, duration_col)
-        return df_dataset[["ctr", "numcent", "has_radiomics", event_col, duration_col] + clinical_features + cols]
+        betas = np.zeros(len(cols))
+        mask_pos = np.isin(cols, [f"{label}_original_firstorder_Mean" for label in [2413, 3413, 2601]])
+        mask_neg = np.isin(cols, [f"{label}_original_firstorder_Entropy" for label in [2413, 3413, 2601]])
+        betas[mask_pos] = 0.75
+        betas[mask_neg] = -0.5
+        n_samples = 400
+        surv_times, status, X = generate_survival_times(n_samples, len(cols), betas, frac_censor = 0.1)
+        df_dataset_sim = pd.DataFrame(columns = ["ctr", "numcent", "has_radiomics", event_col, duration_col] + \
+                                      clinical_features + cols)
+        df_dataset_sim[cols] = np.transpose(X)
+        df_dataset_sim["has_radiomics"] = 1
+        df_dataset_sim[event_col] = status
+        df_dataset_sim[duration_col] = surv_times
+        df_dataset_sim["ctr"] = 22
+        df_dataset_sim["numcent"] = rand.choice(range(n_samples), n_samples, replace = False)
+        # D50 is a median but here we copy the value of the corresponding mean
+        # to ensure that doses vol models can predict the event too
+        cols_dv_D50 = [f"dv_D50_{label}" for label in get_all_labels(df_dataset_sim)]
+        cols_means = [f"{label}_original_firstorder_Mean" for label in get_all_labels(df_dataset_sim)]
+        df_dataset_sim.drop(columns = [col for col in df_dataset_sim.columns if re.match("^dv_\w", col)], inplace = True)
+        df_dataset_sim[cols_dv_D50] = df_dataset_sim[cols_means]
+        return df_dataset_sim
     else:
         raise NotImplementedError(f"name_filter_dataset: {name_filter_dataset} not supported.")
 
@@ -163,9 +178,9 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     # Some filters need radiomics
     df_dataset = filter_patients(df_dataset, name_filter_dataset, event_col, surv_duration_col)
     # Eliminating patients with negative survival
-    mask_negative_times = df_dataset[surv_duration_col] < 0
-    logger.info(f"Eliminating {sum(mask_negative_times)} patients with negative survival times")
-    df_dataset = df_dataset.loc[~mask_negative_times, ]
+    mask_negative_times = df_dataset[surv_duration_col] <= 0
+    logger.info(f"Eliminating {sum(mask_negative_times)} patients with non-positive survival times")
+    df_dataset = df_dataset.loc[~mask_negative_times, :]
     # Fill columns about radiotherapie: dosiomics filled of zeros for patients with no RT
     fill_features_no_rt(df_dataset, col_treated_by_rt, params_file)
     logger.info(f"Full fccss dataset (with '{name_filter_dataset}' filter) : {df_dataset.shape}")

@@ -193,10 +193,24 @@ selection.coxnet <- function(formula, data, alpha = 1, nfolds = 5, list.lambda =
                                                   ", lambda.min:", coxnet_model$lambda.min, ")"))
     # Coxph on selected features
     formula_nonnull <- get.surv.formula(event_col, nonnull.covariates, duration_col = duration_col)
-    if (run_type == "error_estimation")
-        coxmodel <- survival::coxph(formula_nonnull, data = data, x = T, y = T, control = coxph.control(iter.max = 1000))
-    else
+    if (run_type == "error_estimation") {
+        coxmodel <- survival::coxph(formula_nonnull, data = data, x = T, y = T,
+                                    control = coxph.control(iter.max = 1000))
+        na_coefs <- get.na.coefs(coxmodel)
+        while (length(na_coefs) > 0) {
+          warning_msg <- paste0(paste("NA value:", na_coefs, collapse = ""), 
+                                      ". Discarding these variables and re-fitting ", class(coxmodel), ".")
+          warning(warning_msg, immediate. = T)
+          logger::log_warn(warning_msg)
+          nonnull.covariates <- nonnull.covariates[!(nonnull.covariates %in% na_coefs)]
+          formula_nonnull <- get.surv.formula(event_col, nonnull.covariates, duration_col = duration_col)
+          coxmodel <- survival::coxph(formula_nonnull, data = data, x = T, y = T,
+                                      control = coxph.control(iter.max = 1000))
+          na_coefs <- get.na.coefs(coxmodel)
+        }
+    } else {
         coxmodel <- NULL
+    }
     out <- list("call" = match.call(), "selected_features" = nonnull.covariates, "coxnet.fit" = coxnet_model,
                 "coxnet.cv.params" = cv.params, "best.lambda.method" = best.lambda.method, "best.lambda" = best.lambda,
                 "coxph.fit" = coxmodel, "coxph.formula" = formula_nonnull, "surv_y" = coxnet_surv_y)
@@ -631,7 +645,7 @@ plot_cox_lambda_path <- function(save_results_dir) {
   geom_text(data = cv.params.unique[-mask_even,], aes(x = penalty, y = mean_score, label = non_zero_coefs),
             size = 3, vjust = 2) +
   scale_x_log10() +
-  labs(x = "Penalty (log10)", y = "Mean score (1 - Cindex)")
+  labs(x = "Penalty (log10)", y = "Mean score (C-index)")
   ggsave(paste0(save_results_dir, "cv_mean_error.png"), device = "png", dpi = 480)
   # Regularization path
   mat.coefs <- read.csv(paste0(save_results_dir, "mat_coefs.csv"))
