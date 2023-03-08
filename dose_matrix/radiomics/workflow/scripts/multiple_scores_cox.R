@@ -184,8 +184,6 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, screening_method, 
     cols_32X <- grep("^X32[0-9]{1}_original_firstorder_", features, value = TRUE)
     covariates = c(cols_32X, clinical_vars)
     log_info("Multiple scores radiomics firstorder bootstrap lasso (32X)")
-    print("Before the call of parallel_multiple_scores_cox(), I print n_boot")
-    print(paste("n_boot:", n_boot))
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
                                  penalty = "bootstrap_lasso", n_boot = n_boot,
                                  screening_method = screening_method, parallel.method = parallel.method)
@@ -242,9 +240,15 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, screening_method, 
 }
 
 # Script args
+options(error = quote({
+      dump.frames(to.file=T, dumpto='last.dump')
+        load('last.dump.rda')
+        print(last.dump)
+        q()
+}))
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 1) {
-  # Sys.sleep(20)
+  Sys.sleep(20)
   config <- yaml.load_file(args[1])
   run_type <- args[2]
   subdivision_type <- args[3]

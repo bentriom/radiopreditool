@@ -559,6 +559,9 @@ model_cox <- function(df_trainset, df_testset, covariates, event_col, duration_c
 parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name,
                                          logfile, penalty = "lasso", parallel.method = "mclapply",
                                          screening_method = "all", n_boot = 200) {
+  # Surprisingly, this print is very important: if this is deleted, n_boot does not exist
+  # within de model_cox() function when run on ruche. This problem is not solved yet.
+  print(paste("parallel_, n_boot is defined:", n_boot))
   stopifnot(parallel.method %in% c("mclapply", "rslurm"))
   stopifnot(penalty %in% c("none", "lasso", "bootstrap_lasso"))
   if (!is.null(logfile)) log_appender(appender_file(logfile, append = T))
