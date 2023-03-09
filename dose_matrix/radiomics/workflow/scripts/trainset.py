@@ -111,6 +111,8 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         mask = (df_dataset["Sexe"] == 2)
         return df_dataset.loc[mask, :]
     elif name_filter_dataset == "women_sim":
+        logger = logging.getLogger("dataset")
+        logger.info("!! This is a simulated dataset !!")
         cols_dosiomics = [col for col in df_dataset.columns if re.match("^[0-9]{3,4}_original_", col)]
         cols_dv = [col for col in df_dataset.columns if re.match("^dv_\w", col)]
         cols = cols_dv + cols_dosiomics
