@@ -8,6 +8,8 @@ THORAX_COX_RADIOMICS_BOOTSTRAP_LASSO_ALL = ["breasts_radiomics_full_bootstrap_la
                                             "thorax_radiomics_full_bootstrap_lasso_all"]
 THORAX_COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST = ["breasts_radiomics_full_bootstrap_lasso_features_hclust_corr", \
                                                   "thorax_radiomics_full_bootstrap_lasso_features_hclust_corr"]
+THORAX_COX_RADIOMICS_SIS_ALL = ["thorax_radiomics_full_sis_all"]
+THORAX_COX_RADIOMICS_SIS_FE_HCLUST = ["thorax_radiomics_full_sis_features_hclust_corr"]
 
 ##### Run Cox models learning in R with cross-validation #####
 
@@ -183,4 +185,56 @@ rule multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_thorax_R
         f"cox_bootstrap_lasso_radiomics_features_hclust_corr breasts && "
         f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} " + \
         f"cox_bootstrap_lasso_radiomics_features_hclust_corr thorax"
+
+rule multiple_scores_cox_sis_radiomics_all_thorax_R:
+    input:
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+    output:
+        ANALYZES_DIR + "multiple_scores_cox_sis_radiomics_thorax_all_R.log",
+        # Results that summaries all cv runs
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = THORAX_COX_RADIOMICS_SIS_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = THORAX_COX_RADIOMICS_SIS_ALL),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = THORAX_COX_RADIOMICS_SIS_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/final_selected_features.csv",
+               model = THORAX_COX_RADIOMICS_SIS_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = THORAX_COX_RADIOMICS_SIS_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    conda:
+        "../envs/cox_R_env.yaml"
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_sis_radiomics_all thorax"
+
+rule multiple_scores_cox_sis_radiomics_features_hclust_corr_thorax_R:
+    input:
+        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+    output:
+        ANALYZES_DIR + "multiple_scores_cox_sis_radiomics_breasts_features_hclust_corr_R.log",
+        ANALYZES_DIR + "multiple_scores_cox_sis_radiomics_thorax_features_hclust_corr_R.log",
+        # Results that summaries all cv runs
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = THORAX_COX_RADIOMICS_SIS_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = THORAX_COX_RADIOMICS_SIS_FE_HCLUST),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = THORAX_COX_RADIOMICS_SIS_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/final_selected_features.csv",
+               model = THORAX_COX_RADIOMICS_SIS_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = THORAX_COX_RADIOMICS_SIS_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    conda:
+        "../envs/cox_R_env.yaml"
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_sis_radiomics_features_hclust_corr thorax"
 

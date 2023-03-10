@@ -24,6 +24,8 @@ HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_ALL = HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_32
 HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST =  HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST + \
                                                  HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST
 HEART_COX_RADIOMICS_LASSO = HEART_COX_RADIOMICS_LASSO_ALL + HEART_COX_RADIOMICS_LASSO_FE_HCLUST
+HEART_COX_RADIOMICS_SIS_ALL = ["32X_radiomics_full_sis_all"]
+HEART_COX_RADIOMICS_SIS_FE_HCLUST = ["32X_radiomics_full_sis_features_hclust_corr"]
 
 ##### Run Cox models learning with cross-validation #####
 
@@ -188,6 +190,56 @@ rule multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_heart_R:
         f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} " + \
         f"cox_bootstrap_lasso_radiomics_features_hclust_corr heart"
 
+rule multiple_scores_cox_sis_radiomics_all_heart_R:
+    input:
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+    output:
+        ANALYZES_DIR + "multiple_scores_cox_sis_radiomics_heart_all_R.log",
+        # Results that summaries all cv runs
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = HEART_COX_RADIOMICS_SIS_ALL),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = HEART_COX_RADIOMICS_SIS_ALL),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = HEART_COX_RADIOMICS_SIS_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/final_selected_features.csv",
+               model = HEART_COX_RADIOMICS_SIS_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = HEART_COX_RADIOMICS_SIS_ALL, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    conda:
+        "../envs/cox_R_env.yaml"
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_sis_radiomics_all heart"
+
+rule multiple_scores_cox_sis_radiomics_features_hclust_corr_heart_R:
+    input:
+        expand(ANALYZES_DIR + "screening/features_hclust_corr_{nb_set}.csv", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/trainset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "datasets/testset_{nb_set}.csv.gz", nb_set = range(NB_ESTIM_SCORE_MODELS))
+    output:
+        ANALYZES_DIR + "multiple_scores_cox_sis_radiomics_heart_features_hclust_corr_R.log",
+        # Results that summaries all cv runs
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_test_metrics.csv",
+               model = HEART_COX_RADIOMICS_SIS_FE_HCLUST),
+        expand(ANALYZES_DIR + "coxph_R/{model}/" + str(NB_ESTIM_SCORE_MODELS) + "_runs_full_test_metrics.csv",
+               model = HEART_COX_RADIOMICS_SIS_FE_HCLUST),
+        # Results for each run
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/coefs.png",
+               model = HEART_COX_RADIOMICS_SIS_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/final_selected_features.csv",
+               model = HEART_COX_RADIOMICS_SIS_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+        expand(ANALYZES_DIR + "coxph_R/{model}/{nb_set}/metrics.csv",
+               model = HEART_COX_RADIOMICS_SIS_FE_HCLUST, nb_set = range(NB_ESTIM_SCORE_MODELS)),
+    threads:
+        1 if is_slurm_run() else min(get_ncpus(), NB_ESTIM_SCORE_MODELS)
+    conda:
+        "../envs/cox_R_env.yaml"
+    shell:
+        f"Rscript workflow/scripts/multiple_scores_cox.R {CONFIGFILE_PATH} cox_sis_radiomics_features_hclust_corr heart"
 
 ##### Deprecated rules: learning with only one train/test set #####
 

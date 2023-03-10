@@ -17,6 +17,8 @@ def get_color(model):
             return "Cox PH Lasso"
     elif splits[0] == "CBL":
         return "Cox PH Bootstrap Lasso"
+    elif splits[0] == "CSIS":
+        return "Cox PH SIS"
 
 def results_plots_heart(analyzes_dir, nb_estim):
     coxph_results_dir = f"{analyzes_dir}coxph_R/"
@@ -324,6 +326,8 @@ def results_plots_thorax(analyzes_dir, nb_estim):
     df_multiple_cox_boot_breasts_filter = pd.read_csv(coxph_results_dir + f"breasts_radiomics_full_bootstrap_lasso_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_cox_boot_thorax = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_bootstrap_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_cox_boot_thorax_filter = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_bootstrap_lasso_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    # Full radiomics Cox SIS
+    df_multiple_cox_sis_thorax = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_sis_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     # Full radiomics RSF
     df_multiple_rsf_breasts = pd.read_csv(rsf_results_dir + f"breasts_radiomics_full_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_rsf_breasts_filter = pd.read_csv(rsf_results_dir + f"breasts_radiomics_full_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
@@ -339,6 +343,7 @@ def results_plots_thorax(analyzes_dir, nb_estim):
         "CL thorax dosiomics": df_multiple_cox_thorax,
         "CBL breasts dosiomics": df_multiple_cox_boot_breasts,
         "CBL thorax dosiomics": df_multiple_cox_boot_thorax,
+        "CSIS thorax dosiomics": df_multiple_cox_sis_thorax,
         "RSF breasts dosiomics": df_multiple_rsf_breasts,
         "RSF thorax dosiomics": df_multiple_rsf_thorax
     }
@@ -366,9 +371,9 @@ def results_plots_thorax(analyzes_dir, nb_estim):
 
     ## Plots settings
     color_map = {'Random Survival Forest': 'red', 'Cox PH Lasso': 'blue',
-                 'Cox PH Bootstrap Lasso': 'purple', 'Cox PH': 'green'}
+                 'Cox PH Bootstrap Lasso': 'purple', 'Cox PH SIS': 'brown', 'Cox PH': 'green'}
     symbol_map = {'Random Survival Forest': 'diamond-open', 'Cox PH Lasso': 'square-open',
-                  'Cox PH Bootstrap Lasso': 'x-open', 'Cox PH': 'circle-open'}
+                  'Cox PH Bootstrap Lasso': 'x-open', 'Cox PH SIS': 'pentagon-open', 'Cox PH': 'circle-open'}
     xaxis_angle = -50
     xaxis_size = 19.5
     legend_size = 18
