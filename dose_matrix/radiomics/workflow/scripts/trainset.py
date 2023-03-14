@@ -110,9 +110,20 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         assert "Sexe" in df_dataset.columns
         mask = (df_dataset["Sexe"] == 2)
         return df_dataset.loc[mask, :]
-    elif name_filter_dataset == "women_sim":
+    elif re.match("^women_sim", name_filter_dataset):
+        if name_filter_dataset == "women_sim":
+            n_samples = 400
+            frac_censor = 0.1
+            distribution = "exp"
+        else:
+            match_settings = re.match("^women_sim_(\w+)_censor_(\S+)_nsamples_(\d+)", name_filter_dataset)
+            n_samples = int(match_settings[3])
+            frac_censor = float(match_settings[2])
+            distribution = match_settings[1]
         logger = logging.getLogger("dataset")
         logger.info("!! This is a simulated dataset !!")
+        logger.info(f"Number of patients: {n_samples} with {frac_censor*100:.1f}% censorship.")
+        logger.info(f"Survival time distribution: {distribution}.")
         cols_dosiomics = [col for col in df_dataset.columns if re.match("^[0-9]{3,4}_original_", col)]
         cols_dv = [col for col in df_dataset.columns if re.match("^dv_\w", col)]
         cols = cols_dv + cols_dosiomics
@@ -122,8 +133,8 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         mask_neg = np.isin(cols, [f"{label}_original_firstorder_Entropy" for label in [2413, 3413, 2601]])
         betas[mask_pos] = 0.75
         betas[mask_neg] = -0.5
-        n_samples = 400
-        surv_times, status, X = generate_survival_times(n_samples, len(cols), betas, frac_censor = 0.1)
+        surv_times, status, X = generate_survival_times(n_samples, len(cols), betas,
+                                                        frac_censor = frac_censor, distribution = distribution)
         df_dataset_sim = pd.DataFrame(columns = ["ctr", "numcent", "has_radiomics", event_col, duration_col] + \
                                       clinical_features + cols)
         df_dataset_sim[cols] = np.transpose(X)

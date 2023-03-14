@@ -9,13 +9,12 @@ from multiprocessing import cpu_count
 from datetime import datetime
 import numpy as np
 import numpy.random as rand
+from scipy.stats import gompertz
 
 # Generates survival data with controlled censorship
 def generate_survival_times(n_samples, n_covariates, betas, frac_censor = 0.8, censor_type = "type_I",
                             mat_cov = None, distribution = "exp"):
     assert n_covariates == len(betas)
-    assert distribution in ["exp"]
-    assert censor_type in ["type_I", "random"]
     # Simulate covariates
     if mat_cov is None:
         X = rand.randn(n_covariates, n_samples)
@@ -27,24 +26,37 @@ def generate_survival_times(n_samples, n_covariates, betas, frac_censor = 0.8, c
         inv_cumbasehazard = lambda x:  (x/0.025)
     betas = np.asarray(betas)
     # Simulate survival times: T = inv_cumbasehazard(-ln(U) * exp(-beta' * X)) with U uniform
+    risks_samples = np.exp(np.dot(betas, X))
     if distribution == "exp":
         mean_base_hazard = 10
-        risks_samples = np.exp(np.dot(betas, X))
         means_surv_time = 1 / ((1/mean_base_hazard) * risks_samples) # 1/lambda_Ts
         times_event = rand.exponential(means_surv_time)
-        if censor_type == "random":
+    elif distribution == "weibull":
+        nu, lambda_base_hazard = 1.85, 0.1
+        times_event = 1/(lambda_base_hazard * risks_samples) * rand.weibull(nu, size = n_samples)
+    elif distribution == "gompertz":
+        alpha, lambda_base_hazard = 0.018, 2.0 # alpha = shape parameter
+        scales = lambda_base_hazard * risks_samples
+        times_event = np.asarray([gompertz.rvs(alpha, scale = scale, size = 1) for scale in scales])
+    else:
+        raise NotImplementedError(f"Survival time distribution: '{distribution}' is not implemented.")
+    # Censorship of the observations
+    if censor_type == "type_I":
+        study_end = opt.minimize_scalar(lambda t: (np.sum(times_event<=t)/len(times_event)-(1-frac_censor))**2,
+                                        bounds = (0, max(times_event)), method = "bounded").x
+        times_observed = times_event
+        status = 1 * (times_event <= study_end)
+        times_observed[times_observed > study_end] = study_end
+    elif censor_type == "random":
+        if distribution == "exp":
             assert frac_censor >= 0.5, "Censor time modeled by an exponential and P(censoring) < 0.5"
-            means_exp_censor = 1 / (-(1/means_surv_time) * np.log(2*(1-frac_censor))) # 1/lambda_Cs
+            means_exp_censor = 1 / (-(1/means_surv_time) * np.log(2*(1-frac_censor))) # 1/lambda_C
             difference_times_event_censor = rand.laplace(means_surv_time, means_exp_censor) # T - C
             status = 1 * (difference_times_event_censor <= 0)
             times_censor = np.maximum(times_event - difference_times_event_censor, 0)
             times_observed = np.minimum(times_event, times_censor)
-        elif censor_type == "type_I":
-            study_end = opt.minimize_scalar(lambda t: (np.sum(times_event<=t)/len(times_event)-(1-frac_censor))**2,
-                                            bounds = (0, max(times_event)), method = "bounded").x
-            times_observed = times_event
-            status = 1 * (times_event <= study_end)
-            times_observed[times_observed > study_end] = study_end
+    else:
+        raise NotImplementedError(f"Censor type: '{censor_type}' is not implemented.")
 
     return times_observed, status, X
 
