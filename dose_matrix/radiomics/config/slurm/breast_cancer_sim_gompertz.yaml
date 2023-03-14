@@ -1,4 +1,4 @@
-MODEL_NAME: breast_cancer_bw_0.5
+MODEL_NAME: breast_cancer_sim_gompertz
 RADIOMICS_NAME: breast_cancer_bw_0.5
 DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
 DOSES_DATASET_SUBDIRS:
@@ -19,5 +19,5 @@ EVENT_COL: "K2_loc20"
 DATE_EVENT_COL: "date_K2_loc20"
 NB_ESTIM_SCORE_MODELS: 5
 N_BOOTSTRAP: 100
-NAME_FILTER_DATASET: "women_sim"
+NAME_FILTER_DATASET: "women_sim_gompertz_censor_0.8_nsamples_1000"
 
