@@ -134,7 +134,7 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         betas[mask_pos] = 0.75
         betas[mask_neg] = -0.5
         surv_times, status, X = generate_survival_times(n_samples, len(cols), betas,
-                                                        frac_censor = frac_censor, distribution = distribution)
+                                                        target_frac_censor = frac_censor, distribution = distribution)
         df_dataset_sim = pd.DataFrame(columns = ["ctr", "numcent", "has_radiomics", event_col, duration_col] + \
                                       clinical_features + cols)
         df_dataset_sim[cols] = np.transpose(X)

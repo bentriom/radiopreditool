@@ -12,7 +12,7 @@ import numpy.random as rand
 from scipy.stats import gompertz
 
 # Generates survival data with controlled censorship
-def generate_survival_times(n_samples, n_covariates, betas, frac_censor = 0.8, censor_type = "type_I",
+def generate_survival_times(n_samples, n_covariates, betas, target_frac_censor = 0.8, censor_type = "random",
                             mat_cov = None, distribution = "exp"):
     assert n_covariates == len(betas)
     # Simulate covariates
@@ -22,39 +22,63 @@ def generate_survival_times(n_samples, n_covariates, betas, frac_censor = 0.8, c
         assert mat_cov.shape == (n_covariates, n_covariates)
         X = rand.multivariate_normal(cov = mat_cov, size = n_samples)
     assert X.shape == (n_covariates, n_samples)
-    if distribution == "exp":
-        inv_cumbasehazard = lambda x:  (x/0.025)
     betas = np.asarray(betas)
     # Simulate survival times: T = inv_cumbasehazard(-ln(U) * exp(-beta' * X)) with U uniform
     risks_samples = np.exp(np.dot(betas, X))
     if distribution == "exp":
-        mean_base_hazard = 10
+        mean_base_hazard = 50
         means_surv_time = 1 / ((1/mean_base_hazard) * risks_samples) # 1/lambda_Ts
         times_event = rand.exponential(means_surv_time)
     elif distribution == "weibull":
-        nu, lambda_base_hazard = 1.85, 0.1
-        times_event = 1/(lambda_base_hazard * risks_samples) * rand.weibull(nu, size = n_samples)
+        nu, lambda_base_hazard = 1.8, 0.01
+        scales_weibull = lambda_base_hazard * risks_samples
+        times_event = 1/scales_weibull * rand.weibull(nu, size = n_samples)
     elif distribution == "gompertz":
-        alpha, lambda_base_hazard = 0.018, 2.0 # alpha = shape parameter
-        scales = lambda_base_hazard * risks_samples
-        times_event = np.asarray([gompertz.rvs(alpha, scale = scale, size = 1) for scale in scales])
+        alpha, lambda_base_hazard = 0.01, 20.0 # alpha = shape parameter
+        scales_gompertz = lambda_base_hazard * risks_samples
+        times_event = np.asarray([gompertz.rvs(alpha, scale = scale, size = 1)[0] for scale in scales_gompertz])
     else:
         raise NotImplementedError(f"Survival time distribution: '{distribution}' is not implemented.")
     # Censorship of the observations
     if censor_type == "type_I":
-        study_end = opt.minimize_scalar(lambda t: (np.sum(times_event<=t)/len(times_event)-(1-frac_censor))**2,
-                                        bounds = (0, max(times_event)), method = "bounded").x
+        study_end = opt.minimize_scalar(lambda t: (np.sum(times_event<=t)/len(times_event)-(1-target_frac_censor))**2,
+                                        bounds = (0, 1.01*max(times_event)), method = "bounded").x
         times_observed = times_event
         status = 1 * (times_event <= study_end)
         times_observed[times_observed > study_end] = study_end
     elif censor_type == "random":
         if distribution == "exp":
-            assert frac_censor >= 0.5, "Censor time modeled by an exponential and P(censoring) < 0.5"
-            means_exp_censor = 1 / (-(1/means_surv_time) * np.log(2*(1-frac_censor))) # 1/lambda_C
-            difference_times_event_censor = rand.laplace(means_surv_time, means_exp_censor) # T - C
-            status = 1 * (difference_times_event_censor <= 0)
-            times_censor = np.maximum(times_event - difference_times_event_censor, 0)
-            times_observed = np.minimum(times_event, times_censor)
+            mean_censor = opt.minimize_scalar(lambda mean_censor:
+                                              (np.mean([np.mean(times_event<=rand.exponential(mean_censor)) \
+                                                        for i in range(200)]) - (1-target_frac_censor))**2,
+                                              bounds = (0, 1.01*np.mean(times_event)), method = "bounded").x
+            times_censor = rand.exponential(mean_censor, size = n_samples)
+        elif distribution == "weibull":
+            nu = 1.85
+            scale_censor = opt.minimize_scalar(lambda scale:
+                                              (np.mean([np.mean(times_event<=(1/scale)*rand.weibull(nu, size =
+                                                                                                    n_samples)) \
+                                                        for i in range(200)]) - (1-target_frac_censor))**2,
+                                              bounds = (0.99*np.min(scales_weibull), 1.01*np.max(scales_weibull)),
+                                              method = "bounded").x
+            times_censor = 1/scale_censor * rand.weibull(nu, size = n_samples)
+        elif distribution == "gompertz":
+            alpha = 0.01 # alpha = shape parameter
+            scale_censor = opt.minimize_scalar(lambda scale:
+                                              (np.mean([np.mean(times_event<=
+                                                                gompertz.rvs(alpha, scale = scale , size =n_samples)) \
+                                                        for i in range(200)]) - (1-target_frac_censor))**2,
+                                              bounds = (0.99*np.min(scales_gompertz), 1.01*np.max(scales_gompertz)),
+                                              method = "bounded").x
+            times_censor = gompertz.rvs(alpha, scale = scale_censor, size = n_samples)
+            # assert target_frac_censor >= 0.5, "Censor time modeled by an exponential and P(censoring) < 0.5"
+            # means_exp_censor = 1 / (-(1/means_surv_time) * np.log(2*(1-target_frac_censor))) # 1/lambda_C
+            # difference_times_event_censor = rand.laplace(means_surv_time, means_exp_censor) # T - C
+            # status = 1 * (difference_times_event_censor <= 0)
+            # times_censor = np.maximum(times_event - difference_times_event_censor, 0)
+            # times_observed = np.minimum(times_event, times_censor)
+        status = 1 * (times_event <= times_censor)
+        times_observed = np.minimum(times_event, times_censor)
     else:
         raise NotImplementedError(f"Censor type: '{censor_type}' is not implemented.")
 
