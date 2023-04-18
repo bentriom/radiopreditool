@@ -143,6 +143,7 @@ def get_super_t(label_t):
     labels_thyroid = range(702, 705) # 1702
     labels_breast_right = [413, 415, 417, 419] # 2413
     labels_breast_left = [414, 416, 418, 420] # 3413
+    labels_marrow = range(601, 620)
     if pd.isnull(label_t):
         return np.nan
     elif label_t in labels_heart:
@@ -155,16 +156,47 @@ def get_super_t(label_t):
         return 2413
     elif label_t in labels_breast_left:
         return 3413
+    elif label_t in labels_marrow:
+        return 1601
     else:
         return 1000
 
-def get_super_t_active_marrow_subset(label_t):
+def get_super_t_thorax(label_t):
+    labels_heart = range(320, 325) # 1320
+    labels_brain = range(370, 381) # 1370
+    labels_thyroid = range(702, 705) # 1702
+    labels_breast_right = [413, 415, 417, 419] # 2413
+    labels_breast_left = [414, 416, 418, 420] # 3413
+    labels_marrow_thorax = [603, 604, 605, 606, 607, 608] # 2601
+    if pd.isnull(label_t):
+        return np.nan
+    elif label_t in labels_heart:
+        return 1320
+    elif label_t in labels_brain:
+        return 1370
+    elif label_t in labels_thyroid:
+        return 1702
+    elif label_t in labels_breast_right:
+        return 2413
+    elif label_t in labels_breast_left:
+        return 3413
+    elif label_t in labels_marrow_thorax:
+        return 2601
+    else:
+        return 1000
+
+def get_super_t_active_marrow_subsets(label_t):
     labels_heart = range(320, 325) # 1320
     labels_brain = range(370, 381) # 1370
     labels_thyroid = range(702, 705) # 1702
     labels_breast_right = [413, 415, 417, 419] # 2413
     labels_breast_left = [414, 416, 418, 420] # 3413
-    labels_active_marrow_subset = [605, 607, 608] # 2601
+    labels_marrow_head = [601, 602] # 2601
+    labels_marrow_upper_trunk = [603, 604, 605, 606] # 3601
+    labels_marrow_rachis = [607, 608, 609] # 4601
+    labels_marrow_pelvis = [610, 611] # 5601
+    labels_marrow_legs = [612, 613, 614, 615] # 6601
+    labels_marrow_arms = [616, 617, 618, 619] # 7601
     if pd.isnull(label_t):
         return np.nan
     elif label_t in labels_heart:
@@ -177,8 +209,18 @@ def get_super_t_active_marrow_subset(label_t):
         return 2413
     elif label_t in labels_breast_left:
         return 3413
-    elif label_t in labels_active_marrow_subset:
+    elif label_t in labels_marrow_head:
         return 2601
+    elif label_t in labels_marrow_upper_trunk:
+        return 3601
+    elif label_t in labels_marrow_rachis:
+        return 4601
+    elif label_t in labels_marrow_pelvis:
+        return 5601
+    elif label_t in labels_marrow_legs:
+        return 6601
+    elif label_t in labels_marrow_arms:
+        return 7601
     else:
         return 1000
 
