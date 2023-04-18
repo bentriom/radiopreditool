@@ -1,13 +1,13 @@
 MODEL_NAME: pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5
 RADIOMICS_NAME: 32X_1320_bw_0.5
-DOSES_DATASET_DIR: /Volumes/LaCie/dosimetrie_csv/
+DOSES_DATASET_DIR: /Volumes/OneTouch/dosimetrie_csv/
 DOSES_DATASET_SUBDIRS:
     - CURIE
     - GR
     - TOULOUSE
     - REIMS
     - NICE
-RESULTS_DIR: /Volumes/LaCie/local_results/
+RESULTS_DIR: /Volumes/OneTouch/local_results/
 RADIOMICS_PARAMS_FILE: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/config/radiomics/radiomics_pathol_cardiaque_bw_0.5.yaml
 LABELS_T_ORGANS_FILE: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/labels_organs_20160118_only_t.csv
 # 309 - 310: lung
@@ -15,6 +15,7 @@ LABELS_T_ORGANS_FILE: /Users/moud/Documents/RadioPrediTool/code/database/fccss_0
 # 370 - 380: cerveau
 # 413 - 420: breast 
 # 702 - 704: thyroid
+NAME_SUPER_T_FUNC: get_super_t
 LABELS_SUPER_T_VOI: [1320]
 LABELS_T_VOI: [320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/base_fccss_igr_curie_011222_extended.csv.gz

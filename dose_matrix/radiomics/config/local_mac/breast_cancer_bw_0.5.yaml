@@ -1,19 +1,20 @@
 MODEL_NAME: breast_cancer_bw_0.5
 RADIOMICS_NAME: breast_cancer_bw_0.5
-DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
+DOSES_DATASET_DIR: /Volumes/OneTouch/dosimetrie_csv/
 DOSES_DATASET_SUBDIRS:
-    - CURIE
-    - GR
-    - TOULOUSE
-    - REIMS
-    - NICE
-RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
-RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics/radiomics_breast_cancer_bw_0.5.yaml
+  - CURIE
+  - GR
+  - TOULOUSE
+  - REIMS
+  - NICE
+RESULTS_DIR: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/results/
+RADIOMICS_PARAMS_FILE: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/config/radiomics/radiomics_breast_cancer_bw_0.5.yaml
+LABELS_T_ORGANS_FILE: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/labels_organs_20160118_only_t.csv
 # Lung, heart, right breast, left breast, some active marrow
 NAME_SUPER_T_FUNC: get_super_t_thorax
 LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 2601]
-LABELS_T_VOI: [309, 310, 413, 414, 415, 416, 417, 418, 419, 420]
-FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011222_extended.csv.gz
+LABELS_T_VOI: [309, 310]
+FCCSS_CLINICAL_DATASET: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/base_fccss_igr_curie_011222_extended.csv.gz
 FCCSS_CLINICAL_VARIABLES: ["categ_age_at_diagnosis", 
                            'iccc_01.a', 'iccc_02.a', 'iccc_02.b', 'iccc_02.c',
                            'iccc_02.d', 'iccc_02.e', 'iccc_03.a', 'iccc_03.b', 'iccc_03.c',
