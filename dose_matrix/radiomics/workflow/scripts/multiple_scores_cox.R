@@ -187,6 +187,24 @@ multiple_scores_cox_sis_radiomics <- function(nb_estim, screening_method, event_
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "sis", 
                                  screening_method = screening_method, parallel.method = parallel.method)
+    
+    # Coxph SIS selection radiomics 32X marrow
+    model_name = paste0("32X_marrow_radiomics_full_sis_", screening_method)
+    cols_32X <- filter.gl(grep("^X(32[0-9]{1}|1601)_original_", features, value = TRUE))
+    covariates = c(cols_32X, clinical_vars)
+    log_info("Multiple scores radiomics full sis (32X, 1601)")
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, cox_logfile, penalty = "sis", 
+                                 screening_method = screening_method, parallel.method = parallel.method)
+    
+    # Coxph SIS selection radiomics 1320 marrow
+    model_name = paste0("1320_marrow_radiomics_full_sis_", screening_method)
+    cols_32X <- filter.gl(grep("^X(1320|1601)_original_", features, value = TRUE))
+    covariates = c(cols_32X, clinical_vars)
+    log_info("Multiple scores radiomics full sis (1320, 1601)")
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, cox_logfile, penalty = "sis", 
+                                 screening_method = screening_method, parallel.method = parallel.method)
   } else if (subdivision_type == "breasts") {
     # Coxph SIS selection all radiomics of the two breasts (2413, 3413)
     model_name <- paste0("breasts_radiomics_full_sis_", screening_method)

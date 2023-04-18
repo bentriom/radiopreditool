@@ -26,6 +26,22 @@ rule scores_plots_heart:
     run:
        viz.results_plots_heart(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
 
+rule scores_plots_heart_two:
+    input:
+        rules.multiple_scores_baseline_analysis_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_all_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_heart_R.output,
+        rules.multiple_scores_cox_sis_radiomics_all_heart_R.output,
+        rules.multiple_scores_rsf_heart.output,
+        rules.multiple_scores_rsf_features_hclust_corr_heart.output,
+    output:
+        expand(ANALYZES_DIR + "plots/heart/multiple_scores_cindex.{format}", format = ["png", "svg"]),
+        expand(ANALYZES_DIR + "plots/heart/multiple_scores_ibs.{format}", format = ["png", "svg"]),
+    threads:
+        1
+    run:
+       viz.results_plots_heart_2(ANALYZES_DIR, NB_ESTIM_SCORE_MODELS)
+
 rule scores_tables_heart:
     input:
         rules.multiple_scores_baseline_analysis_heart_R.output,

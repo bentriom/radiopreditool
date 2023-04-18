@@ -24,8 +24,11 @@ HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_ALL = HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_32
 HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_FE_HCLUST =  HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_32X_FE_HCLUST + \
                                                  HEART_COX_RADIOMICS_BOOTSTRAP_LASSO_1320_FE_HCLUST
 HEART_COX_RADIOMICS_LASSO = HEART_COX_RADIOMICS_LASSO_ALL + HEART_COX_RADIOMICS_LASSO_FE_HCLUST
-HEART_COX_RADIOMICS_SIS_ALL = ["32X_radiomics_full_sis_all"]
-HEART_COX_RADIOMICS_SIS_FE_HCLUST = ["32X_radiomics_full_sis_features_hclust_corr"]
+HEART_COX_RADIOMICS_SIS_ALL = ["32X_radiomics_full_sis_all", "1320_marrow_radiomics_full_sis_all", \
+                               "32X_marrow_radiomics_full_sis_all"]
+HEART_COX_RADIOMICS_SIS_FE_HCLUST = ["32X_radiomics_full_sis_features_hclust_corr", \
+                                     "1320_marrow_radiomics_full_sis_features_hclust_corr", \
+                                     "32X_marrow_radiomics_full_sis_features_hclust_corr"]
 
 ##### Run Cox models learning with cross-validation #####
 

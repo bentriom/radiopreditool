@@ -1,5 +1,5 @@
 MODEL_NAME: pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5
-RADIOMICS_NAME: 32X_1320_bw_0.5
+RADIOMICS_NAME: 32X_1320_1601_bw_0.5
 DOSES_DATASET_DIR: /Volumes/OneTouch/dosimetrie_csv/
 DOSES_DATASET_SUBDIRS:
     - CURIE
@@ -16,7 +16,7 @@ LABELS_T_ORGANS_FILE: /Users/moud/Documents/RadioPrediTool/code/database/fccss_0
 # 413 - 420: breast 
 # 702 - 704: thyroid
 NAME_SUPER_T_FUNC: get_super_t
-LABELS_SUPER_T_VOI: [1320]
+LABELS_SUPER_T_VOI: [1320, 1601]
 LABELS_T_VOI: [320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/base_fccss_igr_curie_011222_extended.csv.gz
 FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis", "ALKYL", "ANTHRA", 
@@ -26,5 +26,5 @@ FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis", "ALKYL", "ANTHRA",
                            'iccc_04.a', 'iccc_06.a']
 EVENT_COL: "Pathologie_cardiaque_3_new"
 DATE_EVENT_COL: "date_pathol_cardiaque_3_new"
-NB_ESTIM_SCORE_MODELS: 10
+NB_ESTIM_SCORE_MODELS: 5
 
