@@ -1,7 +1,7 @@
 
 from functools import reduce
 import pandas as pd
-import os, sys, logging
+import os, sys, logging, re
 sys.path.append("./workflow/scripts/")
 import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning, entropy_analysis, viz
 from radiopreditool_utils import setup_logger, get_ncpus, addslash, get_patient_file, is_slurm_run
@@ -42,7 +42,7 @@ def get_newdosi_files(wildcards):
 # Create useful variables for rules based on configuration
 list_newdosi_files = [addslash(subdir) + f.split(".")[0]  for subdir in DOSES_DATASET_SUBDIRS \
                                                           for f in os.listdir(DOSES_DATASET_DIR + subdir) \
-                                                          if ".csv.gz" in f]
+                                                          if re.match("^newdosi_\S+.csv.gz", f)]
 list_newdosi_patients = list(set([get_patient_file(newdosi) for newdosi in list_newdosi_files]))
 str_cmd_dataset_subdirs = reduce(lambda a,b:a+b, [sdir + "," for sdir in DOSES_DATASET_SUBDIRS])[0:-1]
 
