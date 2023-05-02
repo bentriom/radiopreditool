@@ -185,6 +185,31 @@ def get_super_t_thorax(label_t):
     else:
         return 1000
 
+def get_super_t_marrow_all(label_t):
+    labels_heart = range(320, 325) # 1320
+    labels_brain = range(370, 381) # 1370
+    labels_thyroid = range(702, 705) # 1702
+    labels_breast_right = [359, 413, 415, 417, 419] # 2413, avec 359
+    labels_breast_left = [360, 414, 416, 418, 420] # 3413; avec 360
+    labels_marrow = range(601, 620) # 1601
+    if pd.isnull(label_t):
+        return np.nan
+    elif label_t in labels_heart:
+        return 1320
+    elif label_t in labels_brain:
+        return 1370
+    elif label_t in labels_thyroid:
+        return 1702
+    elif label_t in labels_breast_right:
+        return 2413
+    elif label_t in labels_breast_left:
+        return 3413
+    elif label_t in labels_marrow:
+        return 1601
+    else:
+        return 1000
+
+
 def get_super_t_active_marrow_subsets(label_t):
     labels_heart = range(320, 325) # 1320
     labels_brain = range(370, 381) # 1370

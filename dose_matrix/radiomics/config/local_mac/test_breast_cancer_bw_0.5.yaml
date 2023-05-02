@@ -8,8 +8,8 @@ RESULTS_DIR: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/tes
 RADIOMICS_PARAMS_FILE: /Users/moud/Documents/RadioPrediTool/code/dose_matrix/radiomics/config/radiomics/radiomics_breast_cancer_bw_0.5.yaml
 LABELS_T_ORGANS_FILE: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/labels_organs_20160118_only_t.csv
 # Lung, heart, right breast, left breast, some active marrow
-NAME_SUPER_T_FUNC: get_super_t_active_marrow_subset
-LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 2601]
+NAME_SUPER_T_FUNC: get_super_t_marrow_all
+LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 1601]
 LABELS_T_VOI: [309, 310]
 FCCSS_CLINICAL_DATASET: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/base_fccss_igr_curie_011222_extended.csv.gz
 FCCSS_CLINICAL_VARIABLES: []
@@ -17,5 +17,5 @@ EVENT_COL: "K2_loc20"
 DATE_EVENT_COL: "date_K2_loc20"
 NB_ESTIM_SCORE_MODELS: 2
 N_BOOTSTRAP: 10
-NAME_FILTER_DATASET: "women_sim_gompertz_censor_0.8_nsamples_1000"
+NAME_FILTER_DATASET: "women"
 

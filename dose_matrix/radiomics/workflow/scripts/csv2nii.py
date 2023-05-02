@@ -6,7 +6,8 @@ import os, sys, logging
 from datetime import datetime
 from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, check_summable_df, col_super_t, setup_logger
 
-# Array preprocessing utils
+## Array preprocessing utils
+
 def process_array_image(doses_array):
     new_array = drop_invalid_range(doses_array)
 
@@ -20,7 +21,14 @@ def drop_invalid_range(doses_array):
 
     return doses_array
 
-# Save the nifti files
+## Transform newdosi data: adapt some conventions about the data
+def transform_newdosi(df_dosi):
+    df_dosi.columns = df_dosi.columns.str.upper()
+    # Consider labels 359 and 360 (nipples) as T labels
+    df_dosi.loc[df_dosi["NUAGE"] == 359, "T"] = 359
+    df_dosi.loc[df_dosi["NUAGE"] == 360, "T"] = 360
+
+## Save the nifti files
 def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_image_size = None, get_only_size = False):
     logger = logging.getLogger("csv2nii")
     os.makedirs(path_nii, exist_ok=True)
@@ -75,8 +83,10 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
             image_mask_super_t.SetOrigin((0.0,0.0,0.0))
             sitk.WriteImage(image_mask_super_t, file_mask_super_t_nii)
 
-# Requires: list of newdosi files for one patient
-# Guarantees: three nifti files: doses, mask for each organ, mask for each suborgan
+## Save the newdosi RT treatments of a patient as a nii image
+# Requires: list_csv_files: list of newdosi files for one patient
+# name_super_t_func: name of the function that groups T labels into a superset (super T)
+# Guarantees: three nifti files: doses, mask for each organ (super T labels), mask for each suborgan (T labels)
 def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func):
     logger = logging.getLogger("csv2nii")
     relevant_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T', 'ID2013A']
@@ -85,7 +95,8 @@ def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func):
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) for newdosi_file in list_csv_files])
     first_newdosi_file = list_csv_files[idx_sort_by_date_csv_files[0]]
     df_dosi = pd.read_csv(path_csv + first_newdosi_file)
-    df_dosi.columns = df_dosi.columns.str.upper()
+    # Transform newdosi file with new conventions
+    transform_newdosi(df_dosi)
     test_xyz_nan = check_nan_values(df_dosi)
     if test_xyz_nan:
         nbr_rows_before = df_dosi.shape[0]
@@ -106,7 +117,8 @@ def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func):
             break
         else:
             df_other_dosi = pd.read_csv(path_csv + current_newdosi_file)
-            df_other_dosi.columns = df_other_dosi.columns.str.upper()
+            # Transform newdosi file with new conventions
+            transform_newdosi(df_other_dosi)
             test_xyz_nan = check_nan_values(df_other_dosi)
             if test_xyz_nan:
                 nbr_rows_before = df_other_dosi.shape[0]

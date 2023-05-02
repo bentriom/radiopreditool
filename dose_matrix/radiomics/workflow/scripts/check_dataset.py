@@ -24,15 +24,17 @@ def print_progress(value, total):
 
 def check_files_patient(df_files_patient, doses_dataset_dir):
     logger = logging.getLogger("check_dataset")
-    relevant_cols = ['X', 'Y', 'Z', 'T', 'ID2013A']
+    relevant_cols = ['X', 'Y', 'Z', 'T', 'NUAGE', 'ID2013A']
     int_cols = ['X', 'Y', 'Z', 'T']
     labels_t = [301, 304, 305, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324,
                 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380,
                 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 425, 426,
                 500, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 617, 618, 619,
                 702, 703, 704]
+    labels_nuage = [359, 360]
     df_result = df_files_patient.copy().reset_index()
-    cols_labels_t = [f"has_{label}" for label in labels_t]
+    cols_labels_t = [f"count_{label}" for label in labels_t]
+    cols_labels_nuage = [f"count_{label}" for label in labels_nuage]
     df_result[["nbr_nan_rows", "remaining_rows", "missing_date", "outdated_treatment", "different_shapes"]] = 0
     df_result[["well_ordered_rows", "summable"]] = 1
     df_result[cols_labels_t] = 0
@@ -58,9 +60,14 @@ def check_files_patient(df_files_patient, doses_dataset_dir):
     date_last_treatment = get_date(first_newdosi_file)
     if date_last_treatment == datetime.strptime("19000101", "%Y%m%d"):
         df_result.at[0, "missing_date"] = 1
-    # Check if the set of voxels of each T label is non-empty
-    check_labels_t = [int(df_dosi['T'].isin([label]).sum() > 0) for label in labels_t]
-    df_result.loc[0, cols_labels_t] = check_labels_t
+    # Check if the set of voxels of each T/nuage label is non-empty
+    count_labels_t = [df_dosi['T'].isin([label]).sum() for label in labels_t]
+    df_result.loc[0, cols_labels_t] = count_labels_t
+    count_labels_nuage = [df_dosi['NUAGE'].isin([label]).sum() for label in labels_nuage]
+    df_result.loc[0, cols_labels_nuage] = count_labels_nuage
+    # Check is nipples nuage has other T than 500
+    df_result.loc[0, "359_not_T_500"] = (df_dosi.loc[df_dosi["NUAGE"] == 359, "T"] != 500).sum()
+    df_result.loc[0, "360_not_T_500"] = (df_dosi.loc[df_dosi["NUAGE"] == 360, "T"] != 500).sum()
     # Iterate over the other files
     for i in range(1, df_result.shape[0]):
         current_newdosi_file = df_result.loc[i, "filename_dose_matrix"]
@@ -103,9 +110,14 @@ def check_files_patient(df_files_patient, doses_dataset_dir):
             df_other_dosi = df_other_dosi.sort_values(by = int_cols)
             df_other_dosi.index = df_dosi.index
             df_result.at[i, "summable"] = int(check_summable_df(df_dosi, df_other_dosi))
-        # Check if the set of voxels of each T label is non-empty
-        check_labels_t = [int(df_other_dosi['T'].isin([label]).sum() > 0) for label in labels_t]
-        df_result.loc[i, cols_labels_t] = check_labels_t
+        # Check if the set of voxels of each T/nuage label is non-empty
+        count_labels_t = [df_other_dosi['T'].isin([label]).sum() for label in labels_t]
+        df_result.loc[i, cols_labels_t] = count_labels_t
+        count_labels_nuage = [df_other_dosi['NUAGE'].isin([label]).sum() for label in labels_nuage]
+        df_result.loc[i, cols_labels_nuage] = count_labels_nuage
+        # Check is nipples nuage has other T than 500
+        df_result.loc[i, "359_not_T_500"] = (df_other_dosi.loc[df_other_dosi["NUAGE"] == 359, "T"] != 500).sum()
+        df_result.loc[i, "360_not_T_500"] = (df_other_dosi.loc[df_other_dosi["NUAGE"] == 360, "T"] != 500).sum()
     return df_result
 
 def analyze_dataset(doses_dataset_dir, metadata_dir):

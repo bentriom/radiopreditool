@@ -20,7 +20,7 @@ def print_report(metadata_dir, fccss_clinical_dataset, labels_t_organs_file):
     logger.info(f"{df_different_shapes.shape[0]} with a different shape from the first file: "
                 f"{df_different_shapes['filename_dose_matrix'].to_list()}")
     # Table of labels t with their missing rate in the fccss newdosi files
-    cols_labels_t = [col for col in df_newdosi_checks.columns if re.match("^has_[0-9]", col)]
+    cols_labels_t = [col for col in df_newdosi_checks.columns if re.match("^count_[0-9]", col)]
     df_detect_labels_t = df_newdosi_checks[["ctr", "numcent"] + cols_labels_t].groupby(by = ["ctr", "numcent"])\
                                                                               .agg(lambda x: (x>0).any())
     df_fccss_all = pd.read_csv(fccss_clinical_dataset, low_memory = False)
@@ -28,7 +28,8 @@ def print_report(metadata_dir, fccss_clinical_dataset, labels_t_organs_file):
     df_fccss_men = df_fccss_all.loc[df_fccss_all["Sexe"] == 1, :]
     for (name, df_fccss) in [("all", df_fccss_all), ("women", df_fccss_women), ("men", df_fccss_men)]:
         df_fccss = df_fccss[["ctr", "numcent"]]
-        df_fccss_detect_labels_t = df_fccss.merge(df_detect_labels_t, on = ["ctr", "numcent"], how = "inner")
+        df_fccss_detect_labels_t = df_fccss.merge(df_detect_labels_t.reset_index(drop = True),
+                                                  on = ["ctr", "numcent"], how = "inner")
         print(df_fccss.shape)
         print(df_fccss_detect_labels_t.shape)
         df_labels_t_organs  = pd.read_csv(labels_t_organs_file).set_index("NN")
