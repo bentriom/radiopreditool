@@ -144,7 +144,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, screening_method, event_col,
   } else if (subdivision_type == "thorax") {
     # Coxph Lasso all radiomics of the thorax
     model_name <- paste0("thorax_radiomics_full_lasso_", screening_method)
-    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "lasso",
@@ -217,7 +217,7 @@ multiple_scores_cox_sis_radiomics <- function(nb_estim, screening_method, event_
   } else if (subdivision_type == "thorax") {
     # Coxph SIS selection all radiomics of the thorax
     model_name <- paste0("thorax_radiomics_full_sis_", screening_method)
-    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "sis",
@@ -299,7 +299,7 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, screening_method, 
   } else if (subdivision_type == "thorax") {
     # Coxph Bootstrap Lasso all radiomics of the thorax
     model_name <- paste0("thorax_radiomics_full_bootstrap_lasso_", screening_method)
-    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
     log_info("Multiple scores radiomics full bootstrap lasso (thorax)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
@@ -381,7 +381,7 @@ multiple_scores_cox_radiomics <- function(nb_estim, screening_method, event_col,
   } else if (subdivision_type == "thorax") {
     # Coxph Lasso all radiomics of the thorax
     model_name <- paste0("thorax_radiomics_full_lasso_", screening_method)
-    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "lasso",

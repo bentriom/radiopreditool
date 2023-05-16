@@ -96,7 +96,7 @@ multiple_scores_rsf <- function(nb_estim, screening_method, event_col, analyzes_
   } else if (subdivision_type == "thorax") {
     # Model thorax all radiomics covariates
     model_name <- paste0("thorax_radiomics_full_", screening_method)
-    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|2601)_", features, value = TRUE))
+    cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
     log_info("Model thorax radiomics full")
     parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
