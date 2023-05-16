@@ -1,4 +1,6 @@
 
+import time
+
 # Learning datasets
 rule create_dataset:
     input:
