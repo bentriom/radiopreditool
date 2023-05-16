@@ -8,7 +8,7 @@ if (!require("SIS")) {
 # }
 suppressPackageStartupMessages({
 library("caret", quietly = T)
-library("boot", quietly = T)
+# library("boot", quietly = T)
 library("survival", quietly = T)
 library("glmnet", quietly = T)
 library("pec", quietly = T)
@@ -642,6 +642,7 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                              "get.coefs.cox", "preprocess_data_cox", "normalize_data", "coxlasso_data",
                              "preliminary_filter", "filter_dummies_iccc", "filter_drugs_cumsums", "get.na.coefs",
                              "predictSurvProb.bootstrap.coxnet", "predictSurvProb.selection.coxnet",
+                             "predictSurvProb.selection.sis", "selection.sis",
                              "selection.coxnet", "select.bolasso.features", "sample.selection.coxnet",
                              "slurm_job_boot_coxnet", "plot_cox_coefs", "plot_bootstrap_cox", "plot_cox_lambda_path",
                              "pretty.labels", "pretty.label", "pretty.iccc", "get.clinical_features",
