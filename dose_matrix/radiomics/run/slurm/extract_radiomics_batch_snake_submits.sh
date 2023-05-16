@@ -1,8 +1,8 @@
 #!/bin/bash
 
-NJOBS=200
+NJOBS=100
 NTHREADS=1
-TIME="20:00:00"
+TIME="23:45:00"
 PARTITION="cpu_long"
 MEMORY_PER_NODE="175G"
 MODEL_NAME="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"
@@ -50,20 +50,22 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="pathol_cardiaque_drugs.yaml" ["pathol_cardiaque_grade3_chimio"]="pathol_cardiaque_grade3_chimio.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1"]="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"]="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml" )
+# declare -A LIST_CONFIG_FILE=( ["pathol_cardiaque"]="pathol_cardiaque.yaml" ["pathol_cardiaque_chimio"]="pathol_cardiaque_chimio.yaml" ["pathol_cardiaque_drugs"]="pathol_cardiaque_drugs.yaml" ["pathol_cardiaque_grade3_chimio"]="pathol_cardiaque_grade3_chimio.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1"]="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.1.yaml" ["pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"]="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5.yaml" )
 
-SNAKEMAKE_CONFIG_FILE="config/slurm/${LIST_CONFIG_FILE[${MODEL_NAME}]}"
+SNAKEMAKE_CONFIG_FILE="config/slurm/${MODEL_NAME}.yaml"
 SNAKEMAKE_NBATCHES=50
-SNAKEMAKE_SBATCH="\"sbatch --partition=cpu_med --mem=15G --ntasks=1 --time=00:30:00 --output=/dev/null\""
+SNAKEMAKE_SBATCH="'sbatch --partition=cpu_med --mem=15G --ntasks=1 --time=00:45:00 --output=log/${MODEL_NAME}/%x-%j.out'"
 
 COMMANDS_JOB="
 module purge
-module load anaconda3/2021.05/gcc-9.2.0
+module load anaconda3/2022.10/gcc-11.2.0
+echo ${ARGS}
 source activate radiopreditool
-cd ~/opt/radiopreditool/dose_matrix/radiomics/
-export OMP_PLACES=cores
-echo $(date)
 set -x
+cd ~/opt/radiopreditool/dose_matrix/radiomics/
+mkdir -p log/${MODEL_NAME}/
+rm log/${MODEL_NAME}/*.out
+echo $(date)
 "
 for i in $(seq 1 $SNAKEMAKE_NBATCHES);
 do
@@ -74,7 +76,9 @@ snakemake --configfile ${SNAKEMAKE_CONFIG_FILE} --cluster ${SNAKEMAKE_SBATCH} --
 gather_radiomics
 "
 done
-
+COMMANDS_JOB="${COMMANDS_JOB}
+echo $(date)
+"
 
 sbatch \
     --job-name=radiomics_batch_${NJOBS} --output=./out/extract_radiomics_batch_snake_submits_${NJOBS} --time=$TIME \

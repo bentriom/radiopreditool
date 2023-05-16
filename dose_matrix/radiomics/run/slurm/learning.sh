@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NJOBS=5
+NJOBS=2
 NTHREADS=1
 TIME="24:00:00"
 PARTITION="cpu_long"
@@ -31,9 +31,10 @@ COX_BLASSO_RULES="${COX_BLASSO_RULES_ALL} ${COX_BLASSO_RULES_FEATURES_HCLUST_COR
 RULES_ALL="${COX_RULES_ALL} ${RSF_RULES_ALL} ${COX_BLASSO_RULES_ALL}"
 RULES_FEATURES_HCLUST_CORR="${COX_RULES_FEATURES_HCLUST_CORR} ${RSF_RULES_FEATURES_HCLUST_CORR} ${COX_BLASSO_RULES_FEATURES_HCLUST_CORR}"
 RULES="${RULES_ALL} ${RULES_FEATURES_HCLUST_CORR}"
-TARGET_RULES="$RULES"
+# TARGET_RULES="$RULES"
 # TARGET_RULES="$RULES_ALL"
 # TARGET_RULES="${COX_BLASSO_RULES}"
+TARGET_RULES="scores_plots_heart scores_tables_heart error_curves_models_heart"
 
 ARGS="$@"
 POSITIONAL=()
@@ -108,20 +109,21 @@ ANALYZES_DIR="/workdir/bentrioum/results/radiopreditool/radiomics/analyzes/${MOD
 
 COMMANDS_JOB="
 module purge
-module load anaconda3/2021.05/gcc-9.2.0
-echo ${ARGS}
+module load anaconda3/2022.10/gcc-11.2.0
 source activate radiopreditool
 set -x
+echo ${ARGS}
 cd ~/opt/radiopreditool/dose_matrix/radiomics/
 mkdir -p log/${MODEL_NAME}/
 rm log/${MODEL_NAME}/*.out
 echo $(date)
-export OMP_PLACES=cores
 echo ${MODEL_NAME}
 snakemake --use-conda --configfile ${SNAKEMAKE_CONFIG_FILE} \
 --cluster ${SNAKEMAKE_SBATCH} ${THREADS_ARGS} --jobs $NJOBS \
-${DRYRUN} --rerun-incomplete \
+${DRYRUN} \
+--rerun-incomplete \
 ${TARGET_RULES}
+echo $(date)
 "
 
 sbatch \
