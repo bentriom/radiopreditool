@@ -63,8 +63,6 @@ rule scores_plots_thorax:
         rules.multiple_scores_baseline_analysis_breasts_R.output,
         rules.multiple_scores_cox_lasso_radiomics_all_thorax_R.output,
         rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_thorax_R.output,
-        rules.multiple_scores_cox_bootstrap_lasso_radiomics_all_thorax_R.output,
-        rules.multiple_scores_cox_bootstrap_lasso_radiomics_features_hclust_corr_thorax_R.output,
         rules.multiple_scores_cox_sis_radiomics_all_thorax_R.output,
         rules.multiple_scores_rsf_thorax.output,
         rules.multiple_scores_rsf_features_hclust_corr_thorax.output,
