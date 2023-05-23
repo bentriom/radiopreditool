@@ -685,8 +685,10 @@ plot_cox_coefs <- function(save_results_dir) {
     df_coefs <- read.csv(file_df_coefs)
     df_coefs <- df_coefs[abs(df_coefs$coefs) > 0, ]
     df_coefs <- df_coefs[order(-abs(df_coefs$coefs)), ]
-    ggplot(df_coefs, aes(x = reorder(labels, abs(coefs)), y = coefs)) +
-    geom_bar(stat = "identity") + coord_flip()
+    ggplot(df_coefs, aes(x = pretty.labels(reorder(labels, abs(coefs))), y = coefs)) +
+    geom_bar(stat = "identity") + coord_flip() +
+    labs(y = "Coefficient", x = "Variable") +
+    theme(axis.text = element_text(size = 16), axis.title = element_text(size = 14))
   }
   ggsave(paste0(save_results_dir, "coefs.png"), device = "png", dpi = 480)
 }

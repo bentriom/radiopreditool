@@ -63,19 +63,20 @@ get.na.coefs <- function(object) {
 # Pretty label names
 pretty.label <- function(label) {
     pattern_dosiomics = "X([0-9]{3,4})_[a-z]+_([a-z]+)_(\\w+)"
-    pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_(1320)"
+    pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_([0-9]{3,4})"
     pattern_iccc = "iccc_([0-9]|nan)"
     if (stringr::str_detect(label, pattern_dosiomics)) {
         matches = str_match(label, pattern_dosiomics)
         type_dosio <- matches[3]
         if (type_dosio == "firstorder") type_dosio <- "" 
-        paste(matches[2], type_dosio, matches[4])
+        pretty_label <- paste(matches[2], type_dosio, matches[4])
     } else if (stringr::str_detect(label, pattern_dosesvol)) {
         matches = str_match(label, pattern_dosesvol)
-        paste(matches[4], matches[2])
+        pretty_label <- paste(matches[4], matches[2])
     } else if (stringr::str_detect(label, pattern_iccc)) {
-        pretty.iccc(label)
-    } else { label }
+        pretty_label <- pretty.iccc(label)
+    } else { pretty_label <- label }
+    stringr::str_trunc(pretty_label, 25)
 }
 
 pretty.labels <- function(labels) {
