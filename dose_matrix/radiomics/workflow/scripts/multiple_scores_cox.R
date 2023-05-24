@@ -51,14 +51,21 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
     log_info("Multiple scores breasts mean dose (2413, 3413)")
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "none", parallel.method = parallel.method)
+    
+    # Coxph mean dose of breasts Lasso
+    model_name <- "breasts_mean_lasso"
+    covariates <- c("X2413_original_firstorder_Mean", "X3413_original_firstorder_Mean", clinical_vars)
+    log_info("Multiple scores breasts mean dose (2413, 3413)")
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, cox_logfile, penalty = "lasso", parallel.method = parallel.method)
 
     # Coxph doses volumes indicators of breasts
-    model_name = "breasts_dosesvol"
-    cols_dosesvol <- grep("dv_\\w+_(2413|3413)", colnames(df_trainset0), value = TRUE)
-    covariates = c(cols_dosesvol, clinical_vars)
-    log_info("Multiple scores breasts doses volumes (2413, 3413)")
-    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
-                                 model_name, cox_logfile, penalty = "none", parallel.method = parallel.method)
+    # model_name = "breasts_dosesvol"
+    # cols_dosesvol <- grep("dv_\\w+_(2413|3413)", colnames(df_trainset0), value = TRUE)
+    # covariates = c(cols_dosesvol, clinical_vars)
+    # log_info("Multiple scores breasts doses volumes (2413, 3413)")
+    # parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+    #                              model_name, cox_logfile, penalty = "none", parallel.method = parallel.method)
 
     # Coxph doses volumes indicators of breasts Lasso
     model_name = "breasts_dosesvol_lasso"
