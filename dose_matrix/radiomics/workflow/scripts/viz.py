@@ -168,7 +168,8 @@ def results_plots_thorax(analyzes_dir, nb_estim):
     os.makedirs(save_plots_dir, exist_ok = True)
 
     df_multiple_cox_mean = pd.read_csv(coxph_results_dir + f"breasts_mean/{nb_estim}_runs_test_metrics.csv", index_col = 0)
-    df_multiple_dosesvol = pd.read_csv(coxph_results_dir + f"breasts_dosesvol/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    df_multiple_cox_mean_lasso = pd.read_csv(coxph_results_dir + f"breasts_mean_lasso/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    # df_multiple_dosesvol = pd.read_csv(coxph_results_dir + f"breasts_dosesvol/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_dosesvol_lasso = pd.read_csv(coxph_results_dir + f"breasts_dosesvol_lasso/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_rsf_dosesvol = pd.read_csv(rsf_results_dir + f"breasts_dosesvol/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     # Full radiomics Cox Lasso
@@ -176,11 +177,6 @@ def results_plots_thorax(analyzes_dir, nb_estim):
     df_multiple_cox_breasts_filter = pd.read_csv(coxph_results_dir + f"breasts_radiomics_full_lasso_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_cox_thorax = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_cox_thorax_filter = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_lasso_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
-    # Full radiomics Cox Bootstrap Lasso
-    # df_multiple_cox_boot_breasts = pd.read_csv(coxph_results_dir + f"breasts_radiomics_full_bootstrap_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
-    # df_multiple_cox_boot_breasts_filter = pd.read_csv(coxph_results_dir + f"breasts_radiomics_full_bootstrap_lasso_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
-    # df_multiple_cox_boot_thorax = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_bootstrap_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
-    # df_multiple_cox_boot_thorax_filter = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_bootstrap_lasso_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     # Full radiomics Cox SIS
     df_multiple_cox_sis_thorax = pd.read_csv(coxph_results_dir + f"thorax_radiomics_full_sis_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     # Full radiomics RSF
@@ -191,7 +187,8 @@ def results_plots_thorax(analyzes_dir, nb_estim):
 
     dict_results_multiple_all = {
         "C mean breasts dose" : df_multiple_cox_mean,
-        "C doses-volumes indicators": df_multiple_dosesvol,
+        "CL mean breasts dose" : df_multiple_cox_mean_lasso,
+        # "C doses-volumes indicators": df_multiple_dosesvol,
         "CL doses-volumes indicators": df_multiple_dosesvol_lasso,
         "RSF doses-volumes indicators": df_multiple_rsf_dosesvol,
         "CL breasts dosiomics": df_multiple_cox_breasts,
@@ -205,8 +202,6 @@ def results_plots_thorax(analyzes_dir, nb_estim):
     dict_results_multiple_features_hclust_corr = {
         "CL screened breasts dosiomics": df_multiple_cox_breasts_filter,
         "CL screened thorax dosiomics": df_multiple_cox_thorax_filter,
-        # "CBL screened breasts dosiomics": df_multiple_cox_boot_breasts_filter,
-        # "CBL screened thorax dosiomics": df_multiple_cox_boot_thorax_filter,
         "RSF screened breasts dosiomics": df_multiple_rsf_breasts_filter,
         "RSF screened thorax dosiomics": df_multiple_rsf_thorax_filter
     }
