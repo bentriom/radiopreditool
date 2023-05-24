@@ -35,8 +35,8 @@ rule scores_plots_heart_two:
         rules.multiple_scores_rsf_heart.output,
         rules.multiple_scores_rsf_features_hclust_corr_heart.output,
     output:
-        expand(ANALYZES_DIR + "plots/heart/multiple_scores_cindex.{format}", format = ["png", "svg"]),
-        expand(ANALYZES_DIR + "plots/heart/multiple_scores_ibs.{format}", format = ["png", "svg"]),
+        expand(ANALYZES_DIR + "plots/heart2/multiple_scores_cindex.{format}", format = ["png", "svg"]),
+        expand(ANALYZES_DIR + "plots/heart2/multiple_scores_ibs.{format}", format = ["png", "svg"]),
     threads:
         1
     run:

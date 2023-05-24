@@ -99,7 +99,7 @@ def results_plots_heart(analyzes_dir, nb_estim):
 def results_plots_heart_2(analyzes_dir, nb_estim):
     coxph_results_dir = f"{analyzes_dir}coxph_R/"
     rsf_results_dir = f"{analyzes_dir}rsf/"
-    save_plots_dir = f"{analyzes_dir}plots/heart/"
+    save_plots_dir = f"{analyzes_dir}plots/heart2/"
     os.makedirs(save_plots_dir, exist_ok = True)
 
     df_multiple_cox_mean = pd.read_csv(coxph_results_dir + f"1320_mean/{nb_estim}_runs_test_metrics.csv", index_col = 0)
