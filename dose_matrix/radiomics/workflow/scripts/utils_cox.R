@@ -649,8 +649,8 @@ parallel_multiple_scores_cox <- function(nb_estim, covariates, event_col, durati
                              "bootstrap.coxnet", "get.surv.formula", "get.ipcw.surv.formula")
     nb_max_slurm_jobs <- 40
     log_info(paste("Maximum number of slurm jobs:", nb_max_slurm_jobs))
-    sopt <- list(time = "03:30:00", "ntasks" = 1, "cpus-per-task" = 1,
-                 partition = "cpu_med", mem = "20G")
+    sopt <- list(time = "04:00:00", "ntasks" = 1, "cpus-per-task" = 1,
+                 partition = "cpu_med", mem = "40G")
     job_uuid <- stringr::str_split(uuid::UUIDgenerate(), "-")[[1]][1]
     sjob <- slurm_apply(function (i)  model_cox.id(i, covariates, event_col, duration_col,
                         analyzes_dir, model_name, logfile, n_boot = n_boot, screening_method = screening_method,

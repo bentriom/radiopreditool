@@ -1,6 +1,6 @@
 
-BREASTS_BASELINE_MODELS_COX = ["breasts_mean", "breasts_dosesvol"]
-BREASTS_BASELINE_MODELS_LASSO = ["breasts_dosesvol_lasso"]
+BREASTS_BASELINE_MODELS_COX = ["breasts_mean"]
+BREASTS_BASELINE_MODELS_LASSO = ["breasts_mean_lasso", "breasts_dosesvol_lasso"]
 THORAX_COX_RADIOMICS_LASSO_ALL = ["breasts_radiomics_full_lasso_all", "thorax_radiomics_full_lasso_all"]
 THORAX_COX_RADIOMICS_LASSO_FE_HCLUST = ["breasts_radiomics_full_lasso_features_hclust_corr", \
                                         "thorax_radiomics_full_lasso_features_hclust_corr"]
