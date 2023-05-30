@@ -12,7 +12,7 @@ NAME_SUPER_T_FUNC: get_super_t_marrow_all
 LABELS_SUPER_T_VOI: [1320, 1702, 2413, 3413, 1601]
 LABELS_T_VOI: [309, 310]
 FCCSS_CLINICAL_DATASET: /Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/base_fccss_igr_curie_011222_extended.csv.gz
-FCCSS_CLINICAL_VARIABLES: []
+FCCSS_CLINICAL_VARIABLES: ["chimiotherapie", "ALKYL", "ANTHRA", "VINCA", "ANTIM", "ANTIB", "CHIMIO_GROUPE_AUTRE"]
 EVENT_COL: "K2_loc20"
 DATE_EVENT_COL: "date_K2_loc20"
 NB_ESTIM_SCORE_MODELS: 2

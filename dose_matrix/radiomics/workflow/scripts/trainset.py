@@ -60,8 +60,15 @@ def fill_missing(df_fccss):
             return 2
         if age > 15:
             return 3
+    def chimio_groupe_autre(patient):
+        if patient["chimiotherapie"] == 1 and patient[["ALKYL", "ANTHRA", "VINCA", "ANTIM", "ANTIB"]].isin([0]).all():
+            return 1
+        else:
+            return 0
     df_fccss.loc[:, "age_at_diagnosis"] = df_fccss[["date_diag", "date_nais"]].apply(age_at_diagnosis, axis=1)
     df_fccss.loc[:, "categ_age_at_diagnosis"] = df_fccss["age_at_diagnosis"].apply(categ_age_at_diagnosis)
+    df_fccss.loc[:, "CHIMIO_GROUPE_AUTRE"] = df_fccss[["chimiotherapie","ALKYL", "ANTHRA", "VINCA", "ANTIM", "ANTIB"]]\
+                                             .apply(chimio_groupe_autre, axis=1)
 
 # Compute survival times
 def survival_date(event_col, date_event_col, row):
