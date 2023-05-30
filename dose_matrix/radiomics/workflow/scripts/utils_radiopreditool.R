@@ -69,14 +69,14 @@ pretty.label <- function(label) {
         matches = str_match(label, pattern_dosiomics)
         type_dosio <- matches[3]
         if (type_dosio == "firstorder") type_dosio <- "" 
-        pretty_label <- paste(matches[2], type_dosio, matches[4])
+        pretty_label <- paste0(pretty.mask(matches[2]), " ", type_dosio, " ", matches[4], " dose")
     } else if (stringr::str_detect(label, pattern_dosesvol)) {
         matches = str_match(label, pattern_dosesvol)
-        pretty_label <- paste(matches[4], matches[2])
+        pretty_label <- paste(pretty.mask(matches[4]), matches[2])
     } else if (stringr::str_detect(label, pattern_iccc)) {
         pretty_label <- pretty.iccc(label)
-    } else { pretty_label <- label }
-    stringr::str_trunc(pretty_label, 25)
+    } else { pretty_label <- pretty.clinical.var(label) }
+    stringr::str_trunc(pretty_label, 35)
 }
 
 pretty.labels <- function(labels) {
@@ -110,6 +110,29 @@ get.ipcw.surv.formula <- function(event_col, covariates, duration_col = "surviva
 # Get the proportion of events in data
 event_prop <- function(fccss.data, event_col) {
     return(sum(fccss.data[[event_col]] == 1) / nrow(fccss.data))
+}
+
+# Labels clinical variables
+pretty.clinical.var <- function(label_var) {
+  var_labels = list(
+                    'ANTHRA' = 'Anthracyclines',
+                    'ALKYL' = 'Alkylating agents',
+                    'VINCA' = 'Vinca alkaloids'
+                    )
+  if (label_var %in% names(var_labels)) var_labels[[label_var]]
+  else label_var
+}
+# Labels subdivisions (masks of the dose distribution)
+pretty.mask <- function(label_mask) {
+  mask_labels = list(
+                     '320' = 'Myocardium',
+                     '321' = 'Right atrium',
+                     '322' = 'Left atrium',
+                     '323' = 'Right ventricle',
+                     '324' = 'Left ventricle',
+                     '1320' = 'Heart'
+                     )
+  mask_labels[[label_mask]]
 }
 
 # Labels iccc
