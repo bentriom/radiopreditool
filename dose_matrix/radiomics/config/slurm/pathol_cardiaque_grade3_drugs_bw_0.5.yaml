@@ -1,0 +1,27 @@
+MODEL_NAME: pathol_cardiaque_grade3_drugs_bw_0.5
+RADIOMICS_NAME: 32X_1320_bw_0.5
+DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
+DOSES_DATASET_SUBDIRS:
+    - CURIE
+    - GR
+    - TOULOUSE
+    - REIMS
+    - NICE
+RESULTS_DIR: /workdir/bentrioum/results/radiopreditool/radiomics/
+RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radiomics/config/radiomics/radiomics_pathol_cardiaque_bw_0.5.yaml
+# 309 - 310: lung
+# 320 - 324: heart
+# 370 - 380: cerveau
+# 413 - 420: breast 
+# 702 - 704: thyroid
+NAME_SUPER_T_FUNC: get_super_t_marrow_all
+LABELS_SUPER_T_VOI: [1320]
+LABELS_T_VOI: [320, 321, 322, 323, 324]
+FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011222_extended.csv.gz
+FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis",
+                           "ALKYL", "ANTHRA", "VINCA", "ANTIM", "ANTIB", "CHIMIO_GROUPE_AUTRE"]
+EVENT_COL: "Pathologie_cardiaque_3_new"
+DATE_EVENT_COL: "date_pathol_cardiaque_3_new"
+NB_ESTIM_SCORE_MODELS: 5
+N_BOOTSTRAP: 100
+
