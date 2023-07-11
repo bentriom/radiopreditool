@@ -23,6 +23,7 @@ dependencies:
   - fastcluster
   - python-kaleido
   - plotly
+  - nibabel
   - pip:
     - pyradiomics
 

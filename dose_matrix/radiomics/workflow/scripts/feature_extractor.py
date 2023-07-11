@@ -2,6 +2,7 @@
 import SimpleITK as sitk
 import numpy as np
 import pandas as pd
+import nibabel as nib
 import dosesvolumes
 import radiomics
 # Kind of experimental trick to add my custom doses-volumes stastic
@@ -35,6 +36,23 @@ def write_header(labels_super_t_voi, labels_t_voi, radiomics_dir, params_file):
         f.write(str(len(features_name_per_label)))
     return len(features_name_per_label)
 
+# Creates a new nifti segmentation (mask) of the dose image for the whole body (label 10000)
+def create_whole_body_mask(mask_super_t_path):
+    assert os.path.isfile(mask_super_t_path)
+    image_mask_super_t = nib.load(mask_super_t_path)
+    array_mask_whole_body = image_mask_super_t.get_fdata()
+    array_mask_whole_body[array_mask_whole_body != 0] = 10000
+    image_mask_whole_body = sitk.GetImageFromArray(np.transpose(array_mask_whole_body))
+    image_mask_whole_body.SetSpacing((2.0,2.0,2.0))
+    image_mask_whole_body.SetOrigin((0.0,0.0,0.0))
+    mask_whole_body_path = mask_super_t_path.replace("mask_super_t.nii.gz", "mask_whole_body.nii.gz")
+    assert image_mask_whole_body.GetSize() == image_mask_super_t.shape
+    sitk.WriteImage(image_mask_whole_body, mask_whole_body_path)
+
+    return mask_whole_body_path
+
+# Compute dosiomics
+# newdosi_filename: string newdosi_(CTR)_(NUMCENT)
 def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t_voi, labels_t_voi,
                       newdosi_filename, radiomics_dir, subdir, params_file, nbr_features_per_label):
     logger = logging.getLogger("feature_extractor")
@@ -50,7 +68,12 @@ def compute_radiomics(image_path, mask_super_t_path, mask_t_path, labels_super_t
         for label in labels_super_t_voi:
             logger.info(f"{newdosi_filename}: Computing label {label}")
             try:
-                dict_features_values = extractor.execute(image_path, mask_super_t_path, label = label)
+                if label == 10000:
+                    mask_whole_body_path = create_whole_body_mask(mask_super_t_path)
+                    dict_features_values = extractor.execute(image_path, mask_whole_body_path, label = label)
+                    os.remove(mask_whole_body_path)
+                else:
+                    dict_features_values = extractor.execute(image_path, mask_super_t_path, label = label)
             except ValueError as err:
                 logger.warn(f"Raised ValueError. Ignoring the label mask {label}.")
                 all_features_values = np.append(all_features_values, [np.nan] * nbr_features_per_label)
