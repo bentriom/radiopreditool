@@ -131,13 +131,13 @@ def filter_patients(df_dataset, name_filter_dataset, event_col, duration_col):
         logger.info("!! This is a simulated dataset !!")
         logger.info(f"Number of patients: {n_samples} with {frac_censor*100:.1f}% censorship.")
         logger.info(f"Survival time distribution: {distribution}.")
-        cols_dosiomics = [col for col in df_dataset.columns if re.match("^[0-9]{3,4}_original_", col)]
+        cols_dosiomics = [col for col in df_dataset.columns if re.match("^[0-9]{3,5}_original_", col)]
         cols_dv = [col for col in df_dataset.columns if re.match("^dv_\w", col)]
         cols = cols_dv + cols_dosiomics
         clinical_features =  get_clinical_features(df_dataset, event_col, duration_col)
         betas = np.zeros(len(cols))
-        mask_pos = np.isin(cols, [f"{label}_original_firstorder_Mean" for label in [2413, 3413, 2601]])
-        mask_neg = np.isin(cols, [f"{label}_original_firstorder_Entropy" for label in [2413, 3413, 2601]])
+        mask_pos = np.isin(cols, [f"{label}_original_firstorder_Mean" for label in [2413, 3413, 2601, 10000]])
+        mask_neg = np.isin(cols, [f"{label}_original_firstorder_Entropy" for label in [2413, 3413, 2601, 10000]])
         betas[mask_pos] = 0.75
         betas[mask_neg] = -0.5
         surv_times, status, X = generate_survival_times(n_samples, len(cols), betas,
@@ -210,6 +210,7 @@ def create_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_v
     [df_dataset.drop(columns = col, inplace = True) for col in cols_keep_and_drop if col not in clinical_variables]
     df_dataset.to_csv(analyzes_dir + "datasets/dataset.csv.gz", index = False)
 
+# /!\ Deprecated /!\
 # One split train / test
 def split_dataset(file_radiomics, file_fccss_clinical, analyzes_dir, clinical_variables, event_col, date_event_col,
                   end_name_sets = "", test_size = 0.3, seed = None):
@@ -277,8 +278,9 @@ def kfold_multiple_splits_dataset(nb_estim, file_radiomics, file_fccss_clinical,
     for i, (train_index, test_index) in enumerate(skf.split(df_X, df_y[event_col])):
         df_trainset = df_dataset.loc[train_index, :]
         df_testset = df_dataset.loc[test_index, :]
-        df_trainset_omit = df_trainset.dropna()
-        df_testset_omit = df_testset.dropna()
+        del_col_omit = [col_treated_by_rt] if col_treated_by_rt not in clinical_variables else []
+        df_trainset_omit = df_trainset.drop(columns = del_col_omit).dropna()
+        df_testset_omit = df_testset.drop(columns = del_col_omit).dropna()
         df_trainset_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1,:]
         df_testset_radiomics = df_testset.loc[df_testset["has_radiomics"] == 1,:]
         logger.info(f"Trainset n°{i}: {df_trainset.shape}")
@@ -455,8 +457,8 @@ def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", featur
     file_trainset = f"{analyzes_dir}datasets/"
     file_trainset = f"{file_trainset}dataset.csv.gz" if id_set == "" else f"{file_trainset}trainset_{id_set}.csv.gz"
     df_trainset = pd.read_csv(file_trainset)
-    features_radiomics = [feature for feature in df_trainset.columns if re.match("[0-9]+_.*", feature)]
-    labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("[0-9]+_.*", label)])
+    features_radiomics = [feature for feature in df_trainset.columns if re.match("^[0-9]{3,5}_", feature)]
+    labels_radiomics = np.unique([label.split('_')[0] for label in df_trainset.columns if re.match("^[0-9]{3,5}_", label)])
     dict_features_per_label = {label: [col for col in df_trainset.columns if re.match(f"{label}_", col)] \
                                for label in labels_radiomics}
     df_covariates_with_radiomics = df_trainset.loc[df_trainset["has_radiomics"] == 1, features_radiomics]
@@ -518,7 +520,7 @@ def feature_elimination_hclust_corr(event_col, analyzes_dir, id_set = "", featur
                             bbox_inches='tight', facecolor = "white", transparent = False)
                 plt.close()
     kept_cols = [feature for feature in df_trainset.columns \
-                 if not re.match("[0-9]{3,4}_.*", feature) or feature in filter_2_cols_radiomics]
+                 if not re.match("^[0-9]{3,5}_", feature) or feature in filter_2_cols_radiomics]
     os.makedirs(analyzes_dir + "screening", exist_ok = True)
     end_filename = "" if id_set == "" else f"_{id_set}"
     pd.DataFrame({"features": kept_cols}).to_csv(analyzes_dir + f"screening/features_hclust_corr{end_filename}.csv",

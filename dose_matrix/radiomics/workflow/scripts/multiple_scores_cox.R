@@ -18,6 +18,8 @@ multiple_scores_baseline_models <- function(nb_estim, event_col, analyzes_dir, d
   # Dataset
   df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
   clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
+  log_info("Clinical variables:")
+  log_info(paste(clinical_vars, collapse = " "))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
@@ -100,6 +102,8 @@ multiple_scores_cox_radiomics <- function(nb_estim, screening_method, event_col,
   df_dataset <- read.csv(paste0(analyzes_dir, "datasets/dataset.csv.gz"), header = TRUE)
   features <- colnames(df_dataset)
   clinical_vars <- get.clinical_features(features, event_col, duration_col)
+  log_info("Clinical variables:")
+  log_info(paste(clinical_vars, collapse = " "))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
@@ -156,6 +160,14 @@ multiple_scores_cox_radiomics <- function(nb_estim, screening_method, event_col,
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "lasso",
                                  screening_method = screening_method, parallel.method = parallel.method)
+  } else if (subdivision_type == "whole_body") {
+    # Coxph Lasso all radiomics of the whole body
+    model_name <- paste0("whole_body_radiomics_full_lasso_", screening_method)
+    cols_whole_body <- filter.gl(grep("^X10000_", features, value = TRUE))
+    covariates <- c(cols_whole_body, clinical_vars)
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, cox_logfile, penalty = "lasso",
+                                 screening_method = screening_method, parallel.method = parallel.method)
   } else {
     stop(paste("Subdivision type of features unrecognized:", subdivision_type))
   }
@@ -182,6 +194,8 @@ multiple_scores_cox_sis_radiomics <- function(nb_estim, screening_method, event_
   df_dataset <- read.csv(paste0(analyzes_dir, "datasets/dataset.csv.gz"), header = TRUE)
   features <- colnames(df_dataset)
   clinical_vars <- get.clinical_features(features, event_col, duration_col)
+  log_info("Clinical variables:")
+  log_info(paste(clinical_vars, collapse = " "))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
@@ -229,6 +243,14 @@ multiple_scores_cox_sis_radiomics <- function(nb_estim, screening_method, event_
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "sis",
                                  screening_method = screening_method, parallel.method = parallel.method)
+  } else if (subdivision_type == "whole_body") {
+    # Coxph SIS selection all radiomics of the whole body
+    model_name <- paste0("whole_body_radiomics_full_sis_", screening_method)
+    cols_whole_body <- filter.gl(grep("^X10000_", features, value = TRUE))
+    covariates <- c(cols_whole_body, clinical_vars)
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, cox_logfile, penalty = "sis",
+                                 screening_method = screening_method, parallel.method = parallel.method)
   } else {
     stop(paste("Subdivision type of features unrecognized:", subdivision_type))
   }
@@ -255,6 +277,8 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, screening_method, 
   df_dataset <- read.csv(paste0(analyzes_dir, "datasets/dataset.csv.gz"), header = TRUE)
   features <- colnames(df_dataset)
   clinical_vars <- get.clinical_features(features, event_col, duration_col)
+  log_info("Clinical variables:")
+  log_info(paste(clinical_vars, collapse = " "))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
@@ -312,6 +336,15 @@ multiple_scores_cox_bootstrap_radiomics <- function(nb_estim, screening_method, 
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
                                  penalty = "bootstrap_lasso", n_boot = n_boot,
                                  screening_method = screening_method, parallel.method = parallel.method)
+  } else if (subdivision_type == "whole_body") {
+    # Coxph Bootstrap Lasso all radiomics of the whole body
+    model_name <- paste0("whole_body_radiomics_full_bootstrap_lasso_", screening_method)
+    cols_whole_body <- filter.gl(grep("^X10000_", features, value = TRUE))
+    covariates <- c(cols_whole_body, clinical_vars)
+    log_info("Multiple scores radiomics full bootstrap lasso (whole body)")
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir, model_name, cox_logfile, 
+                                 penalty = "bootstrap_lasso", n_boot = n_boot,
+                                 screening_method = screening_method, parallel.method = parallel.method)
   } else {
     stop(paste("Subdivision type of features unrecognized:", subdivision_type))
   }
@@ -337,6 +370,8 @@ multiple_scores_cox_radiomics <- function(nb_estim, screening_method, event_col,
   df_dataset <- read.csv(paste0(analyzes_dir, "datasets/dataset.csv.gz"), header = TRUE)
   features <- colnames(df_dataset)
   clinical_vars <- get.clinical_features(features, event_col, duration_col)
+  log_info("Clinical variables:")
+  log_info(paste(clinical_vars, collapse = " "))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
@@ -390,6 +425,14 @@ multiple_scores_cox_radiomics <- function(nb_estim, screening_method, event_col,
     model_name <- paste0("thorax_radiomics_full_lasso_", screening_method)
     cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
+    parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, cox_logfile, penalty = "lasso",
+                                 screening_method = screening_method, parallel.method = parallel.method)
+  } else if (subdivision_type == "whole_body") {
+    # Coxph Lasso all radiomics of the whole body
+    model_name <- paste0("whole_body_radiomics_full_lasso_", screening_method)
+    cols_whole_body <- filter.gl(grep("^X10000_", features, value = TRUE))
+    covariates <- c(cols_whole_body, clinical_vars)
     parallel_multiple_scores_cox(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, cox_logfile, penalty = "lasso",
                                  screening_method = screening_method, parallel.method = parallel.method)

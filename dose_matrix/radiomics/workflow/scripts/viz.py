@@ -130,6 +130,10 @@ def results_plots_heart_2(analyzes_dir, nb_estim):
     df_multiple_rsf_1320_filter = pd.read_csv(rsf_results_dir + f"1320_radiomics_full_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_rsf_32X = pd.read_csv(rsf_results_dir + f"32X_radiomics_full_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_rsf_32X_filter = pd.read_csv(rsf_results_dir + f"32X_radiomics_full_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    # Whole-body radiomics models
+    df_multiple_cox_wb = pd.read_csv(coxph_results_dir + f"whole_body_radiomics_full_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    df_multiple_cox_sis_wb = pd.read_csv(coxph_results_dir + f"whole_body_radiomics_full_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    df_multiple_rsf_wb = pd.read_csv(rsf_results_dir + f"whole_body_radiomics_full_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
 
     dict_results_multiple_all = {
         "C mean heart dose" : df_multiple_cox_mean,
@@ -140,13 +144,16 @@ def results_plots_heart_2(analyzes_dir, nb_estim):
         "CL whole-heart dosiomics": df_multiple_cox_1320,
         "CL heart's subparts first-order dosiomics": df_multiple_cox_32X_firstorder,
         "CL heart's subparts dosiomics": df_multiple_cox_32X,
-        "CSIS whole heart and bone marrow dosiomics": df_multiple_cox_sis_1320_marrow,
+        "CL whole-body dosiomics": df_multiple_cox_wb,
+        "CSIS whole-heart and bone marrow dosiomics": df_multiple_cox_sis_1320_marrow,
         "CSIS heart's subparts dosiomics": df_multiple_cox_sis_32X,
         "CSIS heart's subparts and bone marrow dosiomics": df_multiple_cox_sis_32X_marrow,
+        "CSIS whole-body dosiomics": df_multiple_cox_sis_wb,
         "RSF whole-heart first-order dosiomics": df_multiple_rsf_1320_firstorder,
         "RSF whole-heart dosiomics": df_multiple_rsf_1320,
         "RSF heart's subparts first-order dosiomics": df_multiple_rsf_32X_firstorder,
-        "RSF heart's subparts dosiomics": df_multiple_rsf_32X
+        "RSF heart's subparts dosiomics": df_multiple_rsf_32X,
+        "RSF whole-body dosiomics": df_multiple_rsf_wb
     }
     dict_results_multiple_features_hclust_corr = {
         "CL screened whole-heart first-order dosiomics": df_multiple_cox_1320_filter_firstorder,
@@ -184,6 +191,10 @@ def results_plots_thorax(analyzes_dir, nb_estim):
     df_multiple_rsf_breasts_filter = pd.read_csv(rsf_results_dir + f"breasts_radiomics_full_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_rsf_thorax = pd.read_csv(rsf_results_dir + f"thorax_radiomics_full_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
     df_multiple_rsf_thorax_filter = pd.read_csv(rsf_results_dir + f"thorax_radiomics_full_features_hclust_corr/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    # Whole-body radiomics models
+    df_multiple_cox_wb = pd.read_csv(coxph_results_dir + f"whole_body_radiomics_full_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    df_multiple_cox_sis_wb = pd.read_csv(coxph_results_dir + f"whole_body_radiomics_full_lasso_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
+    df_multiple_rsf_wb = pd.read_csv(rsf_results_dir + f"whole_body_radiomics_full_all/{nb_estim}_runs_test_metrics.csv", index_col = 0)
 
     dict_results_multiple_all = {
         "C mean breasts dose" : df_multiple_cox_mean,
@@ -193,11 +204,14 @@ def results_plots_thorax(analyzes_dir, nb_estim):
         "RSF doses-volumes indicators": df_multiple_rsf_dosesvol,
         "CL breasts dosiomics": df_multiple_cox_breasts,
         "CL thorax dosiomics": df_multiple_cox_thorax,
+        "CL whole-body dosiomics": df_multiple_cox_wb,
         # "CBL breasts dosiomics": df_multiple_cox_boot_breasts,
         # "CBL thorax dosiomics": df_multiple_cox_boot_thorax,
         "CSIS thorax dosiomics": df_multiple_cox_sis_thorax,
+        "CSIS whole-body dosiomics": df_multiple_cox_sis_wb,
         "RSF breasts dosiomics": df_multiple_rsf_breasts,
-        "RSF thorax dosiomics": df_multiple_rsf_thorax
+        "RSF thorax dosiomics": df_multiple_rsf_thorax,
+        "RSF whole-body dosiomics": df_multiple_rsf_wb
     }
     dict_results_multiple_features_hclust_corr = {
         "CL screened breasts dosiomics": df_multiple_cox_breasts_filter,

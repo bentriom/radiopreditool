@@ -32,7 +32,10 @@ rule scores_plots_heart_two:
         rules.multiple_scores_cox_lasso_radiomics_all_heart_R.output,
         rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_heart_R.output,
         rules.multiple_scores_cox_sis_radiomics_all_heart_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_all_whole_body_R.output,
+        rules.multiple_scores_cox_sis_radiomics_all_whole_body_R.output,
         rules.multiple_scores_rsf_heart.output,
+        rules.multiple_scores_rsf_whole_body.output,
         rules.multiple_scores_rsf_features_hclust_corr_heart.output,
     output:
         expand(ANALYZES_DIR + "plots/heart2/multiple_scores_cindex.{format}", format = ["png", "svg"]),
@@ -64,7 +67,10 @@ rule scores_plots_thorax:
         rules.multiple_scores_cox_lasso_radiomics_all_thorax_R.output,
         rules.multiple_scores_cox_lasso_radiomics_features_hclust_corr_thorax_R.output,
         rules.multiple_scores_cox_sis_radiomics_all_thorax_R.output,
+        rules.multiple_scores_cox_lasso_radiomics_all_whole_body_R.output,
+        rules.multiple_scores_cox_sis_radiomics_all_whole_body_R.output,
         rules.multiple_scores_rsf_thorax.output,
+        rules.multiple_scores_rsf_whole_body.output,
         rules.multiple_scores_rsf_features_hclust_corr_thorax.output,
     output:
         expand(ANALYZES_DIR + "plots/thorax/multiple_scores_cindex.{format}", format = ["png", "svg"]),

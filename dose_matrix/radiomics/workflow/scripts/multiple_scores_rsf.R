@@ -24,6 +24,8 @@ multiple_scores_rsf <- function(nb_estim, screening_method, event_col, analyzes_
   df_trainset0 <- read.csv(paste0(analyzes_dir, "datasets/trainset_0.csv.gz"), header = TRUE)
   features <- colnames(df_trainset0)
   clinical_vars <- get.clinical_features(colnames(df_trainset0), event_col, duration_col)
+  log_info("Clinical variables:")
+  log_info(paste(clinical_vars, collapse = " "))
   index_results <- c("C-index", "IPCW C-index", "BS at 60", "IBS")
   parallel.method <- `if`(Sys.getenv("SLURM_NTASKS") == "", "mclapply", "rslurm")
 
@@ -99,6 +101,15 @@ multiple_scores_rsf <- function(nb_estim, screening_method, event_col, analyzes_
     cols_thorax <- filter.gl(grep("^X(309|310|1320|1702|2413|3413|1601)_", features, value = TRUE))
     covariates <- c(cols_thorax, clinical_vars)
     log_info("Model thorax radiomics full")
+    parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
+                                 model_name, rsf_logfile, 
+                                 screening_method = screening_method, parallel.method = parallel.method)
+  } else if (subdivision_type == "whole_body") {
+    # Model whole body all radiomics covariates
+    model_name <- paste0("whole_body_radiomics_full_", screening_method)
+    cols_whole_body <- filter.gl(grep("^X10000_", features, value = TRUE))
+    covariates <- c(cols_whole_body, clinical_vars)
+    log_info("Model whole body radiomics full")
     parallel_multiple_scores_rsf(nb_estim, covariates, event_col, duration_col, analyzes_dir,
                                  model_name, rsf_logfile, 
                                  screening_method = screening_method, parallel.method = parallel.method)

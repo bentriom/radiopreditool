@@ -9,7 +9,7 @@ get.analyzes_dir_from_config <- function(config) {
 
 # Get clinical variables from all features
 get.clinical_features <- function(columns, event_col, duration_col) {
-    regex_non_clinical <- paste0("^((X[0-9]{3,4}_)|(dv_)|(",event_col,")|(",duration_col,")|",
+    regex_non_clinical <- paste0("^((X[0-9]{3,5}_)|(dv_)|(",event_col,")|(",duration_col,")|",
                                  "(ctr)|(numcent)|(has_radiomics))")
     idx_non_clinical_vars <- grep(regex_non_clinical, columns)
     if (length(idx_non_clinical_vars) > 0) {
@@ -20,7 +20,7 @@ get.clinical_features <- function(columns, event_col, duration_col) {
 
 # Eliminate specific gray level image features
 filter.gl <- function(features) {
-    regex_removed <- "^X[0-9]{3,4}_original_((glcm_Sum(Average|Squares))|(shape_))"
+    regex_removed <- "^X[0-9]{3,5}_original_((glcm_Sum(Average|Squares))|(shape_))"
     idx_removed <- grep(regex_removed, features)
     if (length(idx_removed) > 0) {
         return (features[-idx_removed])
@@ -62,8 +62,8 @@ get.na.coefs <- function(object) {
 
 # Pretty label names
 pretty.label <- function(label) {
-    pattern_dosiomics = "X([0-9]{3,4})_[a-z]+_([a-z]+)_(\\w+)"
-    pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_([0-9]{3,4})"
+    pattern_dosiomics = "X([0-9]{3,5})_[a-z]+_([a-z]+)_(\\w+)"
+    pattern_dosesvol = "dv_((D|V)[0-9]{1,3})_([0-9]{3,5})"
     pattern_iccc = "iccc_([0-9]|nan)"
     if (stringr::str_detect(label, pattern_dosiomics)) {
         matches = str_match(label, pattern_dosiomics)
