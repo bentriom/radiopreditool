@@ -15,7 +15,7 @@ RADIOMICS_PARAMS_FILE: /gpfs/users/bentrioum/opt/radiopreditool/dose_matrix/radi
 # 413 - 420: breast 
 # 702 - 704: thyroid
 NAME_SUPER_T_FUNC: get_super_t_marrow_all
-LABELS_SUPER_T_VOI: [1320]
+LABELS_SUPER_T_VOI: [1320, 10000]
 LABELS_T_VOI: [320, 321, 322, 323, 324]
 FCCSS_CLINICAL_DATASET: /workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011222_extended.csv.gz
 FCCSS_CLINICAL_VARIABLES: ["Sexe", "categ_age_at_diagnosis",
