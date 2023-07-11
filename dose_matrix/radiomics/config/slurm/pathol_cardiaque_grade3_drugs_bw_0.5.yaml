@@ -1,5 +1,5 @@
 MODEL_NAME: pathol_cardiaque_grade3_drugs_bw_0.5
-RADIOMICS_NAME: 32X_1320_bw_0.5
+RADIOMICS_NAME: 32X_1320_10000_bw_0.5
 DOSES_DATASET_DIR: /workdir/bentrioum/database/radiopreditool/fccss/dose_matrix_full/
 DOSES_DATASET_SUBDIRS:
     - CURIE
