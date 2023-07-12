@@ -28,6 +28,7 @@ FCCSS_CLINICAL_DATASET = config["FCCSS_CLINICAL_DATASET"]
 RESULTS_DIR = config["RESULTS_DIR"]
 NII_SUBNAME = config["NII_SUBNAME"] if "NII_SUBNAME" in config else NAME_SUPER_T_FUNC
 NII_DIR = RESULTS_DIR + f"nii/{NII_SUBNAME}/"
+NII_DL_DIR = RESULTS_DIR + f"nii/deep_learning/"
 METADATA_DIR = RESULTS_DIR + "metadata/"
 RADIOMICS_DIR = RESULTS_DIR + "extraction/" + RADIOMICS_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
@@ -62,6 +63,7 @@ include: "rules/metadata.smk"
 include: "rules/extract_radiomics.smk"
 include: "rules/learning_datasets.smk"
 include: "rules/features_screening.smk"
+include: "rules/deep_learning.smk"
 include: "rules/cox_learning_python.smk"
 include: "rules/cox_learning_heart_R.smk"
 include: "rules/cox_learning_thorax_R.smk"

@@ -29,7 +29,8 @@ def transform_newdosi(df_dosi):
     df_dosi.loc[df_dosi["NUAGE"] == 360, "T"] = 360
 
 ## Save the nifti files
-def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_image_size = None, get_only_size = False):
+def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, save_empty = True,
+             biggest_image_size = None, get_only_size = False):
     logger = logging.getLogger("csv2nii")
     os.makedirs(path_nii, exist_ok=True)
     # Images settings
@@ -38,17 +39,22 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
     file_mask_super_t_nii = path_nii + patient_filename + '_mask_super_t.nii.gz'
     dosi_values = df_dosi.values
     if df_dosi.shape[0] <= 1:
-        logger.warning(f"{patient_filename}: df_dosi has <= 1 rows. Creating empty nii files.")
-        open(file_dosi_nii, 'w').close()
-        open(file_mask_t_nii, 'w').close()
-        open(file_mask_super_t_nii, 'w').close()
+        logger.warning(f"{patient_filename}: df_dosi has <= 1 rows.")
+        if save_empty:
+            logger.warning("Creating empty nii files.")
+            open(file_dosi_nii, 'w').close()
+            if save_masks:
+                open(file_mask_t_nii, 'w').close()
+                open(file_mask_super_t_nii, 'w').close()
         return (0, 0, 0)
     elif len(np.unique(dosi_values[dosi_values > 0])) <= 1:
-        logger.warning(f"{patient_filename}: df_dosi {df_dosi.shape} has too few values: {np.unique(dosi_values)}. "\
-                       f"Creating empty nii files.")
-        open(file_dosi_nii, 'w').close()
-        open(file_mask_t_nii, 'w').close()
-        open(file_mask_super_t_nii, 'w').close()
+        logger.warning(f"{patient_filename}: df_dosi {df_dosi.shape} has too few values: {np.unique(dosi_values)}.")
+        if save_empty:
+            logger.warning(f"Creating empty nii files.")
+            open(file_dosi_nii, 'w').close()
+            if save_masks:
+                open(file_mask_t_nii, 'w').close()
+                open(file_mask_super_t_nii, 'w').close()
         return (0, 0, 0)
     else:
         # Coordinates, labels and doses as 3D arrays
@@ -58,14 +64,23 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
         image_size = (max(x)+1,max(y)+1,max(z)+1)
         if get_only_size:
             return image_size
-        if biggest_image_size is not None:
-            image_size = biggest_image_size
-        labels_t_3d = np.zeros(image_size)
-        labels_t_3d[x,y,z] = df_dosi['T']
-        labels_super_t_3d = np.zeros(image_size)
-        labels_super_t_3d[x,y,z] = df_dosi['SUPER_T']
-        dosi_3d = np.zeros(image_size)
-        dosi_3d[x,y,z] = df_dosi['ID2013A']
+        if biggest_image_size is None:
+            labels_t_3d = np.zeros(image_size)
+            labels_t_3d[x,y,z] = df_dosi['T']
+            labels_super_t_3d = np.zeros(image_size)
+            labels_super_t_3d[x,y,z] = df_dosi['SUPER_T']
+            dosi_3d = np.zeros(image_size)
+            dosi_3d[x,y,z] = df_dosi['ID2013A']
+        else:
+            assert len(biggest_image_size) == 3
+            # Compute image shift in order to center the image
+            coord_shift = (np.asarray(biggest_image_size) - np.asarray(image_size)) // 2
+            labels_t_3d = np.zeros(biggest_image_size)
+            labels_t_3d[x+coord_shift[0],y+coord_shift[1],z+coord_shift[2]] = df_dosi['T']
+            labels_super_t_3d = np.zeros(biggest_image_size)
+            labels_super_t_3d[x+coord_shift[0],y+coord_shift[1],z+coord_shift[2]] = df_dosi['SUPER_T']
+            dosi_3d = np.zeros(biggest_image_size)
+            dosi_3d[x+coord_shift[0],y+coord_shift[1],z+coord_shift[2]] = df_dosi['ID2013A']
         # Preprocesing of array images
         dosi_3d = process_array_image(dosi_3d)
         # Save as images
@@ -87,7 +102,8 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, biggest_ima
 # Requires: list_csv_files: list of newdosi files for one patient
 # name_super_t_func: name of the function that groups T labels into a superset (super T)
 # Guarantees: three nifti files: doses, mask for each organ (super T labels), mask for each suborgan (T labels)
-def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func):
+def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func,
+           save_masks = True, save_empty = True, biggest_image_size = None, get_only_size = False):
     logger = logging.getLogger("csv2nii")
     relevant_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T', 'ID2013A']
     int_cols = ['X', 'Y', 'Z', 'T', 'SUPER_T']
@@ -155,5 +171,6 @@ def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func):
     patient_filename = f"newdosi_{ctr_patient}_{numcent_patient}"
 
     os.makedirs(path_nii, exist_ok=True)
-    save_nii(df_dosi, patient_filename, path_nii)
+    return save_nii(df_dosi, patient_filename, path_nii, save_masks = save_masks, save_empty = save_empty,
+                    biggest_image_size = biggest_image_size, get_only_size = get_only_size)
 

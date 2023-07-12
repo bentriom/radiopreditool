@@ -14,7 +14,8 @@ rule list_newdosi_checks:
     input:
         METADATA_DIR + "list_newdosi_files.csv"
     output:
-        METADATA_DIR + "list_newdosi_checks.csv"
+        METADATA_DIR + "list_newdosi_checks.csv",
+        METADATA_DIR + "biggest_image_size.csv"
     run:
         check_dataset.analyze_dataset(DOSES_DATASET_DIR, METADATA_DIR)
 

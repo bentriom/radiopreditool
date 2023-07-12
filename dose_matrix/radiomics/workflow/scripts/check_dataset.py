@@ -35,7 +35,8 @@ def check_files_patient(df_files_patient, doses_dataset_dir):
     df_result = df_files_patient.copy().reset_index()
     cols_labels_t = [f"count_{label}" for label in labels_t]
     cols_labels_nuage = [f"count_{label}" for label in labels_nuage]
-    df_result[["nbr_nan_rows", "remaining_rows", "missing_date", "outdated_treatment", "different_shapes"]] = 0
+    df_result[["nbr_nan_rows", "remaining_rows", "missing_date", "outdated_treatment", "different_shapes",
+               "size_x", "size_y", "size_z"]] = 0
     df_result[["well_ordered_rows", "summable"]] = 1
     df_result[cols_labels_t] = 0
     idx_sort_by_date_csv_files = np.argsort([get_date(newdosi_file) \
@@ -68,6 +69,13 @@ def check_files_patient(df_files_patient, doses_dataset_dir):
     # Check is nipples nuage has other T than 500
     df_result.loc[0, "359_not_T_500"] = (df_dosi.loc[df_dosi["NUAGE"] == 359, "T"] != 500).sum()
     df_result.loc[0, "360_not_T_500"] = (df_dosi.loc[df_dosi["NUAGE"] == 360, "T"] != 500).sum()
+    # Get the dose image size
+    if df_result.loc[0, "remaining_rows"] > 1:
+        x = np.array(df_dosi['X'] - min(df_dosi['X']), dtype='int') // 2
+        y = np.array(df_dosi['Y'] - min(df_dosi['Y']), dtype='int') // 2
+        z = np.array(df_dosi['Z'] - min(df_dosi['Z']), dtype='int') // 2
+        df_result.loc[0, ["size_x", "size_y", "size_z"]] = [max(x)+1,max(y)+1,max(z)+1]
+
     # Iterate over the other files
     for i in range(1, df_result.shape[0]):
         current_newdosi_file = df_result.loc[i, "filename_dose_matrix"]
@@ -118,6 +126,13 @@ def check_files_patient(df_files_patient, doses_dataset_dir):
         # Check is nipples nuage has other T than 500
         df_result.loc[i, "359_not_T_500"] = (df_other_dosi.loc[df_other_dosi["NUAGE"] == 359, "T"] != 500).sum()
         df_result.loc[i, "360_not_T_500"] = (df_other_dosi.loc[df_other_dosi["NUAGE"] == 360, "T"] != 500).sum()
+        # Get the dose image size
+        if df_result.loc[i, "remaining_rows"] > 1:
+            x = np.array(df_other_dosi['X'] - min(df_other_dosi['X']), dtype='int') // 2
+            y = np.array(df_other_dosi['Y'] - min(df_other_dosi['Y']), dtype='int') // 2
+            z = np.array(df_other_dosi['Z'] - min(df_other_dosi['Z']), dtype='int') // 2
+            df_result.loc[i, ["size_x", "size_y", "size_z"]] = [max(x)+1,max(y)+1,max(z)+1]
+
     return df_result
 
 def analyze_dataset(doses_dataset_dir, metadata_dir):
@@ -138,4 +153,7 @@ def analyze_dataset(doses_dataset_dir, metadata_dir):
     df_files_checks = pd.concat(res_checks)
     del df_files_checks["index"]
     df_files_checks.to_csv(metadata_dir + "list_newdosi_checks.csv", index = False)
+    df_files_summable = df_files_checks.loc[df_files_checks["summable"] == 1, :]
+    file_biggest_size = metadata_dir + "biggest_image_size.csv"
+    np.max(df_files_summable[["size_x", "size_y", "size_z"]], axis = 0).to_csv(file_biggest_size, header = None)
 
