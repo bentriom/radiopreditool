@@ -4,7 +4,7 @@ import pandas as pd
 import os, sys, logging, re
 sys.path.append("./workflow/scripts/")
 import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning, entropy_analysis, viz
-from radiopreditool_utils import setup_logger, get_ncpus, addslash, get_patient_file, is_slurm_run
+from radiopreditool_utils import setup_logger, get_ncpus, addslash, get_ctr_numcent, get_patient_file, is_slurm_run
 
 MODEL_NAME = config["MODEL_NAME"]
 EVENT_COL = config["EVENT_COL"]

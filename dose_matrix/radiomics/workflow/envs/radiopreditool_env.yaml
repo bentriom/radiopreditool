@@ -4,6 +4,7 @@ channels:
   - simpleitk
   - plotly
   - bioconda
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -24,6 +25,10 @@ dependencies:
   - python-kaleido
   - plotly
   - nibabel
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.7
   - pip:
     - pyradiomics
 

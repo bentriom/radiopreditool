@@ -99,7 +99,8 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, save_empty 
             sitk.WriteImage(image_mask_super_t, file_mask_super_t_nii)
 
 ## Save the newdosi RT treatments of a patient as a nii image
-# Requires: list_csv_files: list of newdosi files for one patient
+# Requires: 
+# list_csv_files: list of newdosi files for one patient, of shape newdosi_{CTR}_{NUMCENT}_{DATE}\w.csv.gz
 # name_super_t_func: name of the function that groups T labels into a superset (super T)
 # Guarantees: three nifti files: doses, mask for each organ (super T labels), mask for each suborgan (T labels)
 def to_nii(path_csv, path_nii, list_csv_files, name_super_t_func,

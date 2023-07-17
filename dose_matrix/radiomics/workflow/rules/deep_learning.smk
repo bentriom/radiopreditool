@@ -19,12 +19,21 @@ rule images_nii_dl:
         csv2nii.to_nii(path_csv, path_nii, list_filenames, NAME_SUPER_T_FUNC,
                        biggest_image_size = biggest_image_size, save_masks = False, save_empty = True)
 
+# list_newdosi_patients a list of elements of shape {SUBDIR}/newdosi_{CTR}_{NUMCENT}
 rule end_images_nii_dl:
     input:
         expand(NII_DL_DIR + "{newdosi_patient}_ID2013A.nii.gz", newdosi_patient = list_newdosi_patients)
     output:
+        METADATA_DIR + "images_paths_dl.csv",
         NII_DL_DIR + "end_csv2nii_dl.log"
     run:
         with open(NII_DL_DIR + "end_csv2nii_dl.log", "w") as logfile:
             logfile.write(f"End of {len(list_newdosi_patients)} dose images treatments.")
+        list_ctr = [get_ctr_numcent(os.path.basename(newdosi_patient))[0]
+                    for newdosi_patient in list_newdosi_patients]
+        list_numcent = [get_ctr_numcent(os.path.basename(newdosi_patient))[1]
+                        for newdosi_patient in list_newdosi_patients]
+        df_images = pd.DataFrame({"ctr": list_ctr, "numcent": list_numcent,
+                                  "absolute_path": NII_DL_DIR + pd.Series(list_newdosi_patients) + "_ID2013A.nii.gz"})
+        df_images.to_csv(METADATA_DIR + "images_paths_dl.csv", index = None)
 
