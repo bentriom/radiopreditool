@@ -4,7 +4,7 @@ import pandas as pd
 import os, sys, logging, re
 sys.path.append("./workflow/scripts/")
 import csv2nii, feature_extractor, check_dataset, report_checks, trainset
-import learning, learning_vae, entropy_analysis, viz
+import learning_cox, learning_vae, entropy_analysis, viz
 from radiopreditool_utils import setup_logger, get_ncpus, addslash, get_ctr_numcent, get_patient_file, is_slurm_run
 
 MODEL_NAME = config["MODEL_NAME"]
@@ -30,7 +30,6 @@ FCCSS_CLINICAL_DATASET = config["FCCSS_CLINICAL_DATASET"]
 RESULTS_DIR = config["RESULTS_DIR"]
 NII_SUBNAME = config["NII_SUBNAME"] if "NII_SUBNAME" in config else NAME_SUPER_T_FUNC
 NII_DIR = RESULTS_DIR + f"nii/{NII_SUBNAME}/"
-NII_DL_DIR = RESULTS_DIR + f"nii/deep_learning/"
 METADATA_DIR = RESULTS_DIR + "metadata/"
 RADIOMICS_DIR = RESULTS_DIR + "extraction/" + RADIOMICS_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
@@ -38,6 +37,7 @@ CONFIGFILE_PATH = sys.argv[sys.argv.index("--configfile")+1] if "--configfile" i
                   else sys.argv[sys.argv.index("--configfiles")+1]
 
 # Settings for Variational Auto-encoder learning
+NII_DL_DIR = RESULTS_DIR + f"nii/deep_learning/"
 if not "VAE" in config:
     n_channels_end, image_zoom, batch_size, n_epochs, start_epoch = 64, 2, 64, 10, 0
     VAE_CONFIG = {"N_CHANNELS_END": n_channels_end, "IMAGE_ZOOM": image_zoom, "BATCH_SIZE": batch_size,
