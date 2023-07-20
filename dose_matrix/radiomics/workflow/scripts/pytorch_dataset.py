@@ -17,6 +17,7 @@ class FccssNewdosiDataset(Dataset):
         biggest_image_size = df_size.loc[["size_x", "size_y", "size_z"], "size"].values
         self.input_image_size = ndimage.zoom(np.zeros(biggest_image_size[[2,1,0]]), 1/downscale, order=0).shape
         df_images_paths = pd.read_csv(metadata_dir + "images_paths_dl.csv")
+        df_images_paths = df_images_paths.loc[df_images_paths["size_bytes"] > 0, :]
         nbr_samples_train = int(train_size * len(df_images_paths.index))
         random.seed(seed_sample)
         train_idx = random.sample(sorted(df_images_paths.index), k = nbr_samples_train)
@@ -40,19 +41,17 @@ class FccssNewdosiDataset(Dataset):
     def __getitem__(self, idx):
         # read image
         image_path = self.images_paths[idx]
-        image_label = 0
         image = nibabel.load(image_path)
         assert image is not None
         # data processing
         image_array = self.__data_process__(image)
         # convert as tensor array
         image_tensor = self.__nii2tensorarray__(image_array)
-        image_label = np.asarray([image_label]).astype("float32")
         if self.phase == "train" or self.phase == "test":
-            return image_tensor, image_label
+            return image_tensor
         elif self.phase == "extraction":
             ctr, numcent = self.list_ctr[idx], self.list_numcent[idx]
-            return image_tensor, image_label, ctr, numcent
+            return image_tensor, ctr, numcent
 
     def __data_process__(self, data):
         image_array = data.get_fdata()

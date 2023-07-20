@@ -35,5 +35,19 @@ rule end_images_nii_dl:
                         for newdosi_patient in list_newdosi_patients]
         df_images = pd.DataFrame({"ctr": list_ctr, "numcent": list_numcent,
                                   "absolute_path": NII_DL_DIR + pd.Series(list_newdosi_patients) + "_ID2013A.nii.gz"})
+        df_images.loc[:, "size_bytes"] = df_images["absolute_path"].apply(lambda x: os.path.getsize(x))
         df_images.to_csv(METADATA_DIR + "images_paths_dl.csv", index = None)
+
+# Learning of convolutional variational auto-encoder
+rule learn_conv_vae:
+    input:
+        METADATA_DIR + "images_paths_dl.csv",
+    output:
+        VAE_DIR + "learn_vae.log",
+        VAE_DIR + f"epochs/epoch_{VAE_CONFIG['N_EPOCHS']-1}.pth"
+    run:
+        device = "cuda" if is_slurm_run() else "cpu"
+        learning_vae.learn_vae(METADATA_DIR, VAE_DIR, n_channels_end = VAE_CONFIG["N_CHANNELS_END"],
+                               downscale = VAE_CONFIG["IMAGE_ZOOM"], batch_size = VAE_CONFIG["BATCH_SIZE"],
+                               n_epochs = VAE_CONFIG["N_EPOCHS"], start_epoch = VAE_CONFIG["START_EPOCH"])
 

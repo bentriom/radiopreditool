@@ -3,16 +3,18 @@ from functools import reduce
 import pandas as pd
 import os, sys, logging, re
 sys.path.append("./workflow/scripts/")
-import csv2nii, feature_extractor, check_dataset, report_checks, trainset, learning, entropy_analysis, viz
+import csv2nii, feature_extractor, check_dataset, report_checks, trainset
+import learning, learning_vae, entropy_analysis, viz
 from radiopreditool_utils import setup_logger, get_ncpus, addslash, get_ctr_numcent, get_patient_file, is_slurm_run
 
 MODEL_NAME = config["MODEL_NAME"]
+# Survival analysis outcome and covariables
 EVENT_COL = config["EVENT_COL"]
 DATE_EVENT_COL = config["DATE_EVENT_COL"]
-
+FCCSS_CLINICAL_VARIABLES = config["FCCSS_CLINICAL_VARIABLES"]
+# Settings for radiomics extraction
 RADIOMICS_NAME = config["RADIOMICS_NAME"] if "RADIOMICS_NAME" in config else MODEL_NAME
 RADIOMICS_PARAMS_FILE = config["RADIOMICS_PARAMS_FILE"]
-FCCSS_CLINICAL_VARIABLES = config["FCCSS_CLINICAL_VARIABLES"]
 NAME_SUPER_T_FUNC = config["NAME_SUPER_T_FUNC"] if "NAME_SUPER_T_FUNC" in config else "get_super_t"
 LABELS_SUPER_T_VOI = config["LABELS_SUPER_T_VOI"] if "LABELS_SUPER_T_VOI" in config else [""]
 LABELS_T_VOI = config["LABELS_T_VOI"] if "LABELS_T_VOI" in config else [""]
@@ -34,6 +36,17 @@ RADIOMICS_DIR = RESULTS_DIR + "extraction/" + RADIOMICS_NAME + "/"
 ANALYZES_DIR = RESULTS_DIR + "analyzes/" + MODEL_NAME + "/"
 CONFIGFILE_PATH = sys.argv[sys.argv.index("--configfile")+1] if "--configfile" in sys.argv \
                   else sys.argv[sys.argv.index("--configfiles")+1]
+
+# Settings for Variational Auto-encoder learning
+if not "VAE" in config:
+    n_channels_end, image_zoom, batch_size, n_epochs, start_epoch = 64, 2, 64, 10, 0
+    VAE_CONFIG = {"N_CHANNELS_END": n_channels_end, "IMAGE_ZOOM": image_zoom, "BATCH_SIZE": batch_size,
+                  "N_EPOCHS": n_epochs, "START_EPOCH": start_epoch}
+else:
+    VAE_CONFIG = config["VAE"]
+    for key in VAE_CONFIG:
+        VAE_CONFIG[key] = int(VAE_CONFIG[key])
+VAE_DIR = RESULTS_DIR + f"VAE/N{VAE_CONFIG['N_CHANNELS_END']}/zoom_x{VAE_CONFIG['IMAGE_ZOOM']}/"
 
 # Wildcard functions
 def get_newdosi_files(wildcards):
