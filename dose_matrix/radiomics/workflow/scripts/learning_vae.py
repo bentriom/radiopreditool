@@ -40,13 +40,15 @@ def vae_loss(x_hat, x, mu, logvar, kl_weight):
 
     return MSE + KLD, MSE, KLD
 
-def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, scheduler):
+def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, scheduler, log_name = "learn_vae"):
     model.train()
     train_total_loss = 0
     train_BCE_loss = 0
     train_KLD_loss = 0
-
-    for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
+    logger = logging.getLogger(log_name)
+    # for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
+    for batch_idx, data in enumerate(train_dataloader):
+        logger.info(f"Batch train {batch_idx}/len(train_dataloader)")
         # compute model output
         data = data.to(device, dtype=torch.float)
         optimizer.zero_grad()
@@ -68,15 +70,18 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
 
     return train_total_loss, train_BCE_loss, train_KLD_loss
 
-def test_loop(epoch, model, test_dataloader, kl_weight, device):
+def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "learn_vae"):
     model.eval()
     test_total_loss = 0
     test_BCE_loss = 0
     test_KLD_loss = 0
+    logger = logging.getLogger(log_name)
 
     with torch.no_grad():
-        for batch_idx, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc='test'):
+        # for batch_idx, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc='test'):
+        for batch_idx, data in enumerate(test_dataloader):
             # compute loss
+            logger.info(f"Batch test {batch_idx}/len(test_dataloader)")
             data = data.to(device, dtype=torch.float)
             batch_x_hats, mu, logvar, latent_batch = model(data)
             total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)

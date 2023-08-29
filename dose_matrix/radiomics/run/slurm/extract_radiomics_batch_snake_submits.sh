@@ -81,7 +81,7 @@ echo $(date)
 "
 
 sbatch \
-    --job-name=radiomics_batch_${NJOBS} --output=./out/extract_radiomics_batch_snake_submits_${NJOBS} --time=$TIME \
+    --job-name=radiomics_batch_${NJOBS} --output=./out/extract_radiomics_batch_snake_submits_${MODEL_NAME}_${NJOBS} --time=$TIME \
     --ntasks=1 \
     --partition=$PARTITION \
     --mem=$MEMORY_PER_NODE --wrap="$COMMANDS_JOB"
