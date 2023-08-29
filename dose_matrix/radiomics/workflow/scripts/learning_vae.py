@@ -109,10 +109,11 @@ def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_
     logger.info(f"Learning convolutional VAE N={n_channels_end}")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     # Datasets
-    trainset = pdata.FccssNewdosiDataset(metadata_dir, phase = "train", downscale = 5)
-    testset = pdata.FccssNewdosiDataset(metadata_dir, phase = "test", downscale = 5)
+    trainset = pdata.FccssNewdosiDataset(metadata_dir, phase = "train", downscale = downscale)
+    testset = pdata.FccssNewdosiDataset(metadata_dir, phase = "test", downscale = downscale)
     train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = False)
     test_dataloader = DataLoader(testset, shuffle = False)
+    logger.info(f"Dataset loader created. Input image size: {trainset.input_image_size}.")
     # CNN model
     if n_channels_end == 128:
         cnn_vae = CVAE_3D_N128(image_channels = 1, z_dim = 32, input_image_size = trainset.input_image_size)
@@ -122,9 +123,11 @@ def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_
         raise ValueError("Torch sevice is set on mps but it is not build on this machine.")
     if device == "cuda" and not torch.backends.cuda.is_built():
         raise ValueError("Torch device is set on cuda but it is not build on this machine.")
-    logger.info(f"Device: {device}")
+    logger.info(f"CNN VAE created.")
     cnn_vae.to(device)
-
+    logger.info("Model loaded on {device}.")
+    if device == "cuda":
+        logger.info(f"Number of devices visible by cuda: {torch.cuda.device_count()}")
     # print("Computing a forward")
     # train_batch0 = next(iter(train_dataloader))
     # cnn_vae.forward(train_batch0[0])
