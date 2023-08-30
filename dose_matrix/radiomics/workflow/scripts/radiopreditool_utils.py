@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy.optimize as opt
 import SimpleITK as sitk
-import os, re
+import os, re, sys
 from multiprocessing import cpu_count
 from datetime import datetime
 import numpy as np
@@ -307,7 +307,10 @@ def event_balance(structured_y):
 # Log
 def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation_msg = True):
     formatter = logging.Formatter('[%(asctime)s] %(message)s', datefmt = '%m/%d/%Y %H:%M:%S')
-    handler = logging.FileHandler(log_file, mode = mode_file)
+    if name is None or log_file is None:
+        handler = logging.StreamHandler(sys.stdout)
+    else:
+        handler = logging.FileHandler(log_file, mode = mode_file)
     handler.setFormatter(formatter)
     logger = logging.getLogger(name)
     logger.setLevel(level)

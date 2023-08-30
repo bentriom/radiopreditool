@@ -49,7 +49,7 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
     logger = logging.getLogger(log_name)
     # for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
     for batch_idx, data in enumerate(train_dataloader):
-        logger.info(f"Batch train {batch_idx}/{len(train_dataloader)-1}")
+        logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1}")
         # compute model output
         data = data.to(device, dtype=torch.float)
         optimizer.zero_grad()
@@ -82,7 +82,7 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "lear
         # for batch_idx, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc='test'):
         for batch_idx, data in enumerate(test_dataloader):
             # compute loss
-            logger.info(f"Batch test {batch_idx}/{len(test_dataloader)-1}")
+            logger.info(f"- Batch test {batch_idx}/{len(test_dataloader)-1}")
             data = data.to(device, dtype=torch.float)
             batch_x_hats, mu, logvar, latent_batch = model(data)
             total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)
@@ -98,14 +98,13 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "lear
     return test_total_loss, test_BCE_loss, test_KLD_loss
 
 def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_size = 64,
-              n_epochs = 10, start_epoch = 0, device = "cpu", log_stdout = False):
+              n_epochs = 10, start_epoch = 0, device = "cpu", log_name = "learn_vae"):
     assert device in ["cpu", "mps", "cuda"]
     assert n_channels_end in [64, 128]
     assert 0 <= start_epoch < n_epochs
     save_epochs_dir = f"{vae_dir}epochs/"
     os.makedirs(vae_dir, exist_ok = True)
     os.makedirs(save_epochs_dir, exist_ok = True)
-    log_name = "learn_vae"
     logger = setup_logger(log_name, vae_dir + f"{log_name}.log")
     logger.info(f"Learning convolutional VAE N={n_channels_end}")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
