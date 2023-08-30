@@ -109,10 +109,10 @@ def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_
     logger.info(f"Learning convolutional VAE N={n_channels_end}")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     # Datasets
-    trainset = pdata.FccssNewdosiDataset(metadata_dir, phase = "train", downscale = downscale, pin_memory = True)
-    testset = pdata.FccssNewdosiDataset(metadata_dir, phase = "test", downscale = downscale, pin_memory = True)
-    train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = False)
-    test_dataloader = DataLoader(testset, shuffle = False)
+    trainset = pdata.FccssNewdosiDataset(metadata_dir, phase = "train", downscale = downscale)
+    testset = pdata.FccssNewdosiDataset(metadata_dir, phase = "test", downscale = downscale)
+    train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = False, pin_memory = True)
+    test_dataloader = DataLoader(testset, shuffle = False, pin_memory = True)
     logger.info(f"Dataset loader created. Input image size: {trainset.input_image_size}.")
     # CNN model
     if n_channels_end == 128:
