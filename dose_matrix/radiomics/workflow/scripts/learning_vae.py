@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pytorch_dataset as pdata
 from vae import *
 from radiopreditool_utils import *
+from viz import plot_loss_vae
 
 def save_epoch(nn_state_epoch, save_dir = "./"):
     if not os.path.exists(save_dir):
@@ -48,7 +49,7 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
     logger = logging.getLogger(log_name)
     # for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
     for batch_idx, data in enumerate(train_dataloader):
-        logger.info(f"Batch train {batch_idx}/len(train_dataloader)")
+        logger.info(f"Batch train {batch_idx}/{len(train_dataloader)-1}")
         # compute model output
         data = data.to(device, dtype=torch.float)
         optimizer.zero_grad()
@@ -81,7 +82,7 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "lear
         # for batch_idx, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc='test'):
         for batch_idx, data in enumerate(test_dataloader):
             # compute loss
-            logger.info(f"Batch test {batch_idx}/len(test_dataloader)")
+            logger.info(f"Batch test {batch_idx}/{len(test_dataloader)-1}")
             data = data.to(device, dtype=torch.float)
             batch_x_hats, mu, logvar, latent_batch = model(data)
             total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)
@@ -97,7 +98,7 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "lear
     return test_total_loss, test_BCE_loss, test_KLD_loss
 
 def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_size = 64,
-              n_epochs = 10, test_every_epochs = 1, start_epoch = 0, device = "cpu", log_stdout = False):
+              n_epochs = 10, start_epoch = 0, device = "cpu", log_stdout = False):
     assert device in ["cpu", "mps", "cuda"]
     assert n_channels_end in [64, 128]
     assert 0 <= start_epoch < n_epochs
@@ -161,18 +162,24 @@ def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_
         logger.info("Epoch [%d/%d] train_total_loss: %.3f, train_REC_loss: %.3f, train_KLD_loss: %.3f" \
                     % (epoch, n_epochs, train_total_loss, train_BCE_loss, train_KLD_loss))
         # Test losses
-        if (epoch % test_every_epochs == 0) or (epoch == n_epochs-1):
-            test_total_loss, test_BCE_loss, test_KLD_loss = test_loop(epoch, cnn_vae, test_dataloader, kl_weight, device)
-            logger.info("Epoch [%d/%d] test_total_loss: %.3f, test_REC_loss: %.3f, test_KLD_loss: %.3f" \
-                        % (epoch, n_epochs, test_total_loss, test_BCE_loss, test_KLD_loss))
+        test_total_loss, test_BCE_loss, test_KLD_loss = test_loop(epoch, cnn_vae, test_dataloader, kl_weight, device)
+        logger.info("Epoch [%d/%d] test_total_loss: %.3f, test_REC_loss: %.3f, test_KLD_loss: %.3f" \
+                    % (epoch, n_epochs, test_total_loss, test_BCE_loss, test_KLD_loss))
 
-            best_test_loss = min(test_total_loss, best_test_loss)
-            save_epoch({
-                'epoch': epoch,
-                'best_test_loss': best_test_loss,
-                'state_dict': cnn_vae.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                }, save_dir = save_epochs_dir)
+        best_test_loss = min(test_total_loss, best_test_loss)
+        save_epoch({
+            'epoch': epoch,
+            'train_total_loss': train_total_loss,
+            'train_BCE_loss': train_BCE_loss,
+            'train_KLD_loss': train_KLD_loss,
+            'test_total_loss': test_total_loss,
+            'test_BCE_loss': test_BCE_loss,
+            'test_KLD_loss': test_KLD_loss,
+            'best_test_loss': best_test_loss,
+            'state_dict': cnn_vae.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            }, save_dir = save_epochs_dir)
 
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader))
+    plot_loss_vae(vae_dir)
 

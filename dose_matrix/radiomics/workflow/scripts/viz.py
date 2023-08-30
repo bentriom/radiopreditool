@@ -1,9 +1,27 @@
 
+import torch
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import os
+import os, re
+
+## Plot of neural network losses
+
+def plot_loss_vae(vae_dir):
+    epochs_dir = f"{vae_dir}epochs/"
+    save_plots_dir = f"{vae_dir}plots/"
+    os.makedirs(save_plots_dir, exist_ok = True)
+    epoch_files = sorted([f for f in os.listdir(epochs_dir) if os.path.isfile(f"{epochs_dir}{f}")])
+    epoch_id = [int(re.match('epoch_(\d+).pth', f)[1]) for f in epoch_files]
+    epoch_train_loss = [torch.load(f"{epochs_dir}{f}")["train_total_loss"] for f in epoch_files]
+    epoch_test_loss = [torch.load(f"{epochs_dir}{f}")["test_total_loss"] for f in epoch_files]
+    # Plot
+    trace_train = go.Scatter(x = epoch_id, y = epoch_train_loss, mode = "lines", name = "Train loss")
+    trace_test = go.Scatter(x = epoch_id, y = epoch_test_loss, mode = "lines", name = "Test loss")
+    fig = go.Figure(data = [trace_train, trace_test])
+    fig.write_image(f"{save_plots_dir}loss_epochs_{epoch_id[0]}_{epoch_id[-1]}.png", width = 1200, height = 800)
+
 
 ## C-index scores plots
 
