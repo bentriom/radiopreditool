@@ -125,7 +125,7 @@ def learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_
         raise ValueError("Torch device is set on cuda but it is not build on this machine.")
     logger.info(f"CNN VAE created.")
     cnn_vae.to(device)
-    logger.info("Model loaded on {device}.")
+    logger.info(f"Model loaded on {device}.")
     if device == "cuda":
         logger.info(f"Number of devices visible by cuda: {torch.cuda.device_count()}")
     # print("Computing a forward")
