@@ -51,19 +51,25 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
     for batch_idx, data in enumerate(train_dataloader):
         logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1}")
         # compute model output
+        logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
         data = data.to(device, dtype=torch.float)
+        logger.debug(f"-- loaded on {device}")
         optimizer.zero_grad()
         batch_x_hats, mu, logvar, _ = model(data)
+        logger.debug(f"-- output computed by the model")
         # compute batch losses
         total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)
         train_total_loss += total_loss.item()
         train_BCE_loss += BCE_loss.item()
         train_KLD_loss += KLD_loss.item()
+        logger.debug(f"-- losses computed")
         # compute gradients and update weights
         total_loss.backward()
         optimizer.step()
+        logger.debug(f"-- gradients computed")
         # schedule learning rate
         scheduler.step()
+        logger.debug(f"-- learning rate computed")
 
     train_total_loss /= len(train_dataloader.dataset)
     train_BCE_loss /= len(train_dataloader.dataset)
@@ -83,9 +89,13 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "lear
         for batch_idx, data in enumerate(test_dataloader):
             # compute loss
             logger.info(f"- Batch test {batch_idx}/{len(test_dataloader)-1}")
+            logger.debug(f"-- estimated size in GB: {data.element_size() * data.numel()}")
             data = data.to(device, dtype=torch.float)
+            logger.debug(f"-- loaded on {device}")
             batch_x_hats, mu, logvar, latent_batch = model(data)
+            logger.debug(f"-- output computed by the model")
             total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)
+            logger.debug(f"-- losses computed")
 
             test_total_loss += total_loss.item()
             test_BCE_loss += BCE_loss.item()
