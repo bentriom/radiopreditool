@@ -54,6 +54,8 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
     # for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
     for batch_idx, data in enumerate(train_dataloader):
         logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1}")
+        flush_log(logger)
+        sys.stdout.flush()
         # compute model output
         logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
         data = data.to(device, dtype=torch.float)
@@ -93,6 +95,7 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "lear
         for batch_idx, data in enumerate(test_dataloader):
             # compute loss
             logger.info(f"- Batch test {batch_idx}/{len(test_dataloader)-1}")
+            flush_log(logger)
             logger.debug(f"-- estimated size in GB: {data.element_size() * data.numel()}")
             data = data.to(device, dtype=torch.float)
             logger.debug(f"-- loaded on device {device}")
@@ -132,6 +135,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
     logger = logging.getLogger(log_name)
     logger.info(f"Learning convolutional VAE N={n_channels_end} on the device {rank_device}.")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
+    flush_log(logger)
     # Datasets
     trainset = pdata.FccssNewdosiDataset(metadata_dir, phase = "train", downscale = downscale)
     testset = pdata.FccssNewdosiDataset(metadata_dir, phase = "test", downscale = downscale)
@@ -148,6 +152,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
     if is_cuda:
         cnn_vae = DistributedDataParallel(cnn_vae, device_ids = [rank_device])
     logger.info(f"Model loaded on device {rank_device}.")
+    flush_log(logger)
     # print("Computing a forward")
     # train_batch0 = next(iter(train_dataloader))
     # cnn_vae.forward(train_batch0[0])
@@ -180,11 +185,13 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
                                                                       kl_weight, optimizer, rank_device, scheduler)
         logger.info("Epoch [%d/%d] train_total_loss: %.3f, train_REC_loss: %.3f, train_KLD_loss: %.3f" \
                     % (epoch, n_epochs, train_total_loss, train_BCE_loss, train_KLD_loss))
+        flush_log(logger)
         # Test losses
         test_total_loss, test_BCE_loss, test_KLD_loss = test_loop(epoch, cnn_vae, test_dataloader,
                                                                   kl_weight, rank_device)
         logger.info("Epoch [%d/%d] test_total_loss: %.3f, test_REC_loss: %.3f, test_KLD_loss: %.3f" \
                     % (epoch, n_epochs, test_total_loss, test_BCE_loss, test_KLD_loss))
+        flush_log(logger)
 
         best_test_loss = min(test_total_loss, best_test_loss)
         dict_results_epoch = {
@@ -229,10 +236,10 @@ def run_learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, ba
             device_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(',')]
         else:
             device_ids = range(torch.cuda.device_count())
-        mp.spawn(learn_vae, args = (metadata_dir, vae_dir, n_channels_end, downscale, batch_size,
+        mp.spawn(learn_vae, args = (len(device_ids), metadata_dir, vae_dir, n_channels_end, downscale, batch_size,
                                     n_epochs, start_epoch, log_name), nprocs = len(device_ids))
     else:
-        learn_vae(device, metadata_dir, vae_dir, n_channels_end, downscale,
+        learn_vae(device, 1, metadata_dir, vae_dir, n_channels_end, downscale,
                   batch_size, n_epochs, start_epoch, log_name)
     plot_loss_vae(vae_dir)
 
