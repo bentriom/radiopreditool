@@ -45,7 +45,7 @@ def vae_loss(x_hat, x, mu, logvar, kl_weight):
 
     return MSE + KLD, MSE, KLD
 
-def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, scheduler, log_name = "learn_vae"):
+def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, scheduler, log_name):
     model.train()
     train_total_loss = 0
     train_BCE_loss = 0
@@ -55,7 +55,6 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
     for batch_idx, data in enumerate(train_dataloader):
         logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1}")
         flush_log(logger)
-        sys.stdout.flush()
         # compute model output
         logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
         data = data.to(device, dtype=torch.float)
@@ -83,7 +82,7 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
 
     return train_total_loss, train_BCE_loss, train_KLD_loss
 
-def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name = "learn_vae"):
+def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name):
     model.eval()
     test_total_loss = 0
     test_BCE_loss = 0
@@ -132,7 +131,11 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
     save_epochs_dir = f"{vae_dir}epochs/"
     os.makedirs(vae_dir, exist_ok = True)
     os.makedirs(save_epochs_dir, exist_ok = True)
-    logger = logging.getLogger(log_name)
+    log_name_device = f"{log_name}_{rank_device}"
+    if log_name is not None:
+        logger = setup_logger(log_name_device, vae_dir + f"{log_name}_device_{rank_device}.log")
+    else:
+        logger = setup_logger(log_name_device, None)
     logger.info(f"Learning convolutional VAE N={n_channels_end} on the device {rank_device}.")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     flush_log(logger)
@@ -182,13 +185,13 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
         logger.info(f"Current KL weight: {kl_weight}")
         # Train losses
         train_total_loss, train_BCE_loss, train_KLD_loss = train_loop(epoch, cnn_vae, train_dataloader,
-                                                                      kl_weight, optimizer, rank_device, scheduler)
+                                                                      kl_weight, optimizer, rank_device, scheduler, log_name_device)
         logger.info("Epoch [%d/%d] train_total_loss: %.3f, train_REC_loss: %.3f, train_KLD_loss: %.3f" \
                     % (epoch, n_epochs, train_total_loss, train_BCE_loss, train_KLD_loss))
         flush_log(logger)
         # Test losses
         test_total_loss, test_BCE_loss, test_KLD_loss = test_loop(epoch, cnn_vae, test_dataloader,
-                                                                  kl_weight, rank_device)
+                                                                  kl_weight, rank_device, log_name_device)
         logger.info("Epoch [%d/%d] test_total_loss: %.3f, test_REC_loss: %.3f, test_KLD_loss: %.3f" \
                     % (epoch, n_epochs, test_total_loss, test_BCE_loss, test_KLD_loss))
         flush_log(logger)
@@ -241,5 +244,6 @@ def run_learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, ba
     else:
         learn_vae(device, 1, metadata_dir, vae_dir, n_channels_end, downscale,
                   batch_size, n_epochs, start_epoch, log_name)
+    logger.info(f"Learning completed")
     plot_loss_vae(vae_dir)
 
