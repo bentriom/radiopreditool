@@ -62,8 +62,10 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, save_empty 
         y = np.array(df_dosi['Y'] - min(df_dosi['Y']), dtype='int') // 2
         z = np.array(df_dosi['Z'] - min(df_dosi['Z']), dtype='int') // 2
         image_size = (max(x)+1,max(y)+1,max(z)+1)
+        # If we only want to get the size of the dose matrix
         if get_only_size:
             return image_size
+        # If we don't have to put place the dose matrix into a fixed-size bigger matrix
         if biggest_image_size is None:
             labels_t_3d = np.zeros(image_size)
             labels_t_3d[x,y,z] = df_dosi['T']
