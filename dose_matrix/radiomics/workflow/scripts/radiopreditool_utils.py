@@ -319,6 +319,9 @@ def setup_logger(name, log_file, level = logging.INFO, mode_file = "w", creation
         logger.info(f"Logger {name} created at {datetime.now()}")
     return logger
 
+def flush_log(logger):
+    [handler.flush() for handler in logger.handlers]
+
 def is_slurm_run():
     return ("SLURM_CPUS_PER_TASK" in os.environ) or ("SLURM_NTASKS" in os.environ)
 
