@@ -8,8 +8,12 @@ from torch.utils.data import Dataset
 
 # A class that creates a PyTorch dataset
 class FccssNewdosiDataset(Dataset):
-    def __init__(self, metadata_dir, train_size = 0.7, phase = "train", downscale = 1, seed_sample = 21):
+    def __init__(self, metadata_dir, file_fccss_clinical = None,
+                       train_size = 0.7, phase = "data", downscale = 1, seed_sample = 21):
         assert 0 < train_size < 1
+        assert os.path.isdir(metadata_dir)
+        if file_fccss_clinical is not None:
+            assert os.path.isfile(file_fccss_clinical)
         self.phase = phase
         self.downscale = downscale
         # Get input size of images with meta data
@@ -18,10 +22,18 @@ class FccssNewdosiDataset(Dataset):
         self.input_image_size = ndimage.zoom(np.zeros(biggest_image_size[[2,1,0]]), 1/downscale, order=0).shape
         df_images_paths = pd.read_csv(metadata_dir + "images_paths_dl.csv")
         df_images_paths = df_images_paths.loc[df_images_paths["size_bytes"] > 0, :]
+        if file_fccss_clinical is not None:
+            df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)[["ctr", "numcent"]]
+            df_images_paths = df_images_paths.merge(df_fccss, how = "inner", on = ["ctr", "numcent"])
+        self.df_images_paths = df_images_paths
         nbr_samples_train = int(train_size * len(df_images_paths.index))
         random.seed(seed_sample)
         train_idx = random.sample(sorted(df_images_paths.index), k = nbr_samples_train)
-        if phase == "train":
+        if phase == "data":
+            self.images_paths = df_images_paths.loc[:, "absolute_path"].values
+            self.list_ctr = df_images_paths.loc[:, "ctr"].astype(int).values
+            self.list_numcent = df_images_paths.loc[:, "numcent"].astype(int).values
+        elif phase == "train":
             self.images_paths = df_images_paths.loc[train_idx, "absolute_path"].values
             self.list_ctr = df_images_paths.loc[train_idx, "ctr"].astype(int).values
             self.list_numcent = df_images_paths.loc[train_idx, "numcent"].astype(int).values
@@ -47,7 +59,7 @@ class FccssNewdosiDataset(Dataset):
         image_array = self.__data_process__(image)
         # convert as tensor array
         image_tensor = self.__nii2tensorarray__(image_array)
-        if self.phase == "train" or self.phase == "test":
+        if self.phase in ["data", "train", "test"]:
             return image_tensor
         elif self.phase == "extraction":
             ctr, numcent = self.list_ctr[idx], self.list_numcent[idx]
@@ -91,4 +103,10 @@ class FccssNewdosiDataset(Dataset):
         image_array = self.__data_process__(image)
 
         return image_array
+
+    def save_processed_nii(self, idx, save_dir):
+        image_array = self.get_image_array(idx)
+        image_name = os.path.basename(self.images_paths[idx]).replace(".nii.gz", f"_downscale_{self.downscale}.nii.gz")
+        image_nii = nibabel.Nifti1Image(image_array, np.eye(4))
+        nibabel.save(image_nii, save_dir + image_name)
 
