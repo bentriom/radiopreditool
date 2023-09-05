@@ -122,7 +122,7 @@ def setup_gpu(rank_process, number_of_processes):
 def cleanup_gpu():
     dist.destroy_process_group()
 
-def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, downscale,
+def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinical, n_channels_end, downscale,
               batch_size, n_epochs, start_epoch, log_name):
     assert isinstance(rank_device, int) or rank_device in ["mps", "cpu"]
     is_cuda = rank_device not in ["mps", "cpu"]
@@ -137,8 +137,10 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     flush_log(logger)
     # Datasets
-    trainset = pdata.FccssNewdosiDataset(metadata_dir, phase = "train", downscale = downscale)
-    testset = pdata.FccssNewdosiDataset(metadata_dir, phase = "test", downscale = downscale)
+    trainset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical,
+                                         phase = "train", downscale = downscale)
+    testset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical,
+                                        phase = "test", downscale = downscale)
     train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = False, pin_memory = True)
     test_dataloader = DataLoader(testset, shuffle = False, pin_memory = True)
     logger.info(f"Dataset loader created. Input image size: {trainset.input_image_size}.")
@@ -216,8 +218,8 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, n_channels_end, do
     if is_cuda:
         cleanup_gpu(rank_device, nb_devices)
 
-def run_learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, batch_size = 64,
-                  n_epochs = 10, start_epoch = 0, device = "cpu", log_name = "learn_vae"):
+def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, n_channels_end = 128, downscale = 1,
+                  batch_size = 64, n_epochs = 10, start_epoch = 0, device = "cpu", log_name = "learn_vae"):
     assert device in ["cpu", "mps", "cuda"]
     assert n_channels_end in [64, 128]
     assert 0 <= start_epoch < n_epochs
@@ -236,10 +238,10 @@ def run_learn_vae(metadata_dir, vae_dir, n_channels_end = 128, downscale = 1, ba
             device_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(',')]
         else:
             device_ids = range(torch.cuda.device_count())
-        mp.spawn(learn_vae, args = (len(device_ids), metadata_dir, vae_dir, n_channels_end, downscale, batch_size,
-                                    n_epochs, start_epoch, log_name), nprocs = len(device_ids))
+        mp.spawn(learn_vae, args = (len(device_ids), metadata_dir, vae_dir, file_fccss_clinical, n_channels_end,
+                                    downscale, batch_size, n_epochs, start_epoch, log_name), nprocs = len(device_ids))
     else:
-        learn_vae(device, 1, metadata_dir, vae_dir, n_channels_end, downscale,
+        learn_vae(device, 1, metadata_dir, vae_dir, file_fccss_clinical, n_channels_end, downscale,
                   batch_size, n_epochs, start_epoch, log_name)
     plot_loss_vae(vae_dir)
 
