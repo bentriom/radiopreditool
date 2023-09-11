@@ -67,17 +67,8 @@ class FccssNewdosiDataset(Dataset):
 
     def __data_process__(self, data):
         image_array = data.get_fdata()
-        new_image_array = self.__eliminate_outliers__(image_array)
-        new_image_array = self.__resize_data__(new_image_array)
+        new_image_array = self.__resize_data__(image_array)
         return new_image_array
-
-    def __eliminate_outliers__(self, image_array):
-        D98 = np.nanpercentile(image_array, 2)
-        D2 = np.nanpercentile(image_array, 98)
-        image_array[image_array > D2] = D2
-        image_array[image_array < D98] = D98
-
-        return image_array
 
     def __resize_data__(self, image_array):
         if self.downscale == 1:
@@ -93,6 +84,14 @@ class FccssNewdosiDataset(Dataset):
 
         return new_data
 
+    def __eliminate_outliers__(self, image_array):
+        D98 = np.nanpercentile(image_array, 2)
+        D2 = np.nanpercentile(image_array, 98)
+        image_array[image_array > D2] = D2
+        image_array[image_array < D98] = D98
+
+        return image_array
+
     def get_image_array(self, idx):
         # read image
         image_path = self.images_paths[idx]
@@ -105,6 +104,7 @@ class FccssNewdosiDataset(Dataset):
         return image_array
 
     def save_processed_nii(self, idx, save_dir):
+        os.makedirs(save_dir, exist_ok = True)
         image_array = self.get_image_array(idx)
         image_name = os.path.basename(self.images_paths[idx]).replace(".nii.gz", f"_downscale_{self.downscale}.nii.gz")
         image_nii = nibabel.Nifti1Image(image_array, np.eye(4))
