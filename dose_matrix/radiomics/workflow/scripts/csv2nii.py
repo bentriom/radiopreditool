@@ -8,16 +8,17 @@ from radiopreditool_utils import get_ctr_numcent, get_date, check_nan_values, ch
 
 ## Array preprocessing utils
 
-def process_array_image(doses_array):
-    new_array = drop_invalid_range(doses_array)
+def process_array_image(doses_array, mask_array):
+    new_array = drop_invalid_range(doses_array, mask_array)
 
     return new_array
 
-def drop_invalid_range(doses_array):
-    D98 = np.nanpercentile(doses_array, 2)
-    D2 = np.nanpercentile(doses_array, 98)
-    doses_array[doses_array > D2] = D2
-    doses_array[doses_array < D98] = D98
+def drop_invalid_range(doses_array, mask_array):
+    mask = mask_array != 0
+    D99 = np.nanpercentile(doses_array[mask], 1)
+    D1 = np.nanpercentile(doses_array[mask], 99)
+    doses_array[(doses_array > D1) & mask] = D1
+    doses_array[(doses_array < D99) & mask] = D99
 
     return doses_array
 
@@ -84,7 +85,7 @@ def save_nii(df_dosi, patient_filename, path_nii, save_masks = True, save_empty 
             dosi_3d = np.zeros(biggest_image_size)
             dosi_3d[x+coord_shift[0],y+coord_shift[1],z+coord_shift[2]] = df_dosi['ID2013A']
         # Preprocesing of array images
-        dosi_3d = process_array_image(dosi_3d)
+        dosi_3d = process_array_image(dosi_3d, labels_t_3d)
         # Save as images
         image_dosi = sitk.GetImageFromArray(dosi_3d)
         image_dosi.SetSpacing((2.0,2.0,2.0))
