@@ -48,7 +48,8 @@ else:
         VAE_CONFIG[key] = int(VAE_CONFIG[key])
 VAE_DIR = RESULTS_DIR + f"VAE/N{VAE_CONFIG['N_CHANNELS_END']}/zoom_x{VAE_CONFIG['IMAGE_ZOOM']}/"
 
-# Wildcard functions
+# Wildcard function
+# newdosi_file is of shape {SUBDIR}/newdosi_{CTR}_{NUMCENT}_{DATE}\w.csv.gz
 def get_newdosi_files(wildcards):
     return expand(DOSES_DATASET_DIR + "{newdosi_file}.csv.gz",
                   newdosi_file = [newdosi_file for newdosi_file in list_newdosi_files \
