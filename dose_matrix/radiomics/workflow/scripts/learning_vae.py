@@ -121,7 +121,7 @@ def setup_gpu(rank_process, number_of_processes):
 def cleanup_gpu():
     dist.destroy_process_group()
 
-def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinical, n_channels_end, downscale,
+def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinical, cvae_type, downscale,
               batch_size, n_epochs, start_epoch, log_name, log_level):
     assert isinstance(rank_device, int) or rank_device in ["mps", "cpu"]
     is_cuda = rank_device not in ["mps", "cpu"]
@@ -136,7 +136,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         logger = setup_logger(log_name_device, vae_dir + f"{log_name}_device_{rank_device}.log", level = log_level)
     else:
         logger = setup_logger(log_name_device, None, level = log_level)
-    logger.info(f"Learning convolutional VAE N={n_channels_end} on the device {rank_device}.")
+    logger.info(f"Learning convolutional VAE {cvae_type} on the device {rank_device}.")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     flush_log(logger)
     # Datasets
@@ -148,11 +148,15 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     test_dataloader = DataLoader(testset, shuffle = False, pin_memory = True)
     logger.info(f"Dataset loader created. Input image size: {trainset.input_image_size}.")
     # Get CNN model
-    if n_channels_end == 128:
+    if cvae_type == "N128":
         cnn_vae = CVAE_3D_N128(image_channels = 1, z_dim = 32, input_image_size = trainset.input_image_size)
-    if n_channels_end == 64:
+    if cvae_type == "N64":
         cnn_vae = CVAE_3D_N64(image_channels = 1, z_dim = 32, input_image_size = trainset.input_image_size)
-    logger.info(f"CNN VAE created.")
+    if cvae_type == "N64_2":
+        cnn_vae = CVAE_3D_N64_2(image_channels = 1, kernel_size = 3,
+                                z_dim = 32, input_image_size = trainset.input_image_size)
+    logger.info(f"CNN VAE {cvae_type} loaded.")
+    logger.info(f"Kernel size: {cnn_vae.kernel_size}")
     cnn_vae.to(rank_device)
     if is_cuda:
         cnn_vae = DistributedDataParallel(cnn_vae, device_ids = [rank_device])
@@ -221,11 +225,11 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     if is_cuda:
         cleanup_gpu(rank_device, nb_devices)
 
-def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, n_channels_end = 128, downscale = 1,
+def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, cvae_type = "N128", downscale = 1,
                   batch_size = 64, n_epochs = 10, start_epoch = 0, device = "cpu",
                   log_level = logging.INFO, log_name = "learn_vae"):
     assert device in ["cpu", "mps", "cuda"]
-    assert n_channels_end in [64, 128]
+    assert cvae_type in ["N64", "N64_2", "N128"]
     assert 0 <= start_epoch < n_epochs
     os.makedirs(vae_dir, exist_ok = True)
     logger = setup_logger(log_name, vae_dir + f"{log_name}.log", level = log_level)
@@ -243,10 +247,10 @@ def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, n_channels_
             device_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(',')]
         else:
             device_ids = range(torch.cuda.device_count())
-        mp.spawn(learn_vae, args = (len(device_ids), metadata_dir, vae_dir, file_fccss_clinical, n_channels_end,
+        mp.spawn(learn_vae, args = (len(device_ids), metadata_dir, vae_dir, file_fccss_clinical, cvae_type,
                                     downscale, batch_size, n_epochs, start_epoch, log_name, log_level), nprocs = len(device_ids))
     else:
-        learn_vae(device, 1, metadata_dir, vae_dir, file_fccss_clinical, n_channels_end, downscale,
+        learn_vae(device, 1, metadata_dir, vae_dir, file_fccss_clinical, cvae_type, downscale,
                   batch_size, n_epochs, start_epoch, log_name, log_level)
     logger.info(f"Learning completed")
     plot_loss_vae(vae_dir)

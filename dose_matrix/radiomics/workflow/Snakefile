@@ -39,14 +39,14 @@ CONFIGFILE_PATH = sys.argv[sys.argv.index("--configfile")+1] if "--configfile" i
 # Settings for Variational Auto-encoder learning
 NII_DL_DIR = RESULTS_DIR + f"nii/deep_learning/"
 if not "VAE" in config:
-    n_channels_end, image_zoom, batch_size, n_epochs, start_epoch = 64, 2, 64, 10, 0
-    VAE_CONFIG = {"N_CHANNELS_END": n_channels_end, "IMAGE_ZOOM": image_zoom, "BATCH_SIZE": batch_size,
+    cvae_type, image_zoom, batch_size, n_epochs, start_epoch = 64, 2, 64, 10, 0
+    VAE_CONFIG = {"CVAE_TYPE": cvae_type, "IMAGE_ZOOM": image_zoom, "BATCH_SIZE": batch_size,
                   "N_EPOCHS": n_epochs, "START_EPOCH": start_epoch}
 else:
     VAE_CONFIG = config["VAE"]
     for key in VAE_CONFIG:
         VAE_CONFIG[key] = int(VAE_CONFIG[key])
-VAE_DIR = RESULTS_DIR + f"VAE/N{VAE_CONFIG['N_CHANNELS_END']}/zoom_x{VAE_CONFIG['IMAGE_ZOOM']}/"
+VAE_DIR = RESULTS_DIR + f"VAE/{VAE_CONFIG['CVAE_TYPE']}/zoom_x{VAE_CONFIG['IMAGE_ZOOM']}/"
 
 # Wildcard function
 # newdosi_file is of shape {SUBDIR}/newdosi_{CTR}_{NUMCENT}_{DATE}\w.csv.gz
