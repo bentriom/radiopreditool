@@ -48,7 +48,7 @@ rule learn_conv_vae:
     run:
         device = "cuda" if is_slurm_run() else "cpu"
         learning_vae.learn_vae(METADATA_DIR, VAE_DIR, file_fccss_clinical = FCCSS_CLINICAL_DATASET,
-                               n_channels_end = VAE_CONFIG["N_CHANNELS_END"],
+                               cvae_type = VAE_CONFIG["CVAE_TYPE"],
                                downscale = VAE_CONFIG["IMAGE_ZOOM"], batch_size = VAE_CONFIG["BATCH_SIZE"],
                                n_epochs = VAE_CONFIG["N_EPOCHS"], start_epoch = VAE_CONFIG["START_EPOCH"],
                                device = device)

@@ -26,8 +26,8 @@ N_BOOTSTRAP: 100
 NAME_FILTER_DATASET: "women"
 # Variational auto-encoder settings
 VAE:
-  N_CHANNELS_END: 64
-  IMAGE_ZOOM: 2
+  CVAE_TYPE: "N64_2"
+  IMAGE_ZOOM: 10
   BATCH_SIZE: 64
   N_EPOCHS: 10
   START_EPOCH: 0
