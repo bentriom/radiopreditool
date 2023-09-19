@@ -227,6 +227,7 @@ def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, n_channels_
     assert device in ["cpu", "mps", "cuda"]
     assert n_channels_end in [64, 128]
     assert 0 <= start_epoch < n_epochs
+    os.makedirs(vae_dir, exist_ok = True)
     logger = setup_logger(log_name, vae_dir + f"{log_name}.log", level = log_level)
     # Checks if the chosen device is available on the machine
     if device == "cuda" and not torch.backends.cuda.is_built():
