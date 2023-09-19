@@ -67,7 +67,7 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
         train_total_loss += total_loss.item()
         train_BCE_loss += BCE_loss.item()
         train_KLD_loss += KLD_loss.item()
-        logger.debug(f"-- losses computed")
+        logger.debug(f"-- losses computed: BCE={BCE_loss} KLD={KLD_loss} total={total_loss}")
         # compute gradients and update weights
         total_loss.backward()
         optimizer.step()
@@ -222,11 +222,12 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         cleanup_gpu(rank_device, nb_devices)
 
 def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, n_channels_end = 128, downscale = 1,
-                  batch_size = 64, n_epochs = 10, start_epoch = 0, device = "cpu", log_name = "learn_vae"):
+                  batch_size = 64, n_epochs = 10, start_epoch = 0, device = "cpu",
+                  log_level = logging.INFO, log_name = "learn_vae"):
     assert device in ["cpu", "mps", "cuda"]
     assert n_channels_end in [64, 128]
     assert 0 <= start_epoch < n_epochs
-    logger = setup_logger(log_name, vae_dir + f"{log_name}.log")
+    logger = setup_logger(log_name, vae_dir + f"{log_name}.log", level = log_level)
     # Checks if the chosen device is available on the machine
     if device == "cuda" and not torch.backends.cuda.is_built():
         raise ValueError("Torch device is set on cuda but it is not build on this machine.")
