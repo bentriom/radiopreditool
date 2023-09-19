@@ -122,7 +122,7 @@ def cleanup_gpu():
     dist.destroy_process_group()
 
 def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinical, n_channels_end, downscale,
-              batch_size, n_epochs, start_epoch, log_name):
+              batch_size, n_epochs, start_epoch, log_name, log_level):
     assert isinstance(rank_device, int) or rank_device in ["mps", "cpu"]
     is_cuda = rank_device not in ["mps", "cpu"]
     # Setup distributed module for cuda device
@@ -133,9 +133,9 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     os.makedirs(save_epochs_dir, exist_ok = True)
     log_name_device = f"{log_name}_{rank_device}"
     if log_name is not None:
-        logger = setup_logger(log_name_device, vae_dir + f"{log_name}_device_{rank_device}.log")
+        logger = setup_logger(log_name_device, vae_dir + f"{log_name}_device_{rank_device}.log", level = log_level)
     else:
-        logger = setup_logger(log_name_device, None)
+        logger = setup_logger(log_name_device, None, level = log_level)
     logger.info(f"Learning convolutional VAE N={n_channels_end} on the device {rank_device}.")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     flush_log(logger)
@@ -244,10 +244,10 @@ def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, n_channels_
         else:
             device_ids = range(torch.cuda.device_count())
         mp.spawn(learn_vae, args = (len(device_ids), metadata_dir, vae_dir, file_fccss_clinical, n_channels_end,
-                                    downscale, batch_size, n_epochs, start_epoch, log_name), nprocs = len(device_ids))
+                                    downscale, batch_size, n_epochs, start_epoch, log_name, log_level), nprocs = len(device_ids))
     else:
         learn_vae(device, 1, metadata_dir, vae_dir, file_fccss_clinical, n_channels_end, downscale,
-                  batch_size, n_epochs, start_epoch, log_name)
+                  batch_size, n_epochs, start_epoch, log_name, log_level)
     logger.info(f"Learning completed")
     plot_loss_vae(vae_dir)
 
