@@ -8,14 +8,16 @@ from torch.utils.data import Dataset
 
 # A class that creates a PyTorch dataset
 class FccssNewdosiDataset(Dataset):
-    def __init__(self, metadata_dir, file_fccss_clinical = None,
+    def __init__(self, metadata_dir, file_fccss_clinical = None, max_scale = 85.306,
                        train_size = 0.7, phase = "data", downscale = 1, seed_sample = 21):
+        assert max_scale != 0
         assert 0 < train_size < 1
         assert os.path.isdir(metadata_dir)
         if file_fccss_clinical is not None:
             assert os.path.isfile(file_fccss_clinical)
         self.phase = phase
         self.downscale = downscale
+        self.max_scale = max_scale
         # Get input size of images with meta data
         df_size = pd.read_csv(metadata_dir + "biggest_image_size.csv", index_col = 0, names = ["size"], header = None)
         biggest_image_size = df_size.loc[["size_x", "size_y", "size_z"], "size"].values
@@ -66,9 +68,14 @@ class FccssNewdosiDataset(Dataset):
             return image_tensor, ctr, numcent
 
     def __data_process__(self, data):
-        image_array = data.get_fdata()
-        new_image_array = self.__resize_data__(image_array)
+        new_image_array = data.get_fdata()
+        if self.max_scale is not None:
+            new_image_array = self.__minmax_scale__(new_image_array, 0, self.max_scale)
+        new_image_array = self.__resize_data__(new_image_array)
         return new_image_array
+
+    def __minmax_scale__(self, image_array, min_scale, max_scale):
+        return (image_array - min_scale) / (max_scale - min_scale)
 
     def __resize_data__(self, image_array):
         if self.downscale == 1:
