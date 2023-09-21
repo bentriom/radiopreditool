@@ -39,21 +39,34 @@ def schedule_KL_annealing(start, stop, n_epochs, n_cycle=4, ratio=0.5):
 
     return weights
 
-def vae_loss(x_hat, x, mu, logvar, kl_weight):
-    MSE = 0.1 * torch.nn.MSELoss(reduction='sum')(x_hat, x)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+def vae_loss(x_hat, x, mu, logvar, mse_scale, kl_weight):
+    MSE = mse_scale * torch.nn.MSELoss(reduction='sum')(x_hat, x) / len(x)
+    # MSE = torch.nn.MSELoss(reduction='mean')(x_hat, x)
+    KLD = torch.tensor(0.0, requires_grad = True)
+    if kl_weight > 0:
+        KLD = kl_weight * (-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())) / len(x)
 
     return MSE + KLD, MSE, KLD
 
-def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, scheduler, log_name):
+def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, device, scheduler, log_name):
     model.train()
     train_total_loss = 0
-    train_BCE_loss = 0
+    train_MSE_loss = 0
     train_KLD_loss = 0
     logger = logging.getLogger(log_name)
+    if logger.level <= logging.DEBUG:
+        norm_grad = 0
+        params = [p for p in model.parameters() if p.grad is not None and p.requires_grad]
+        for p in params:
+            norm_p_grad = p.grad.detach().data.norm(2)
+            norm_grad += norm_p_grad.item() ** 2
+        norm_grad = norm_grad ** 0.5
+        logger.debug(f"Gradient norm ({len(params)} params): {norm_grad}")
     # for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
     for batch_idx, data in enumerate(train_dataloader):
-        logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1}")
+        logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1} of size {len(data)}")
+        if logger.level <= logging.DEBUG:
+            assert torch.sum(torch.isnan(data)) <= 0, "Batch contains NaN"
         flush_log(logger)
         # compute model output
         logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
@@ -63,32 +76,39 @@ def train_loop(epoch, model, train_dataloader, kl_weight, optimizer, device, sch
         batch_x_hats, mu, logvar, _ = model(data)
         logger.debug(f"-- output computed by the model")
         # compute batch losses
-        total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)
+        total_loss, MSE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, mse_scale, kl_weight)
         train_total_loss += total_loss.item()
-        train_BCE_loss += BCE_loss.item()
+        train_MSE_loss += MSE_loss.item()
         train_KLD_loss += KLD_loss.item()
-        logger.debug(f"-- losses computed: BCE={BCE_loss} KLD={KLD_loss} total={total_loss}")
+        logger.debug(f"-- losses computed: MSE={MSE_loss} KLD={KLD_loss} total={total_loss}")
         # compute gradients and update weights
         total_loss.backward()
+        if logger.level <= logging.DEBUG:
+            norm_grad = 0
+            params = [p for p in model.parameters() if p.grad is not None and p.requires_grad]
+            for p in params:
+                p_norm = p.grad.detach().data.norm(2)
+                norm_grad += p_norm.item() ** 2
+            norm_grad = norm_grad ** 0.5
+            logger.debug(f"-- gradient computed ({len(params)} params), norm: {norm_grad}")
         optimizer.step()
-        logger.debug(f"-- gradients computed")
         # schedule learning rate
         scheduler.step()
-        logger.debug(f"-- learning rate computed")
+        logger.debug(f"-- learning rate computed: {optimizer.param_groups[0]['lr']}")
 
     train_total_loss /= len(train_dataloader.dataset)
-    train_BCE_loss /= len(train_dataloader.dataset)
+    train_MSE_loss /= len(train_dataloader.dataset)
     train_KLD_loss /= len(train_dataloader.dataset)
 
-    return train_total_loss, train_BCE_loss, train_KLD_loss
+    return train_total_loss, train_MSE_loss, train_KLD_loss
 
-def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name):
+def test_loop(epoch, model, test_dataloader, mse_scale, kl_weight, device, log_name):
     model.eval()
     test_total_loss = 0
-    test_BCE_loss = 0
+    test_MSE_loss = 0
     test_KLD_loss = 0
     logger = logging.getLogger(log_name)
-
+    mse_scale = 1
     with torch.no_grad():
         # for batch_idx, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc='test'):
         for batch_idx, data in enumerate(test_dataloader):
@@ -100,18 +120,18 @@ def test_loop(epoch, model, test_dataloader, kl_weight, device, log_name):
             logger.debug(f"-- loaded on device {device}")
             batch_x_hats, mu, logvar, latent_batch = model(data)
             logger.debug(f"-- output computed by the model")
-            total_loss, BCE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, kl_weight)
-            logger.debug(f"-- losses computed")
+            total_loss, MSE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, mse_scale, kl_weight)
+            logger.debug(f"-- losses computed: MSE={MSE_loss} KLD={KLD_loss} total={total_loss}")
 
             test_total_loss += total_loss.item()
-            test_BCE_loss += BCE_loss.item()
+            test_MSE_loss += MSE_loss.item()
             test_KLD_loss += KLD_loss.item()
 
     test_total_loss /= len(test_dataloader.dataset)
-    test_BCE_loss /= len(test_dataloader.dataset)
+    test_MSE_loss /= len(test_dataloader.dataset)
     test_KLD_loss /= len(test_dataloader.dataset)
 
-    return test_total_loss, test_BCE_loss, test_KLD_loss
+    return test_total_loss, test_MSE_loss, test_KLD_loss
 
 def setup_gpu(rank_process, number_of_processes):
     os.environ['MASTER_ADDR'] = '127.0.0.1'
@@ -136,6 +156,10 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         logger = setup_logger(log_name_device, vae_dir + f"{log_name}_device_{rank_device}.log", level = log_level)
     else:
         logger = setup_logger(log_name_device, None, level = log_level)
+    # If we run on cpu, we only need to log in the main file
+    if rank_device == "cpu":
+        logger = logging.getLogger(log_name)
+        log_name_device = log_name
     logger.info(f"Learning convolutional VAE {cvae_type} on the device {rank_device}.")
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     flush_log(logger)
@@ -144,30 +168,35 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
                                          phase = "train", downscale = downscale)
     testset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical,
                                         phase = "test", downscale = downscale)
-    train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = False, pin_memory = True)
-    test_dataloader = DataLoader(testset, shuffle = False, pin_memory = True)
+    train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = True, pin_memory = True)
+    test_dataloader = DataLoader(testset, shuffle = True, pin_memory = True)
     logger.info(f"Dataset loader created. Input image size: {trainset.input_image_size}.")
     # Get CNN model
     if cvae_type == "N128":
-        cnn_vae = CVAE_3D_N128(image_channels = 1, z_dim = 32, input_image_size = trainset.input_image_size)
+        cnn_vae = CVAE_3D_N128(image_channels = 1, z_dim = 16, input_image_size = trainset.input_image_size)
     if cvae_type == "N64":
-        cnn_vae = CVAE_3D_N64(image_channels = 1, z_dim = 32, input_image_size = trainset.input_image_size)
+        cnn_vae = CVAE_3D_N64(image_channels = 1, z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N64_2":
         cnn_vae = CVAE_3D_N64_2(image_channels = 1, kernel_size = 3,
-                                z_dim = 32, input_image_size = trainset.input_image_size)
+                                z_dim = 8, input_image_size = trainset.input_image_size)
+    if cvae_type == "N32_2":
+        cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3,
+                                z_dim = 8, input_image_size = trainset.input_image_size)
     logger.info(f"CNN VAE {cvae_type} loaded.")
-    logger.info(f"Kernel size: {cnn_vae.kernel_size}")
+    logger.info(f"Latent dim: {cnn_vae.z_dim}. Kernel size: {cnn_vae.kernel_size}")
     cnn_vae.to(rank_device)
     if is_cuda:
         cnn_vae = DistributedDataParallel(cnn_vae, device_ids = [rank_device])
     logger.info(f"Model loaded on device {rank_device}.")
+    cnn_vae.init_weights()
+    logger.info(f"Model weights are initialized.")
     flush_log(logger)
     # print("Computing a forward")
     # train_batch0 = next(iter(train_dataloader))
     # cnn_vae.forward(train_batch0[0])
 
     # Set optimizer and best test loss based on starting epoch
-    optimizer = optim.Adam(cnn_vae.parameters(), lr=1e-3) # 1e-4 0 KLD, 1e-3 works, 1e-1 & 1e-2 gives NaN
+    optimizer = optim.Adam(cnn_vae.parameters(), lr=1e-4)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader))
     best_test_loss = np.finfo('f').max
     if start_epoch > 0:
@@ -180,7 +209,10 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         optimizer.load_state_dict(nn_state['optimizer'])
     # Schedule KL annealing
     kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 4)
-    kl_weight = 0
+    logger.info(f"Scheduled KLD weights: {kl_weights}")
+    # We scale the MSE with sum reduction to a cube of shape 16x16x16
+    mse_scale = (16 ** 3) / np.asarray(trainset.input_image_size).prod()
+    logger.info(f"Reconstruction error (MSE) scale: {mse_scale}")
 
     # Training loop
     logger.info("Starting epoch training")
@@ -190,26 +222,27 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         kl_weight = kl_weights[epoch]
         logger.info(f"Current KL weight: {kl_weight}")
         # Train losses
-        train_total_loss, train_BCE_loss, train_KLD_loss = train_loop(epoch, cnn_vae, train_dataloader,
-                                                                      kl_weight, optimizer, rank_device, scheduler, log_name_device)
+        train_total_loss, train_MSE_loss, train_KLD_loss = train_loop(epoch, cnn_vae, train_dataloader, mse_scale,
+                                                                      kl_weight, optimizer, rank_device,
+                                                                      scheduler, log_name_device)
         logger.info("Epoch [%d/%d] train_total_loss: %.3f, train_REC_loss: %.3f, train_KLD_loss: %.3f" \
-                    % (epoch, n_epochs, train_total_loss, train_BCE_loss, train_KLD_loss))
+                    % (epoch, n_epochs, train_total_loss, train_MSE_loss, train_KLD_loss))
         flush_log(logger)
         # Test losses
-        test_total_loss, test_BCE_loss, test_KLD_loss = test_loop(epoch, cnn_vae, test_dataloader,
+        test_total_loss, test_MSE_loss, test_KLD_loss = test_loop(epoch, cnn_vae, test_dataloader, mse_scale,
                                                                   kl_weight, rank_device, log_name_device)
         logger.info("Epoch [%d/%d] test_total_loss: %.3f, test_REC_loss: %.3f, test_KLD_loss: %.3f" \
-                    % (epoch, n_epochs, test_total_loss, test_BCE_loss, test_KLD_loss))
+                    % (epoch, n_epochs, test_total_loss, test_MSE_loss, test_KLD_loss))
         flush_log(logger)
 
         best_test_loss = min(test_total_loss, best_test_loss)
         dict_results_epoch = {
             'epoch': epoch,
             'train_total_loss': train_total_loss,
-            'train_BCE_loss': train_BCE_loss,
+            'train_MSE_loss': train_MSE_loss,
             'train_KLD_loss': train_KLD_loss,
             'test_total_loss': test_total_loss,
-            'test_BCE_loss': test_BCE_loss,
+            'test_MSE_loss': test_MSE_loss,
             'test_KLD_loss': test_KLD_loss,
             'best_test_loss': best_test_loss,
             'state_dict': cnn_vae.state_dict(),
@@ -229,7 +262,7 @@ def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, cvae_type =
                   batch_size = 64, n_epochs = 10, start_epoch = 0, device = "cpu",
                   log_level = logging.INFO, log_name = "learn_vae"):
     assert device in ["cpu", "mps", "cuda"]
-    assert cvae_type in ["N64", "N64_2", "N128"]
+    assert cvae_type in ["N32_2", "N64", "N64_2", "N128"]
     assert 0 <= start_epoch < n_epochs
     os.makedirs(vae_dir, exist_ok = True)
     logger = setup_logger(log_name, vae_dir + f"{log_name}.log", level = log_level)
