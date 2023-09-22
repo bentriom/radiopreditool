@@ -64,7 +64,13 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         logger.debug(f"Gradient norm ({len(params)} params): {norm_grad}")
     # for batch_idx, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc='train'):
     for batch_idx, data in enumerate(train_dataloader):
-        logger.info(f"- Batch train {batch_idx}/{len(train_dataloader)-1} of size {len(data)}")
+        # Load data according to the dataset mode (if it gives also the index or not)
+        indexes = None
+        if train_dataloader.dataset.with_index:
+            indexes = data[1]
+            data = data[0]
+        logger.info(f"# Batch train {batch_idx}/{len(train_dataloader)-1} of size {len(data)}")
+        logger.debug(f"-- indexes of the batch: {indexes}")
         if logger.level <= logging.DEBUG:
             assert torch.sum(torch.isnan(data)) <= 0, "Batch contains NaN"
         flush_log(logger)
@@ -164,9 +170,9 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     logger.info(f"Image zoom: {downscale}, batch size = {batch_size}")
     flush_log(logger)
     # Datasets
-    trainset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical,
+    trainset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical, with_index = True,
                                          phase = "train", downscale = downscale)
-    testset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical,
+    testset = pdata.FccssNewdosiDataset(metadata_dir, file_fccss_clinical = file_fccss_clinical, with_index = True,
                                         phase = "test", downscale = downscale)
     train_dataloader = DataLoader(trainset, batch_size = batch_size, shuffle = True, pin_memory = True)
     test_dataloader = DataLoader(testset, shuffle = True, pin_memory = True)

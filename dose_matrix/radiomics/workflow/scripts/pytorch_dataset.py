@@ -6,9 +6,9 @@ import nibabel
 from scipy import ndimage
 from torch.utils.data import Dataset
 
-# A class that creates a PyTorch dataset
+# A class that creates a PyTorch dataset for nifti images from FCCSS newdosi dataset
 class FccssNewdosiDataset(Dataset):
-    def __init__(self, metadata_dir, file_fccss_clinical = None, max_scale = 85.306,
+    def __init__(self, metadata_dir, file_fccss_clinical = None, max_scale = 85.306, with_index = False,
                        train_size = 0.7, phase = "data", downscale = 1, seed_sample = 21):
         assert max_scale != 0
         assert 0 < train_size < 1
@@ -18,16 +18,19 @@ class FccssNewdosiDataset(Dataset):
         self.phase = phase
         self.downscale = downscale
         self.max_scale = max_scale
+        self.with_index = with_index
         # Get input size of images with meta data
         df_size = pd.read_csv(metadata_dir + "biggest_image_size.csv", index_col = 0, names = ["size"], header = None)
         biggest_image_size = df_size.loc[["size_x", "size_y", "size_z"], "size"].values
         self.input_image_size = ndimage.zoom(np.zeros(biggest_image_size[[2,1,0]]), 1/downscale, order=0).shape
+        # Get the list of images to load when __getitem__ is called
         df_images_paths = pd.read_csv(metadata_dir + "images_paths_dl.csv")
         df_images_paths = df_images_paths.loc[df_images_paths["size_bytes"] > 0, :]
         if file_fccss_clinical is not None:
             df_fccss = pd.read_csv(file_fccss_clinical, low_memory = False)[["ctr", "numcent"]]
             df_images_paths = df_images_paths.merge(df_fccss, how = "inner", on = ["ctr", "numcent"])
         self.df_images_paths = df_images_paths
+        # Generate train/test indexes
         nbr_samples_train = int(train_size * len(df_images_paths.index))
         random.seed(seed_sample)
         train_idx = random.sample(sorted(df_images_paths.index), k = nbr_samples_train)
@@ -62,7 +65,10 @@ class FccssNewdosiDataset(Dataset):
         # convert as tensor array
         image_tensor = self.__nii2tensorarray__(image_array)
         if self.phase in ["data", "train", "test"]:
-            return image_tensor
+            if self.with_index:
+                return image_tensor, idx
+            else:
+                return image_tensor
         elif self.phase == "extraction":
             ctr, numcent = self.list_ctr[idx], self.list_numcent[idx]
             return image_tensor, ctr, numcent
