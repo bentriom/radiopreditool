@@ -24,7 +24,7 @@ class CVAE_3D_N128(nn.Module):
     input_image_size: the expected shape of each image input
     z_dim: dimension of the latent space (the multinormal dimension)
     """
-    def __init__(self, image_channels = 1, z_dim = 16, input_image_size = None):
+    def __init__(self, image_channels = 1, z_dim = 16, input_image_size = None, leakyrelu_slope = 0.0):
         super(CVAE_3D_N128, self).__init__()
 
         # Input size
@@ -37,19 +37,19 @@ class CVAE_3D_N128(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv3d(in_channels=image_channels, out_channels=16, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=16, out_channels=32, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=32, out_channels=64, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=64, out_channels=128, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=128),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=128, out_channels=128, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=128),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Flatten() # reshape layer
         )
 
@@ -73,19 +73,19 @@ class CVAE_3D_N128(nn.Module):
         self.decoder = nn.Sequential(
             nn.Unflatten(1, unflatten_size),
             nn.BatchNorm3d(num_features=128),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=128, out_channels=128, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=128),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=128, out_channels=64, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=16, out_channels=image_channels, kernel_size=4, stride=1, padding=0), # dimensions should be as original
             nn.BatchNorm3d(num_features=image_channels),
             # nn.Sigmoid(),
@@ -121,23 +121,23 @@ class CVAE_3D_N128(nn.Module):
         print("[INFO] Begin: Input data shape:", x.size())
         x = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=4, stride=1, padding=0)(x)
         x = nn.BatchNorm3d(num_features=16)(x)
-        x = nn.ReLU()(x)
+        x = nn.LeakyReLU(negative_slope = leakyrelu_slope)(x)
         print("[INFO] Input data shape:", x.size())
         x = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=4, stride=1, padding=0)(x)
         x = nn.BatchNorm3d(num_features=32)(x)
-        x = nn.ReLU()(x)
+        x = nn.LeakyReLU(negative_slope = leakyrelu_slope)(x)
         print("[INFO] Input data shape:", x.size())
         x = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=4, stride=1, padding=0)(x)
         x = nn.BatchNorm3d(num_features=64)(x)
-        x = nn.ReLU()(x)
+        x = nn.LeakyReLU(negative_slope = leakyrelu_slope)(x)
         print("[INFO] Input data shape:", x.size())
         x = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=4, stride=1, padding=0)(x)
         x = nn.BatchNorm3d(num_features=128)(x)
-        x = nn.ReLU()(x)
+        x = nn.LeakyReLU(negative_slope = leakyrelu_slope)(x)
         print("[INFO] Input data shape:", x.size())
         x = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=4, stride=1, padding=0)(x)
         x = nn.BatchNorm3d(num_features=128)(x)
-        x = nn.ReLU()(x)
+        x = nn.LeakyReLU(negative_slope = leakyrelu_slope)(x)
         print("[INFO] Input data shape:", x.size())
         x = nn.Flatten()(x) # reshape layer
         print("[INFO] Input data shape:", x.size())
@@ -154,10 +154,10 @@ class CVAE_3D_N128(nn.Module):
         print(f"z shape unflatttened: {z.shape}")
         z = nn.BatchNorm3d(num_features=128)(z)
         print(f"z shape batch: {z.shape}")
-        z = nn.ReLU()(z)
+        z = nn.LeakyReLU(negative_slope = leakyrelu_slope)(z)
         z = nn.ConvTranspose3d(in_channels=128, out_channels=128, kernel_size=4, stride=1, padding=0)(z)
         z = nn.BatchNorm3d(num_features=128)(z)
-        z = nn.ReLU()(z)
+        z = nn.LeakyReLU(negative_slope = leakyrelu_slope)(z)
         print(f"z shape batch: {z.shape}")
         return z
 
@@ -196,7 +196,7 @@ class CVAE_3D_N64(nn.Module):
     input_image_size: the expected shape of each image input
     z_dim: dimension of the latent space (the multinormal dimension)
     """
-    def __init__(self, image_channels = 1, z_dim = 16, input_image_size = None):
+    def __init__(self, image_channels = 1, z_dim = 16, input_image_size = None, leakyrelu_slope = 0.0):
         super(CVAE_3D_N64, self).__init__()
 
         # Input size
@@ -209,16 +209,16 @@ class CVAE_3D_N64(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv3d(in_channels=image_channels, out_channels=16, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=16, out_channels=32, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=32, out_channels=64, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=64, out_channels=64, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Flatten() # reshape layer
         )
 
@@ -242,16 +242,16 @@ class CVAE_3D_N64(nn.Module):
         self.decoder = nn.Sequential(
             nn.Unflatten(1, unflatten_size),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=64, out_channels=64, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=16, out_channels=image_channels, kernel_size=4, stride=1, padding=0),
             nn.BatchNorm3d(num_features=image_channels),
         )
@@ -309,7 +309,7 @@ class CVAE_3D_N64_2(nn.Module):
     input_image_size: the expected shape of each image input
     z_dim: dimension of the latent space (the multinormal dimension)
     """
-    def __init__(self, image_channels = 1, kernel_size = 4, z_dim = 16, input_image_size = None):
+    def __init__(self, image_channels = 1, kernel_size = 4, z_dim = 16, input_image_size = None, leakyrelu_slope = 0.0):
         super(CVAE_3D_N64_2, self).__init__()
 
         # Input size
@@ -324,16 +324,16 @@ class CVAE_3D_N64_2(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv3d(in_channels=image_channels, out_channels=8, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=8),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=8, out_channels=16, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=32, out_channels=64, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Flatten() # reshape layer
         )
 
@@ -357,16 +357,16 @@ class CVAE_3D_N64_2(nn.Module):
         self.decoder = nn.Sequential(
             nn.Unflatten(1, unflatten_size),
             nn.BatchNorm3d(num_features=64),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=8),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=8, out_channels=image_channels, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=image_channels),
         )
@@ -444,7 +444,7 @@ class CVAE_3D_N32_2(nn.Module):
     input_image_size: the expected shape of each image input
     z_dim: dimension of the latent space (the multinormal dimension)
     """
-    def __init__(self, image_channels = 1, kernel_size = 4, z_dim = 16, input_image_size = None):
+    def __init__(self, image_channels = 1, kernel_size = 4, z_dim = 16, input_image_size = None, leakyrelu_slope = 0.0):
         super(CVAE_3D_N32_2, self).__init__()
 
         # Input size
@@ -459,13 +459,13 @@ class CVAE_3D_N32_2(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv3d(in_channels=image_channels, out_channels=8, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=8),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=8, out_channels=16, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Conv3d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.Flatten() # reshape layer
         )
 
@@ -489,13 +489,13 @@ class CVAE_3D_N32_2(nn.Module):
         self.decoder = nn.Sequential(
             nn.Unflatten(1, unflatten_size),
             nn.BatchNorm3d(num_features=32),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=8),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope = leakyrelu_slope),
             nn.ConvTranspose3d(in_channels=8, out_channels=image_channels, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=image_channels),
         )
