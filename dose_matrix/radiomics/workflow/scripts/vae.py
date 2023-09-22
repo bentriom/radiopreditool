@@ -445,7 +445,7 @@ class CVAE_3D_N32_2(nn.Module):
     z_dim: dimension of the latent space (the multinormal dimension)
     """
     def __init__(self, image_channels = 1, kernel_size = 4, z_dim = 16, input_image_size = None):
-        super(CVAE_3D_N64_2, self).__init__()
+        super(CVAE_3D_N32_2, self).__init__()
 
         # Input size
         assert input_image_size is not None
@@ -488,7 +488,7 @@ class CVAE_3D_N32_2(nn.Module):
         self.unflatten_size = unflatten_size
         self.decoder = nn.Sequential(
             nn.Unflatten(1, unflatten_size),
-            nn.BatchNorm3d(num_features=64),
+            nn.BatchNorm3d(num_features=32),
             nn.ReLU(),
             nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=kernel_size, stride=1, padding=0),
             nn.BatchNorm3d(num_features=16),
