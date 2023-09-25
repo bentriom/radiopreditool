@@ -33,6 +33,7 @@ class CVAE_3D_N128(nn.Module):
         assert self.input_image_size.shape == (3,)
         self.z_dim = z_dim
         self.kernel_size = 4
+        self.leakyrelu_slope = leakyrelu_slope
         # Encoder part
         self.encoder = nn.Sequential(
             nn.Conv3d(in_channels=image_channels, out_channels=16, kernel_size=4, stride=1, padding=0),
@@ -204,6 +205,7 @@ class CVAE_3D_N64(nn.Module):
         self.input_image_size = np.asarray(input_image_size).astype(int)
         assert self.input_image_size.shape == (3,)
         self.kernel_size = 4
+        self.leakyrelu_slope = leakyrelu_slope
         self.z_dim = z_dim
         # Encoder part
         self.encoder = nn.Sequential(
@@ -319,6 +321,7 @@ class CVAE_3D_N64_2(nn.Module):
         self.input_image_size = np.asarray(input_image_size).astype(int)
         assert self.input_image_size.shape == (3,)
         self.kernel_size = kernel_size
+        self.leakyrelu_slope = leakyrelu_slope
         self.z_dim = z_dim
         # Encoder part
         self.encoder = nn.Sequential(
@@ -454,6 +457,7 @@ class CVAE_3D_N32_2(nn.Module):
         self.input_image_size = np.asarray(input_image_size).astype(int)
         assert self.input_image_size.shape == (3,)
         self.kernel_size = kernel_size
+        self.leakyrelu_slope = leakyrelu_slope
         self.z_dim = z_dim
         # Encoder part
         self.encoder = nn.Sequential(

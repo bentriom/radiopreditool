@@ -183,13 +183,14 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     if cvae_type == "N64":
         cnn_vae = CVAE_3D_N64(image_channels = 1, z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N64_2":
-        cnn_vae = CVAE_3D_N64_2(image_channels = 1, kernel_size = 3,
+        cnn_vae = CVAE_3D_N64_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.01,
                                 z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N32_2":
-        cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3,
+        cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.01,
                                 z_dim = 8, input_image_size = trainset.input_image_size)
     logger.info(f"CNN VAE {cvae_type} loaded.")
-    logger.info(f"Latent dim: {cnn_vae.z_dim}. Kernel size: {cnn_vae.kernel_size}")
+    logger.info(f"Latent dim: {cnn_vae.z_dim}. Kernel size: {cnn_vae.kernel_size}."
+                f"LeakyReLU slope: {cnn_vae.leakyrelu_slope}")
     cnn_vae.init_weights()
     logger.info(f"Model weights are initialized.")
     cnn_vae.to(rank_device)
