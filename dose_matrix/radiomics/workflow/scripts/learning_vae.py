@@ -121,7 +121,6 @@ def test_loop(epoch, model, test_dataloader, mse_scale, kl_weight, device, log_n
             # compute loss
             logger.info(f"- Batch test {batch_idx}/{len(test_dataloader)-1}")
             flush_log(logger)
-            logger.debug(f"-- estimated size in GB: {data.element_size() * data.numel()}")
             data = data.to(device, dtype=torch.float)
             logger.debug(f"-- loaded on device {device}")
             batch_x_hats, mu, logvar, latent_batch = model(data)
