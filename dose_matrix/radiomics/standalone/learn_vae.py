@@ -14,14 +14,17 @@ if __name__ == "__main__":
     NII_DL_DIR = RESULTS_DIR + f"nii/deep_learning/"
     FCCSS_CLINICAL_DATASET = "/workdir/bentrioum/database/radiopreditool/fccss/base_fccss_igr_curie_011222_extended.csv.gz"
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--batch-size", help="Batch size during training", const=16, type=int)
-    arg_parser.add_argument("--vae", help="The VAE architecture", const="N64_2", type=str)
-    arg_parser.add_argument("--zoom", help="The zoom scale during training", const=10, type=int)
-    arg_parser.add_argument("--start-epoch", help="The starting epoch", const=0, type=int)
-    arg_parser.add_argument("--nepochs", help="The number of epochs", const=10, type=int)
+    arg_parser.add_argument("--batch-size", nargs='?', help="Batch size during training", default=16, type=int)
+    arg_parser.add_argument("--vae", nargs='?', help="The VAE architecture", default="N64_2", type=str)
+    arg_parser.add_argument("--zoom", nargs='?', help="The zoom scale during training", default=10, type=int)
+    arg_parser.add_argument("--start-epoch", nargs='?', help="The starting epoch", default=0, type=int)
+    arg_parser.add_argument("--nepochs", nargs='?', help="The number of epochs", default=10, type=int)
     args = arg_parser.parse_args()
     cvae_type, image_zoom = args.vae, args.zoom
     batch_size, n_epochs, start_epoch = args.batch_size, args.nepochs,  args.start_epoch
+    print(batch_size)
+    print(start_epoch)
+    print(args)
     VAE_CONFIG = {"CVAE_TYPE": cvae_type, "IMAGE_ZOOM": image_zoom, "BATCH_SIZE": batch_size,
     "N_EPOCHS": n_epochs, "START_EPOCH": start_epoch}
     VAE_DIR = RESULTS_DIR + f"VAE/{VAE_CONFIG['CVAE_TYPE']}/zoom_x{VAE_CONFIG['IMAGE_ZOOM']}/"
