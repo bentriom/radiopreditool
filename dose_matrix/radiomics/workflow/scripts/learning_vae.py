@@ -118,8 +118,13 @@ def test_loop(epoch, model, test_dataloader, mse_scale, kl_weight, device, log_n
     with torch.no_grad():
         # for batch_idx, data in tqdm(enumerate(test_dataloader), total=len(test_dataloader), desc='test'):
         for batch_idx, data in enumerate(test_dataloader):
+            # Load data according to the dataset mode (if it gives also the index or not)
+            indexes = None
+            if test_dataloader.dataset.with_index:
+                indexes = data[1]
+                data = data[0]
             # compute loss
-            logger.info(f"- Batch test {batch_idx}/{len(test_dataloader)-1}")
+            logger.info(f"# Batch test {batch_idx}/{len(test_dataloader)-1}")
             flush_log(logger)
             data = data.to(device, dtype=torch.float)
             logger.debug(f"-- loaded on device {device}")
@@ -182,10 +187,10 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     if cvae_type == "N64":
         cnn_vae = CVAE_3D_N64(image_channels = 1, z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N64_2":
-        cnn_vae = CVAE_3D_N64_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.01,
+        cnn_vae = CVAE_3D_N64_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.1,
                                 z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N32_2":
-        cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.01,
+        cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.1,
                                 z_dim = 8, input_image_size = trainset.input_image_size)
     logger.info(f"CNN VAE {cvae_type} loaded.")
     logger.info(f"Latent dim: {cnn_vae.z_dim}. Kernel size: {cnn_vae.kernel_size}."
