@@ -1,11 +1,11 @@
 #!/bin/bash
 
-NJOBS=100
+NJOBS=60
 NTHREADS=1
 TIME="23:45:00"
 PARTITION="cpu_long"
 MEMORY_PER_NODE="175G"
-MODEL_NAME="pathol_cardiaque_grade3_drugs_iccc_other_bw_0.5"
+MODEL_NAME="pathol_cardiaque_grade3_drugs_bw_0.5"
 POSITIONAL=()
 
 while [[ $# -gt 0 ]]
@@ -54,7 +54,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 
 SNAKEMAKE_CONFIG_FILE="config/slurm/${MODEL_NAME}.yaml"
 SNAKEMAKE_NBATCHES=50
-SNAKEMAKE_SBATCH="'sbatch --partition=cpu_med --mem=15G --ntasks=1 --time=00:45:00 --output=log/${MODEL_NAME}/%x-%j.out'"
+SNAKEMAKE_SBATCH="'sbatch --partition=cpu_med --mem=25G --ntasks=1 --time=00:45:00 --output=log/${MODEL_NAME}/%x-%j.out'"
 
 COMMANDS_JOB="
 module purge
