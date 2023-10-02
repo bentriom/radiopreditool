@@ -87,7 +87,7 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         train_MSE_loss += MSE_loss.item()
         train_KLD_loss += KLD_loss.item()
         logger.debug(f"-- losses computed: MSE={MSE_loss} KLD={KLD_loss} total={total_loss}")
-        assert not np.isnan(total_loss), "Loss is NaN"
+        assert not np.isnan(total_loss.item()), "Loss is NaN"
         # compute gradients and update weights
         total_loss.backward()
         if logger.level <= logging.DEBUG:
@@ -192,7 +192,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
                                 z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N32_2":
         cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.2,
-                                z_dim = 8, input_image_size = trainset.input_image_size)
+                                z_dim = 4, input_image_size = trainset.input_image_size)
     logger.info(f"CNN VAE {cvae_type} loaded.")
     logger.info(f"Latent dim: {cnn_vae.z_dim}. Kernel size: {cnn_vae.kernel_size}."
                 f"LeakyReLU slope: {cnn_vae.leakyrelu_slope}")
