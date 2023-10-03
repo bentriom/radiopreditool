@@ -76,12 +76,13 @@ class FccssNewdosiDataset(Dataset):
     def __data_process__(self, data):
         new_image_array = data.get_fdata()
         if self.max_scale is not None:
-            new_image_array = self.__minmax_scale__(new_image_array, 0, self.max_scale)
+            new_image_array = self.__minmax_scale__(new_image_array, -1, self.max_scale)
         new_image_array = self.__resize_data__(new_image_array)
         return new_image_array
 
-    def __minmax_scale__(self, image_array, min_scale, max_scale):
-        return (image_array - min_scale) / (max_scale - min_scale)
+    def __minmax_scale__(self, image_array, min_scale, max_scale, min_range = -1, max_range = 1):
+        scaled_image = (image_array - min_scale) / (max_scale - min_scale)
+        return scaled_image * (max_range - min_range) + min_range
 
     def __resize_data__(self, image_array):
         if self.downscale == 1:

@@ -72,7 +72,7 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         logger.info(f"# Batch train {batch_idx}/{len(train_dataloader)-1} of size {len(data)}")
         logger.debug(f"-- indexes of the batch: {indexes}")
         if logger.level <= logging.DEBUG:
-            assert torch.sum(torch.isnan(data)) <= 0, "Batch contains NaN"
+            assert torch.any(torch.isnan(data)), "Batch contains NaN"
         flush_log(logger)
         # compute model output
         logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
@@ -192,7 +192,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
                                 z_dim = 8, input_image_size = trainset.input_image_size)
     if cvae_type == "N32_2":
         cnn_vae = CVAE_3D_N32_2(image_channels = 1, kernel_size = 3, leakyrelu_slope = 0.2,
-                                z_dim = 4, input_image_size = trainset.input_image_size)
+                                z_dim = 8, input_image_size = trainset.input_image_size)
     logger.info(f"CNN VAE {cvae_type} loaded.")
     logger.info(f"Latent dim: {cnn_vae.z_dim}. Kernel size: {cnn_vae.kernel_size}."
                 f"LeakyReLU slope: {cnn_vae.leakyrelu_slope}")
