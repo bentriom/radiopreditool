@@ -48,9 +48,9 @@ class FccssNewdosiDataset(Dataset):
             self.list_ctr = df_images_paths.loc[test_idx_mask, "ctr"].astype(int).values
             self.list_numcent = df_images_paths.loc[test_idx_mask, "numcent"].astype(int).values
         elif phase == "extraction":
-+            self.images_paths = df_images_paths.loc[:, "absolute_path"].values
-+            self.list_ctr = df_images_paths.loc[:, "ctr"].astype(int).values
-+            self.list_numcent = df_images_paths.loc[:, "numcent"].astype(int).values
+            self.images_paths = df_images_paths.loc[:, "absolute_path"].values
+            self.list_ctr = df_images_paths.loc[:, "ctr"].astype(int).values
+            self.list_numcent = df_images_paths.loc[:, "numcent"].astype(int).values
         else:
             raise NameError("Phase in FccssNewdosiDataset is not recognized.")
 
