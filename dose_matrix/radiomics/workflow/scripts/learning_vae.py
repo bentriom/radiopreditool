@@ -74,8 +74,8 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         if logger.level <= logging.DEBUG:
             if torch.any(torch.isnan(data)):
                 logger.debug("Batch contains NaN")
-                idx_nan_images = [i for i, image in enumerate(data) if torch.any(torch.isnan(image))]
-                logger.debug(f"NaN img indexes: {indexes[idx_nan_images]}")
+                mask_nan_images = [i for i, image in enumerate(data) if torch.any(torch.isnan(image))]
+                logger.debug(f"NaN img indexes: {np.asarray(indexes)[mask_nan_images]}")
         flush_log(logger)
         # compute model output
         logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
@@ -83,13 +83,17 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         logger.debug(f"-- loaded on device {device}")
         optimizer.zero_grad()
         batch_x_hats, mu, logvar, _ = model(data)
+        # if logger.level <= logging.DEBUG:
         if logger.level <= logging.DEBUG:
             if torch.any(torch.isnan(batch_x_hats)):
                 logger.debug("-- /!\ reconstruction images have NaN")
-            if torch.any(torch.isnan(mu)):
-                logger.debug("-- /!\ mus have NaN")
-            if torch.any(torch.isnan(logvar)):
-                logger.debug("-- /!\ logvars have NaN")
+                mask_nan_batch = [torch.any(torch.isnan(image_hat)) for image_hat in batch_x_hats]
+                if indexes is not None:
+                    logger.debug(f"-- images whose reconstruction is NaN in the batch:"
+                                 f"{np.asarray(indexes)[mask_nan_batch]}")
+                dict_results = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}
+                checkpoint_file = f"./last_state_before_crash.pth"
+                torch.save(dict_results, checkpoint_file)
         logger.debug(f"-- output computed by the model")
         # compute batch losses
         total_loss, MSE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, mse_scale, kl_weight)
@@ -230,7 +234,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         best_test_loss = nn_state['best_test_loss']
         optimizer.load_state_dict(nn_state['optimizer'])
     # Schedule KL annealing
-    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 4)
+    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 10)
     logger.info(f"Scheduled KLD weights: {kl_weights}")
     # We scale the MSE with sum reduction to a cube of shape 16x16x16
     mse_scale = (16 ** 3) / np.asarray(trainset.input_image_size).prod()
