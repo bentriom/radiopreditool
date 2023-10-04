@@ -40,11 +40,11 @@ def schedule_KL_annealing(start, stop, n_epochs, n_cycle=4, ratio=0.5):
     return weights
 
 def vae_loss(x_hat, x, mu, logvar, mse_scale, kl_weight):
-    MSE = torch.nn.MSELoss(reduction='sum')(x_hat, x).div(float(len(x))).mul(mse_scale)
+    MSE = torch.nn.MSELoss(reduction='sum')(x_hat, x).mul(mse_scale).div(float(len(x)))
     # MSE = torch.nn.MSELoss(reduction='mean')(x_hat, x)
     KLD = torch.tensor(0.0, requires_grad = True)
     if kl_weight > 0:
-        KLD = kl_weight * (-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())) / len(x)
+        KLD =  torch.sum(1 + logvar - mu.pow(2) - logvar.exp()).mul(-0.5*kl_weight).div(float(len(x)))
 
     return MSE + KLD, MSE, KLD
 
