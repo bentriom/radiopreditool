@@ -40,7 +40,7 @@ def schedule_KL_annealing(start, stop, n_epochs, n_cycle=4, ratio=0.5):
     return weights
 
 def vae_loss(x_hat, x, mu, logvar, mse_scale, kl_weight):
-    MSE = mse_scale * torch.nn.MSELoss(reduction='sum')(x_hat, x) / len(x)
+    MSE = torch.nn.MSELoss(reduction='sum')(x_hat, x).div(float(len(x))).mul(mse_scale)
     # MSE = torch.nn.MSELoss(reduction='mean')(x_hat, x)
     KLD = torch.tensor(0.0, requires_grad = True)
     if kl_weight > 0:
@@ -72,7 +72,10 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         logger.info(f"# Batch train {batch_idx}/{len(train_dataloader)-1} of size {len(data)}")
         logger.debug(f"-- indexes of the batch: {indexes}")
         if logger.level <= logging.DEBUG:
-            assert torch.any(torch.isnan(data)), "Batch contains NaN"
+            if torch.any(torch.isnan(data)):
+                logger.debug("Batch contains NaN")
+                idx_nan_images = [i for i, image in enumerate(data) if torch.any(torch.isnan(image))]
+                logger.debug(f"NaN img indexes: {indexes[idx_nan_images]}")
         flush_log(logger)
         # compute model output
         logger.debug(f"-- estimated size in GB: {(data.element_size() * data.numel())/10**9}")
@@ -80,6 +83,13 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         logger.debug(f"-- loaded on device {device}")
         optimizer.zero_grad()
         batch_x_hats, mu, logvar, _ = model(data)
+        if logger.level <= logging.DEBUG:
+            if torch.any(torch.isnan(batch_x_hats)):
+                logger.debug("-- /!\ reconstruction images have NaN")
+            if torch.any(torch.isnan(mu)):
+                logger.debug("-- /!\ mus have NaN")
+            if torch.any(torch.isnan(logvar)):
+                logger.debug("-- /!\ logvars have NaN")
         logger.debug(f"-- output computed by the model")
         # compute batch losses
         total_loss, MSE_loss, KLD_loss = vae_loss(batch_x_hats, data, mu, logvar, mse_scale, kl_weight)
