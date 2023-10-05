@@ -117,9 +117,9 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
         scheduler.step()
         logger.debug(f"-- learning rate computed: {optimizer.param_groups[0]['lr']}")
 
-    train_total_loss /= len(train_dataloader.dataset)
-    train_MSE_loss /= len(train_dataloader.dataset)
-    train_KLD_loss /= len(train_dataloader.dataset)
+    train_total_loss /= len(train_dataloader)
+    train_MSE_loss /= len(train_dataloader)
+    train_KLD_loss /= len(train_dataloader)
 
     return train_total_loss, train_MSE_loss, train_KLD_loss
 
@@ -152,9 +152,9 @@ def test_loop(epoch, model, test_dataloader, mse_scale, kl_weight, device, log_n
             test_MSE_loss += MSE_loss.item()
             test_KLD_loss += KLD_loss.item()
 
-    test_total_loss /= len(test_dataloader.dataset)
-    test_MSE_loss /= len(test_dataloader.dataset)
-    test_KLD_loss /= len(test_dataloader.dataset)
+    test_total_loss /= len(test_dataloader)
+    test_MSE_loss /= len(test_dataloader)
+    test_KLD_loss /= len(test_dataloader)
 
     return test_total_loss, test_MSE_loss, test_KLD_loss
 
@@ -234,7 +234,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         best_test_loss = nn_state['best_test_loss']
         optimizer.load_state_dict(nn_state['optimizer'])
     # Schedule KL annealing
-    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 10)
+    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 5)
     logger.info(f"Scheduled KLD weights: {kl_weights}")
     # We scale the MSE with sum reduction to a cube of shape 16x16x16
     mse_scale = (16 ** 3) / np.asarray(trainset.input_image_size).prod()
