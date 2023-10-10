@@ -282,7 +282,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader))
     # Cleanup distributed module for cuda device
     if is_cuda:
-        cleanup_gpu(rank_device, nb_devices)
+        cleanup_gpu()
 
 def run_learn_vae(metadata_dir, vae_dir, file_fccss_clinical = None, cvae_type = "N128", downscale = 1,
                   batch_size = 64, n_epochs = 10, start_epoch = 0, device = "cpu",
