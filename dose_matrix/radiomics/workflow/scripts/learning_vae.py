@@ -222,8 +222,8 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     # cnn_vae.forward(train_batch0[0])
 
     # Set optimizer and best test loss based on starting epoch
-    optimizer = optim.Adam(cnn_vae.parameters(), lr=1e-4)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader))
+    optimizer = optim.Adam(cnn_vae.parameters(), lr=1e-4, eta_min = 1e-5)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader), )
     best_test_loss = np.finfo('f').max
     if start_epoch > 0:
         n_epoch_load = start_epoch - 1
