@@ -222,8 +222,8 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
     # cnn_vae.forward(train_batch0[0])
 
     # Set optimizer and best test loss based on starting epoch
-    optimizer = optim.Adam(cnn_vae.parameters(), lr=1e-4)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader))
+    optimizer = optim.Adam(cnn_vae.parameters(), lr=1e-4, eta_min = 1e-5)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_dataloader), )
     best_test_loss = np.finfo('f').max
     if start_epoch > 0:
         n_epoch_load = start_epoch - 1
@@ -234,7 +234,7 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         best_test_loss = nn_state['best_test_loss']
         optimizer.load_state_dict(nn_state['optimizer'])
     # Schedule KL annealing
-    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 5)
+    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 2)
     logger.info(f"Scheduled KLD weights: {kl_weights}")
     # We scale the MSE with sum reduction to a cube of shape 16x16x16
     mse_scale = (16 ** 3) / np.asarray(trainset.input_image_size).prod()
