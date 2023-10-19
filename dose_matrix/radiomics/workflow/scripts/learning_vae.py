@@ -90,7 +90,7 @@ def train_loop(epoch, model, train_dataloader, mse_scale, kl_weight, optimizer, 
                 mask_nan_batch = [torch.any(torch.isnan(image_hat)) for image_hat in batch_x_hats]
                 if indexes is not None:
                     logger.debug(f"-- images whose reconstruction is NaN in the batch:"
-                                 f"{np.asarray(indexes)[mask_nan_batch]}")
+                                 f"{np.asarray(indexes.cpu())[mask_nan_batch]}")
                 dict_results = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}
                 checkpoint_file = f"./last_state_before_crash.pth"
                 torch.save(dict_results, checkpoint_file)
@@ -234,7 +234,8 @@ def learn_vae(rank_device, nb_devices, metadata_dir, vae_dir, file_fccss_clinica
         best_test_loss = nn_state['best_test_loss']
         optimizer.load_state_dict(nn_state['optimizer'])
     # Schedule KL annealing
-    kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 5)
+    # kl_weights = schedule_KL_annealing(0.0, 1.0, n_epochs, 2)
+    kl_weights = np.zeros(n_epochs)
     logger.info(f"Scheduled KLD weights: {kl_weights}")
     # We scale the MSE with sum reduction to a cube of shape 16x16x16
     mse_scale = (16 ** 3) / np.asarray(trainset.input_image_size).prod()
