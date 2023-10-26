@@ -51,6 +51,9 @@ def fill_missing(df_fccss):
         birthdate = datetime.strptime(patient.loc["date_nais"], DATETIME_FORMAT_FCCSS)
         age = date_diag.year - birthdate.year - ((date_diag.month, date_diag.day) < (birthdate.month, birthdate.day))
         return age
+    def year_diagnosis(patient):
+        date_diag = datetime.strptime(patient.loc["date_diag"], DATETIME_FORMAT_FCCSS)
+        return date_diag.year
     def categ_age_at_diagnosis(age):
         if 0 <= age <= 5:
             return 0
@@ -66,6 +69,7 @@ def fill_missing(df_fccss):
         else:
             return 0
     df_fccss.loc[:, "age_at_diagnosis"] = df_fccss[["date_diag", "date_nais"]].apply(age_at_diagnosis, axis=1)
+    df_fccss.loc[:, "year_diagnosis"] = df_fccss[["date_diag"]].apply(year_diagnosis, axis=1)
     df_fccss.loc[:, "categ_age_at_diagnosis"] = df_fccss["age_at_diagnosis"].apply(categ_age_at_diagnosis)
     df_fccss.loc[:, "CHIMIO_GROUPE_AUTRE"] = df_fccss[["chimiotherapie","ALKYL", "ANTHRA", "VINCA", "ANTIM", "ANTIB"]]\
                                              .apply(chimio_groupe_autre, axis=1)
