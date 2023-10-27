@@ -29,7 +29,7 @@ Examples of bash scripts that run the pipeline can be found in `run/`. Scripts r
 
 ### Configuration file
 
-The extraction/analyzes are based on a configuration file, some examples are locaed in the directory config.
+The extraction/analyzes are based on a configuration file, some examples are locaed in the directory `config`.
 This file set important configuration variables for a proper execution of the Snakemake pipeline. Here is a description 
 of the variables:
 
@@ -43,7 +43,7 @@ will be saved in the directory `[RESULTS_DIR]/extraction/[RADIOMICS_NAME]`.
 - `RADIOMICS_PARAMS_FILE`: a file that contains the settings for pyradiomics.
 - `LABELS_T_ORGANS_FILE`: a file that associates each numeric "T" label to a suborgan.
 - `NAME_SUPER_T_FUNC`: the name of the function in `workflow/scripts/radiopreditool_utils.py` to use when creating 
-a super set of "T" labels. Example: each label in 320:324 is associated to the super T label 1320.
+a super set of "T" labels. Example: each label in 320:324 is associated with the super T label 1320.
 - `LABELS_SUPER_T_VOI`: The super "T" labels where dosiomics should be extracted from.
 - `LABELS_SUPER_T_VOI`: The T labels where dosiomics should be extracted from.
 - `FCCSS_CLINICAL_DATASET`: The FCCSS aggregated clinical database ("base assemblée")
