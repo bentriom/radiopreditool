@@ -24,8 +24,10 @@ LABELS_T_ORGANS_FILE = config["LABELS_T_ORGANS_FILE"] if "LABELS_T_ORGANS_FILE" 
                        "/Users/moud/Documents/RadioPrediTool/code/database/fccss_01122022/" \
                        "labels_organs_20160118_only_t.csv"
 
-DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"]
+DOSES_DATASET_DIR = config["DOSES_DATASET_DIR"] if "DOSES_DATASET_DIR" in config else ""
+DOSES_DATASET_DIR = "" if DOSES_DATASET_DIR is None else DOSES_DATASET_DIR
 DOSES_DATASET_SUBDIRS = config["DOSES_DATASET_SUBDIRS"] if "DOSES_DATASET_SUBDIRS" in config else [""]
+DOSES_DATASET_SUBDIRS = [""] if DOSES_DATASET_SUBDIRS is None else DOSES_DATASET_SUBDIRS
 FCCSS_CLINICAL_DATASET = config["FCCSS_CLINICAL_DATASET"]
 RESULTS_DIR = config["RESULTS_DIR"]
 NII_SUBNAME = config["NII_SUBNAME"] if "NII_SUBNAME" in config else NAME_SUPER_T_FUNC
@@ -56,20 +58,26 @@ def get_newdosi_files(wildcards):
                                                if wildcards.newdosi_patient in newdosi_file])
 
 # Create useful variables for rules based on configuration
-list_newdosi_files = [addslash(subdir) + f.split(".")[0]  for subdir in DOSES_DATASET_SUBDIRS \
-                                                          for f in os.listdir(DOSES_DATASET_DIR + subdir) \
-                                                          if re.match("^newdosi_\S+.csv.gz", f)]
+list_newdosi_files = []
+if os.path.isdir(DOSES_DATASET_DIR):
+    list_newdosi_files = [addslash(subdir) + f.split(".")[0]  for subdir in DOSES_DATASET_SUBDIRS \
+                                                              for f in os.listdir(DOSES_DATASET_DIR + subdir) \
+                                                              if re.match("^newdosi_\S+.csv.gz", f)]
 list_newdosi_patients = list(set([get_patient_file(newdosi) for newdosi in list_newdosi_files]))
-str_cmd_dataset_subdirs = reduce(lambda a,b:a+b, [sdir + "," for sdir in DOSES_DATASET_SUBDIRS])[0:-1]
 
 # Command to gather the computed radiomics
 cmd_concatenate_radiomics = "cat '" + RADIOMICS_DIR + "header.csv' "
-if DOSES_DATASET_SUBDIRS == [""]:
-    cmd_concatenate_radiomics += "'" + RADIOMICS_DIR + "'newdosi*"
+if os.path.isdir(DOSES_DATASET_DIR):
+    if DOSES_DATASET_SUBDIRS == [""]:
+        cmd_concatenate_radiomics += "'" + RADIOMICS_DIR + "'newdosi*"
+    else:
+        str_cmd_dataset_subdirs = reduce(lambda a,b:a+b, [sdir + "," for sdir in DOSES_DATASET_SUBDIRS])[0:-1]
+        cmd_concatenate_radiomics +=  "'" + RADIOMICS_DIR + "'{{" + str_cmd_dataset_subdirs + "}}/*"
+    cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
+    cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
 else:
-    cmd_concatenate_radiomics +=  "'" + RADIOMICS_DIR + "'{{" + str_cmd_dataset_subdirs + "}}/*"
-cmd_concatenate_radiomics += " > '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
-cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
+    cmd_concatenate_radiomics = "cat '" + RADIOMICS_DIR + "header.csv' > '" + RADIOMICS_DIR + "dose_matrix_radiomics.csv'"
+    cmd_concatenate_radiomics += " && gzip '" + RADIOMICS_DIR + "'dose_matrix_radiomics.csv"
 
 # Rules
 

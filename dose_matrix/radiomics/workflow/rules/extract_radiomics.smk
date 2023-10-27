@@ -50,6 +50,8 @@ rule compute_radiomics:
 
 rule gather_radiomics:
     input:
+        RADIOMICS_DIR + "header.csv",
+        RADIOMICS_DIR + "nbr_features_per_label",
         expand(RADIOMICS_DIR + "{newdosi_patient}_radiomics.csv", newdosi_patient = list_newdosi_patients)
     output:
         RADIOMICS_DIR + "dose_matrix_radiomics.csv.gz"
